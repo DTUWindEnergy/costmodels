@@ -1,6 +1,8 @@
 [project]
-authors = [{name = "ernie", email = "ernim@dtu.dk"}]
-dependencies = []
+authors = [{ name = "ernie", email = "ernim@dtu.dk" }]
+dependencies = [
+    # TODO: list for packaging later
+]
 description = "Add a short description here"
 name = "costmodels"
 requires-python = ">= 3.9"
@@ -9,6 +11,9 @@ version = "0.1.0"
 [build-system]
 build-backend = "hatchling.build"
 requires = ["hatchling"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.pixi.project]
 channels = ["conda-forge"]
@@ -22,3 +27,10 @@ costmodels = { path = ".", editable = true }
 [tool.pixi.dependencies]
 python = ">=3.9"
 numpy = ">=2.2.2,<3"
+pydantic = ">=2.10.6,<3"
+
+[tool.pixi.feature.test.dependencies]
+pytest = "*"
+
+[tool.pixi.environments]
+test = { features = ["test"] }
