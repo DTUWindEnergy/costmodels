@@ -31,5 +31,7 @@ def test_dtu_offshore():
 
     assert isinstance(cm_output, DTUOffshoreCMOutput)
 
-    # for k, v in cm_output.items():
-    #     print(f"{k} [{type(v)}]:\n{v.mean()}\n")
+    cm_input.AEP = 1.0
+    cm_output_aep = cm.run(cm_input)
+
+    assert cm_output_aep.aep_net != cm_output.aep_net

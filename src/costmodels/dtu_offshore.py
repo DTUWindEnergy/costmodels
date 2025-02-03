@@ -105,10 +105,7 @@ class DTUOffshoreCMOutput(PydanticBaseModel):
 class DTUOffshoreCM(BaseCostModel):
 
     def set_inputs(self, **kwargs):
-        if "nwt" in kwargs:
-            nwt = int(kwargs["nwt"])
-        else:
-            nwt = self.nwt
+        nwt = kwargs["nwt"]
         for k, v in kwargs.items():
             if k in [
                 "rated_power",

@@ -6,5 +6,5 @@ class BaseCostModel(ABC):
         pass
 
     @abstractmethod
-    def run(self):
+    def run(self):  # pragma: no cover
         pass
