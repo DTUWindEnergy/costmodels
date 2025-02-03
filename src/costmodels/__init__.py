@@ -6,3 +6,8 @@ from costmodels.dtu_offshore import (
     DTUOffshoreCMInput,
     DTUOffshoreCMOutput,
 )
+from costmodels.minimalistic import (
+    MinimalisticCM,
+    MinimalisticCMInput,
+    MinimalisticCMOutput,
+)
