@@ -1,12 +1,9 @@
 import numpy as np
 from typing import Optional
-from pydantic import (
-    BaseModel as PydanticBaseModel,
-    PositiveInt,
-)
 from enum import Enum
-from costmodels.base import BaseCostModel
-from costmodels.constants import HOUR_PER_YEAR
+from pydantic import Field
+from costmodels.base import CostModel, CostModelInput, CostModelOutput
+from costmodels.constants import HOURS_PER_YEAR
 
 
 class FoundationOption(Enum):
@@ -17,7 +14,7 @@ class FoundationOption(Enum):
     FLOATING_MOCKUP = 4
 
 
-class DTUOffshoreCMInput(PydanticBaseModel):
+class DTUOffshoreCMInput(CostModelInput):
     """TODO: validation and docs.
 
     Parameters:
@@ -50,7 +47,7 @@ class DTUOffshoreCMInput(PydanticBaseModel):
     profit: float
     capacity_factor: float
     decline_factor: float
-    nwt: PositiveInt
+    nwt: int = Field(gt=0)
     project_lifetime: int
     wacc: float
     inflation: float
@@ -64,8 +61,7 @@ class DTUOffshoreCMInput(PydanticBaseModel):
     foundation_option: FoundationOption = FoundationOption.MONOPILE
     AEP: Optional[list] = None
 
-
-class DTUOffshoreCMOutput(PydanticBaseModel):
+class DTUOffshoreCMOutput(CostModelOutput):
     """TODO: validation and docs.
 
     "Production net (MWh)": AEPNet,
@@ -94,15 +90,15 @@ class DTUOffshoreCMOutput(PydanticBaseModel):
     opex_net: float
     opex_discount: float
     lcoe: float
-    co2_emission_per_wt: list
-    cost_per_wt: list
+    co2_emission_per_wt: list[float]
+    cost_per_wt: list[float]
 
     # TODO: for numpy array types need extra handling
     # from pydantic import ConfigDict
     # model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
-class DTUOffshoreCM(BaseCostModel):
+class DTUOffshoreCM(CostModel):
 
     def set_inputs(self, **kwargs):
         nwt = kwargs["nwt"]
@@ -1147,7 +1143,7 @@ class DTUOffshoreCM(BaseCostModel):
             AEP_farm = np.sum(self.AEP)
 
         elif self.capacity_factor is not None:
-            AEP_farm = np.sum(self.capacity_factor * self.rated_power * HOUR_PER_YEAR)
+            AEP_farm = np.sum(self.capacity_factor * self.rated_power * HOURS_PER_YEAR)
 
         return AEP_farm
 

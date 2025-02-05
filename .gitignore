@@ -6,3 +6,6 @@ assets/
 __pycache__/
 htmlcov/
 .coverage
+hydesign/
+hydesignp/
+sandbox.py

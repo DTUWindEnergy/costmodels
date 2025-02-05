@@ -1,0 +1,12 @@
+test_linux:
+  image: ghcr.io/prefix-dev/pixi:latest
+  stage: test
+  script:
+    - pixi run -e test pytest
+  artifacts:
+    paths:
+      - ./htmlcov
+    when: always
+    expire_in: "2 days"
+  tags:
+    - linux

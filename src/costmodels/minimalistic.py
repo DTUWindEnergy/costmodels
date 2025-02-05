@@ -6,12 +6,11 @@ Created on Mon Apr 29 14:41:18 2024
 """
 import numpy as np
 from scipy.special import gamma, gammainc
-from pydantic import BaseModel as PydanticBaseModel
-from costmodels.base import BaseCostModel
-from costmodels.constants import HOUR_PER_YEAR
+from costmodels.base import CostModel, CostModelInput, CostModelOutput
+from costmodels.constants import HOURS_PER_YEAR
 
 
-class MinimalisticCMInput(PydanticBaseModel):
+class MinimalisticCMInput(CostModelInput):
     """TODO: format properly
 
     Parameters:
@@ -98,7 +97,7 @@ class MinimalisticCMInput(PydanticBaseModel):
     f: float = 1.2e-4 * np.exp(4.0)
 
 
-class MinimalisticCMOutput(PydanticBaseModel):
+class MinimalisticCMOutput(CostModelOutput):
     """
     Returns
     -------
@@ -118,7 +117,7 @@ class MinimalisticCMOutput(PydanticBaseModel):
     LCoE: float
 
 
-class MinimalisticCM(BaseCostModel):
+class MinimalisticCM(CostModel):
     """
     Python implementation of: "Sørensen, J. N., & Larsen, G. C. (2021). A
     Minimalistic Prediction Model to Determine Energy Production and Costs of
@@ -270,13 +269,13 @@ class MinimalisticCM(BaseCostModel):
             * Pg
             * (
                 0.106 * F_om / (Power / Power0) * eta0
-                + 0.8 * HOUR_PER_YEAR * 10 ** (-6) * eta * (L - Lref)
+                + 0.8 * HOURS_PER_YEAR * 10 ** (-6) * eta * (L - Lref)
             )
         )  # OPEX €/year
 
         OPEXtot = OPEX * YO
         # per year in Wh
-        Production = Pg * HOUR_PER_YEAR * ((Nturb - Nrow) * eta + Nrow * eta0)
+        Production = Pg * HOURS_PER_YEAR * ((Nturb - Nrow) * eta + Nrow * eta0)
 
         return MinimalisticCMOutput(
             CAPEX=CAPEX / 10**6,
