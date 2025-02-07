@@ -61,6 +61,7 @@ class DTUOffshoreCMInput(CostModelInput):
     foundation_option: FoundationOption = FoundationOption.MONOPILE
     AEP: Optional[list] = None
 
+
 class DTUOffshoreCMOutput(CostModelOutput):
     """TODO: validation and docs.
 

@@ -22,6 +22,7 @@ platforms = ["linux-64"]
 
 [tool.pixi.pypi-dependencies]
 costmodels = { path = ".", editable = true }
+# hydesign = { path = "../hydesign", editable = true }
 
 [tool.pixi.tasks]
 
@@ -30,6 +31,8 @@ python = ">=3.9"
 numpy = ">=2.2.2,<3"
 pydantic = ">=2.10.6,<3"
 scipy = ">=1.15.1,<2"
+openmdao = ">=3.36.0,<4"
+numpy-financial = ">=1.0.0,<2"
 
 [tool.pixi.feature.test.dependencies]
 pytest = ">=8.3.4,<9"

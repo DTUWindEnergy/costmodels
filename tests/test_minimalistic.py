@@ -8,14 +8,17 @@ from costmodels import (
 def test_minimalistic_cost_model():
     mcm = MinimalisticCM()
 
-    cm_input = MinimalisticCMInput()
+    cmi = MinimalisticCMInput(eprice=0.2)
 
-    cm_output = mcm.run(cm_input)
+    cmo = mcm.run(cmi)
 
-    assert isinstance(cm_output, MinimalisticCMOutput)
+    assert isinstance(cmo, MinimalisticCMOutput)
+    assert cmo.npv > 0
 
-    cm_input.Area /= 2
-    assert cm_input.Area < 65 * 10**6
-    cm_output_small_area = mcm.run(cm_input)
+    print(f"NPV: {cmo.npv}")
 
-    assert cm_output_small_area.LCoE > cm_output.LCoE
+    cmi.Area /= 2
+    assert cmi.Area < 65 * 10**6
+    cm_output_small_area = mcm.run(cmi)
+
+    assert cm_output_small_area.lcoe > cmo.lcoe
