@@ -26,6 +26,7 @@ def test_dtu_offshore():
         water_depth=33.33333333333333,
         electrical_cost=0.0,
         foundation_option=0,
+        eprice=(0.2, "EUR/kWh"),
     )
     cm_output = cm.run(cm_input)
 

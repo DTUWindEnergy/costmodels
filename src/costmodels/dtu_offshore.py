@@ -1317,6 +1317,10 @@ class DTUOffshoreCM(CostModel):
         Total_Co2Emission = self.Total_Co2Emission()
         turbine_cost = self.TotalCostCalculation()
 
+        # TODO:
+        from costmodels.ufloat import ufloat
+
+        # TODO:
         return DTUOffshoreCMOutput(
             production_net=AEPNet,
             production_discount=AEPDiscount,
@@ -1331,4 +1335,9 @@ class DTUOffshoreCM(CostModel):
             lcoe=LCOE,
             co2_emission_per_wt=Total_Co2Emission,
             cost_per_wt=turbine_cost,
+
+            capex=ufloat(0.0, "MEUR"),
+            opex=ufloat(0.0, "MEUR"),
+            npv=ufloat(0.0, "MEUR"),
+            irr=ufloat(0.0, "%"),
         )

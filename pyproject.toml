@@ -33,6 +33,7 @@ pydantic = ">=2.10.6,<3"
 scipy = ">=1.15.1,<2"
 openmdao = ">=3.36.0,<4"
 numpy-financial = ">=1.0.0,<2"
+pint = ">=0.24.4,<0.25"
 
 [tool.pixi.feature.test.dependencies]
 pytest = ">=8.3.4,<9"

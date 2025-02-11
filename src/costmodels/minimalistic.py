@@ -3,6 +3,7 @@ from scipy.special import gamma, gammainc
 from costmodels.base import CostModel, CostModelInput, CostModelOutput
 from costmodels.constants import HOURS_PER_YEAR
 from pydantic import Field
+from costmodels.ufloat import ufloat
 
 
 class MinimalisticCMInput(CostModelInput):
@@ -278,10 +279,10 @@ class MinimalisticCM(CostModel):
         ]
 
         return MinimalisticCMOutput(
-            capex=CAPEX / 10**6,
-            opex=OPEXtot / 10**6,
-            aep=aep_Wh / 10**9,
-            lcoe=(CAPEX + OPEX * YO) / (YO * aep_Wh / 10**6),
-            irr=npf.irr(cashflows),
-            npv=npf.npv(mispec.inflation, cashflows),
+            capex=ufloat(CAPEX / 10**6, "MEUR"),
+            opex=ufloat(OPEXtot / 10**6, "MEUR"),
+            aep=ufloat(aep_Wh / 10**9, "GWh"),
+            lcoe=ufloat((CAPEX + OPEX * YO) / (YO * aep_Wh / 10**6), "EUR/MWh"),
+            irr=ufloat(npf.irr(cashflows), "%"),
+            npv=ufloat(npf.npv(mispec.inflation, cashflows), "MEUR"),
         )
