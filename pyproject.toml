@@ -13,7 +13,7 @@ requires = ["hatchling"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# addopts = "--cov-report=term-missing:skip-covered --cov-report=html --cov=src/costmodels --dist=worksteal"
+addopts = "--cov-report=term-missing:skip-covered --cov-report=html --cov=src/costmodels --dist=worksteal"
 
 [tool.pixi.project]
 channels = ["conda-forge"]

@@ -1,12 +1,10 @@
-from pint import UnitRegistry  # fmt:skip
+from pint import UnitRegistry
+from pydantic_pint import PydanticPintQuantity
 
 _UREG = UnitRegistry()
 _UREG.define("EUR = [currency]")
 _UREG.formatter.default_format = "~#P"
 Quant = _UREG.Quantity
-
-
-from pydantic_pint import PydanticPintQuantity  # fmt:skip
 
 
 def getppq(units=""):

@@ -3,6 +3,7 @@ from typing import Annotated, Callable
 
 from pydantic import AfterValidator
 from pydantic import BaseModel as PydanticBaseModel
+from pydantic import ConfigDict
 
 from costmodels.units import Quant, getppq
 
@@ -45,8 +46,7 @@ class CostModelOutput(ABC, PydanticBaseModel):
     npv: Annotated[Quant, getppq("MEUR")]
     irr: Annotated[Quant, getppq("%")]
 
-    class Config:
-        frozen = True
+    model_config = ConfigDict(frozen=True)
 
     def __str__(self):
         data = self.model_dump()

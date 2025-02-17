@@ -28,7 +28,7 @@ def test_dtu_offshore():
     cm_output = cm.run(cm_input)
     assert isinstance(cm_output, DTUOffshoreCMOutput)
 
-    cm_input.AEP = 1.0
+    cm_input.aep = 1.0
     cm_output_aep = cm.run(cm_input)
 
     assert cm_output_aep.aep_net != cm_output.aep_net

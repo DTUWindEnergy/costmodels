@@ -62,7 +62,7 @@ class DTUOffshoreCMInput(CostModelInput):
     currency: str = "EUR/kW"  # TODO: split into currency and energy unit
     eur_to_dkk: float = 7.54  # TODO: hardcoded DKK conversion
     foundation_option: FoundationOption = FoundationOption.MONOPILE
-    AEP: Optional[list] = None
+    aep: Optional[float] = None
 
 
 class DTUOffshoreCMOutput(CostModelOutput):
@@ -1135,13 +1135,13 @@ class DTUOffshoreCM(CostModel):
 
     def AEP_WindFarm(self) -> float:
         # Ensure either AEP or capacity_factor is provided and AEP is not NaN
-        if self.AEP is None and self.capacity_factor is None:
+        if self.aep is None and self.capacity_factor is None:
             raise ValueError(
                 "Either Capacity Factor (capacity_factor) or AEP must be provided."
             )
 
-        if self.AEP is not None:
-            AEP_farm = np.sum(self.AEP)
+        if self.aep is not None:
+            AEP_farm = np.sum(self.aep)
 
         elif self.capacity_factor is not None:
             AEP_farm = np.sum(self.capacity_factor * self.rated_power * (365 * 24))
