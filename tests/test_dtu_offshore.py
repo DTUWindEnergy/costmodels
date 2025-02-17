@@ -1,8 +1,5 @@
-from costmodels import (
-    DTUOffshoreCM,
-    DTUOffshoreCMInput,
-    DTUOffshoreCMOutput,
-)
+from costmodels import DTUOffshoreCM, DTUOffshoreCMInput, DTUOffshoreCMOutput
+from costmodels.units import Quant
 
 
 def test_dtu_offshore():
@@ -26,13 +23,14 @@ def test_dtu_offshore():
         water_depth=33.33333333333333,
         electrical_cost=0.0,
         foundation_option=0,
-        eprice=(0.2, "EUR/kWh"),
+        eprice=Quant(0.2, "EUR/kWh"),
     )
     cm_output = cm.run(cm_input)
-
     assert isinstance(cm_output, DTUOffshoreCMOutput)
 
     cm_input.AEP = 1.0
     cm_output_aep = cm.run(cm_input)
 
     assert cm_output_aep.aep_net != cm_output.aep_net
+
+    print(f"{cm_output.irr=}")

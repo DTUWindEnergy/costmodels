@@ -1,9 +1,12 @@
+from typing import Annotated
+
 import numpy as np
-from scipy.special import gamma, gammainc
-from costmodels.base import CostModel, CostModelInput, CostModelOutput
-from costmodels.constants import HOURS_PER_YEAR
+import numpy_financial as npf
 from pydantic import Field
-from costmodels.ufloat import ufloat
+from scipy.special import gamma, gammainc
+
+from costmodels.base import CostModel, CostModelInput, CostModelOutput
+from costmodels.units import Quant, getppq
 
 
 class MinimalisticCMInput(CostModelInput):
@@ -107,7 +110,7 @@ class MinimalisticCMOutput(CostModelOutput):
         LCOE in €/MWh.
     """
 
-    aep: float  # GWh
+    aep: Annotated[Quant, getppq("GWh")]  # TODO: > 0 check
 
 
 class MinimalisticCM(CostModel):
@@ -262,27 +265,28 @@ class MinimalisticCM(CostModel):
             * Pg
             * (
                 0.106 * F_om / (Power / Power0) * eta0
-                + 0.8 * HOURS_PER_YEAR * 10 ** (-6) * eta * (L - Lref)
+                + 0.8 * (365 * 24) * 10 ** (-6) * eta * (L - Lref)
             )
         )  # OPEX €/year
 
         OPEXtot = OPEX * YO
-        aep_Wh = Pg * HOURS_PER_YEAR * ((Nturb - Nrow) * eta + Nrow * eta0)
+        aep_Wh = Pg * (365 * 24) * ((Nturb - Nrow) * eta + Nrow * eta0)
 
-        import numpy_financial as npf
-
-        annual_revenue = aep_Wh * (mispec.eprice / 1e3)
-        annual_cashflow = annual_revenue - OPEX
+        annual_revenue = aep_Wh * (mispec.eprice.magnitude / 1e3)
+        annual_cashflow = annual_revenue - OPEX  # TODO;
         cashflows = [-CAPEX] + [
-            annual_cashflow * ((1 + mispec.inflation) ** (year - 1))
+            annual_cashflow
+            * ((1 + mispec.inflation.to_base_units().magnitude) ** (year - 1))
             for year in range(1, YO + 1)
         ]
 
         return MinimalisticCMOutput(
-            capex=ufloat(CAPEX / 10**6, "MEUR"),
-            opex=ufloat(OPEXtot / 10**6, "MEUR"),
-            aep=ufloat(aep_Wh / 10**9, "GWh"),
-            lcoe=ufloat((CAPEX + OPEX * YO) / (YO * aep_Wh / 10**6), "EUR/MWh"),
-            irr=ufloat(npf.irr(cashflows), "%"),
-            npv=ufloat(npf.npv(mispec.inflation, cashflows), "MEUR"),
+            capex=Quant(CAPEX / 10**6, "MEUR"),
+            opex=Quant(OPEXtot / 10**6, "MEUR"),
+            aep=Quant(aep_Wh / 10**9, "GWh"),
+            lcoe=Quant((CAPEX + OPEX * YO) / (YO * aep_Wh / 10**6), "EUR/MWh"),
+            irr=Quant(npf.irr(cashflows) * 100, "%"),
+            npv=Quant(
+                npf.npv(mispec.inflation.to_base_units().magnitude, cashflows), "MEUR"
+            ),
         )

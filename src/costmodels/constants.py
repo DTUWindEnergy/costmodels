@@ -1,1 +1,0 @@
-HOURS_PER_YEAR = 365 * 24

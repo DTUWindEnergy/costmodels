@@ -9,3 +9,4 @@ htmlcov/
 hydesign/
 hydesignp/
 sandbox.py
+.vscode/

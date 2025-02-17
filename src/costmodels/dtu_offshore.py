@@ -1,9 +1,12 @@
-import numpy as np
-from typing import Optional
 from enum import Enum
+from typing import Optional
+
+import numpy as np
+import numpy_financial as npf
 from pydantic import Field
+
 from costmodels.base import CostModel, CostModelInput, CostModelOutput
-from costmodels.constants import HOURS_PER_YEAR
+from costmodels.units import _UREG, Quant
 
 
 class FoundationOption(Enum):
@@ -56,7 +59,7 @@ class DTUOffshoreCMInput(CostModelInput):
     water_depth: float
     abex: float = 0.0
     electrical_cost: float = 0.0
-    currency: str = "EURO/KW"  # TODO: split into currency and energy unit
+    currency: str = "EUR/kW"  # TODO: split into currency and energy unit
     eur_to_dkk: float = 7.54  # TODO: hardcoded DKK conversion
     foundation_option: FoundationOption = FoundationOption.MONOPILE
     AEP: Optional[list] = None
@@ -86,11 +89,8 @@ class DTUOffshoreCMOutput(CostModelOutput):
     aep_discount: float
     devex_net: float
     devex_discount: float
-    capex_net: float
     capex_discount: float
-    opex_net: float
     opex_discount: float
-    lcoe: float
     co2_emission_per_wt: list[float]
     cost_per_wt: list[float]
 
@@ -1144,7 +1144,7 @@ class DTUOffshoreCM(CostModel):
             AEP_farm = np.sum(self.AEP)
 
         elif self.capacity_factor is not None:
-            AEP_farm = np.sum(self.capacity_factor * self.rated_power * HOURS_PER_YEAR)
+            AEP_farm = np.sum(self.capacity_factor * self.rated_power * (365 * 24))
 
         return AEP_farm
 
@@ -1302,25 +1302,38 @@ class DTUOffshoreCM(CostModel):
     def NVP_abex(self):
         return self.abexDiscount() / self.LCOENumerator()
 
-    def run(self, input: DTUOffshoreCMInput) -> DTUOffshoreCMOutput:
-        self.set_inputs(**input.model_dump())
+    def run(self, mispec: DTUOffshoreCMInput) -> DTUOffshoreCMOutput:
+        self.set_inputs(**mispec.model_dump())
 
         LCOE = self.LCOE()
-        devexDiscount = self.devexDiscount()
-        CAPEXDiscount = self.CAPEXDiscount()
-        opexDiscount = self.opexDiscount()
-        AEPDiscount = self.AEPDiscount()
         devexNet = self.devexNet()
+        devexDiscount = self.devexDiscount()
+
         CAPEXNet = self.CAPEXNet()
+        CAPEXDiscount = self.CAPEXDiscount()
+
         opexNet = self.opexNET()
+        opexDiscount = self.opexDiscount()
+
         AEPNet = self.AEPNet()
-        Total_Co2Emission = self.Total_Co2Emission()
-        turbine_cost = self.TotalCostCalculation()
+        AEPDiscount = self.AEPDiscount()
 
-        # TODO:
-        from costmodels.ufloat import ufloat
+        co2_emmisions = self.Total_Co2Emission()
+        wt_cost = self.TotalCostCalculation()
 
-        # TODO:
+        aep = Quant(AEPNet / self.project_lifetime, "MWh")
+        annual_revenue = aep * mispec.eprice
+        assert (
+            annual_revenue.to_base_units().units == _UREG.EUR
+        ), "Annual revenue must be in EUR"
+        annual_cashflow = annual_revenue - Quant(self.opexTotal(), "EUR")
+        cashflows = [-CAPEXNet] + [
+            (annual_cashflow * ((1 + mispec.inflation) ** (year - 1)))
+            .to_base_units()
+            .magnitude
+            for year in range(1, self.project_lifetime + 1)
+        ]
+
         return DTUOffshoreCMOutput(
             production_net=AEPNet,
             production_discount=AEPDiscount,
@@ -1328,16 +1341,13 @@ class DTUOffshoreCM(CostModel):
             aep_discount=AEPDiscount / self.project_lifetime,
             devex_net=devexNet,
             devex_discount=devexDiscount,
-            capex_net=CAPEXNet,
             capex_discount=CAPEXDiscount,
-            opex_net=opexNet,
             opex_discount=opexDiscount,
-            lcoe=LCOE,
-            co2_emission_per_wt=Total_Co2Emission,
-            cost_per_wt=turbine_cost,
-
-            capex=ufloat(0.0, "MEUR"),
-            opex=ufloat(0.0, "MEUR"),
-            npv=ufloat(0.0, "MEUR"),
-            irr=ufloat(0.0, "%"),
+            co2_emission_per_wt=co2_emmisions,
+            cost_per_wt=wt_cost,
+            lcoe=Quant(LCOE, "EUR/MWh"),
+            capex=Quant(CAPEXNet, "MEUR"),
+            opex=Quant(opexNet, "MEUR"),
+            npv=Quant(0.0, "MEUR"),  # TODO;
+            irr=Quant(npf.irr(cashflows), "%"),
         )

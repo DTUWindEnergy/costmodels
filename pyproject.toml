@@ -1,12 +1,11 @@
 [project]
 authors = [{ name = "ernie", email = "ernim@dtu.dk" }]
-dependencies = [
-    # TODO: list for packaging later
-]
 description = "Add a short description here"
 name = "costmodels"
-requires-python = ">= 3.9"
+requires-python = ">=3.9,<3.13"
 version = "0.1.0"
+# TODO: fill out for packaging :)
+dependencies = ["pydantic-pint>=0.1,<0.2"]
 
 [build-system]
 build-backend = "hatchling.build"
@@ -14,7 +13,7 @@ requires = ["hatchling"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--cov-report=term-missing:skip-covered --cov-report=html --cov=src/costmodels --dist=worksteal"
+# addopts = "--cov-report=term-missing:skip-covered --cov-report=html --cov=src/costmodels --dist=worksteal"
 
 [tool.pixi.project]
 channels = ["conda-forge"]
@@ -27,7 +26,7 @@ costmodels = { path = ".", editable = true }
 [tool.pixi.tasks]
 
 [tool.pixi.dependencies]
-python = ">=3.9"
+python = ">=3.9,<3.13"
 numpy = ">=2.2.2,<3"
 pydantic = ">=2.10.6,<3"
 scipy = ">=1.15.1,<2"
@@ -39,6 +38,7 @@ pint = ">=0.24.4,<0.25"
 pytest = ">=8.3.4,<9"
 pytest-cov = ">=6.0.0,<7"
 pytest-xdist = ">=3.6.1,<4"
+pre-commit = ">=4.1.0,<5"
 
 [tool.pixi.environments]
 test = { features = ["test"] }
