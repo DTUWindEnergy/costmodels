@@ -22,22 +22,33 @@ def _gtt(cmp: float) -> Callable:
     return _gtt
 
 
-class CostModelInput(ABC, PydanticBaseModel):
+class _StrReprInOut:
+    def __new__(cls, *_, **__):
+        if cls is _StrReprInOut:
+            raise TypeError("StrRepr cannot be instantiated directly")
+        return super().__new__(cls)
+
+    def __str__(self: PydanticBaseModel):
+        data = self.model_dump()
+        header = f"{self.__class__.__name__}:"
+        return (
+            header
+            + "\n"
+            + "\n".join(
+                f"{key}: {round(float(value.magnitude), 2)} {value.units}"
+                for key, value in data.items()
+            )
+        )
+
+
+class CostModelInput(_StrReprInOut, ABC, PydanticBaseModel):
     """Base class for all the cost model inputs."""
 
     eprice: Annotated[Quant, getppq("EUR/kWh")]
     inflation: Annotated[Quant, getppq("%"), AfterValidator(_is_valid_percentage)]
 
-    def __str__(self):
-        data = self.model_dump()
-        print(f"{self.__class__.__name__}:")
-        return "\n".join(
-            f"{key}: {round(float(value.magnitude), 2)} {value.units}"
-            for key, value in data.items()
-        )
 
-
-class CostModelOutput(ABC, PydanticBaseModel):
+class CostModelOutput(_StrReprInOut, ABC, PydanticBaseModel):
     """Base class for all the cost model outputs."""
 
     capex: Annotated[Quant, getppq("MEUR"), AfterValidator(_gtt(0))]
@@ -48,19 +59,11 @@ class CostModelOutput(ABC, PydanticBaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    def __str__(self):
-        data = self.model_dump()
-        print(f"{self.__class__.__name__} data:")
-        return "\n".join(
-            f"{key}: {round(float(value.magnitude), 2)} {value.units}"
-            for key, value in data.items()
-        )
-
 
 class CostModel(ABC):
     """Base class for all the cost models."""
 
-    def __init__(self):
+    def __init__(self):  # pragma: no cover
         pass
 
     @abstractmethod
