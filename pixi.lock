@@ -291,7 +291,7 @@ packages:
 - pypi: .
   name: costmodels
   version: 0.1.0
-  sha256: 604a435b1865bfc76832d4066096c6180a34c44cbe6415dd4138edebc49108de
+  sha256: ba4b77399dec7cfdcf19995e1c32b306c96f737802838ed915555fb0bb524cc0
   requires_dist:
   - pydantic-pint>=0.1,<0.2
   requires_python: '>=3.9,<3.13'
