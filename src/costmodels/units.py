@@ -3,6 +3,7 @@ from pydantic_pint import PydanticPintQuantity
 
 _UREG = UnitRegistry()
 _UREG.define("EUR = [currency]")
+_UREG.define("USD = [currency]")
 _UREG.formatter.default_format = "~#P"
 Quant = _UREG.Quantity
 
