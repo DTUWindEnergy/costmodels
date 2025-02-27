@@ -60,6 +60,8 @@ class NRELCM(CostModel):
 
         wtc = self.prob.model._outputs["turbine_cost"]
 
+        # + electrical_infrastructure + foundation
+        # these might be included in the model already
         capex = Quant(wtc, "MEUR") * misepc.nwt
 
         return NRELCMOutput(
