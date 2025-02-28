@@ -7,6 +7,25 @@ Created on Tue Dec 10 14:10:46 2024
 import copy
 
 
+class Excel:
+    def __init__(self, visible=False):
+        import platform
+
+        assert platform.system() in [
+            "Windows",
+            "Darwin",
+        ], "Only Windows and MacOS are supported"
+        import xlwings as xw
+
+        self.app = xw.App(visible=visible)
+
+    def __enter__(self):
+        return self.app
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.app.kill()
+
+
 def run_excel(
     file_path="WTcostmodel_v12.xlsx",
     input_map={
@@ -35,16 +54,17 @@ def run_excel(
     ], "Only Windows and MacOS are supported"
     import xlwings as xw
 
-    wb = xw.Book(file_path)
-    for sheet, input_list in input_map.items():
-        sht = wb.sheets[sheet]
-        for inputs in input_list:
-            sht[inputs["cell"]].value = inputs["value"]
-    res = copy.deepcopy(output_map)
-    for sheet, output_list in res.items():
-        sht = wb.sheets[sheet]
-        for n, outputs in enumerate(output_list):
-            res[sheet][n]["value"] = sht[outputs["cell"]].value
+    with Excel() as app:
+        wb = app.books.open(file_path)
+        for sheet, input_list in input_map.items():
+            sht = wb.sheets[sheet]
+            for inputs in input_list:
+                sht[inputs["cell"]].value = inputs["value"]
+        res = copy.deepcopy(output_map)
+        for sheet, output_list in res.items():
+            sht = wb.sheets[sheet]
+            for n, outputs in enumerate(output_list):
+                res[sheet][n]["value"] = sht[outputs["cell"]].value
     out = simplify_output(res)
     return out
 
