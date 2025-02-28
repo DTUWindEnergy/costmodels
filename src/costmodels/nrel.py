@@ -11,25 +11,23 @@ class TurbineClass(Enum):
     II = 2
 
 
-class NRELCMInput(CostModelInput):
-
-    nwt: Annotated[Quant, getppq("count")]
-    machine_rating: Annotated[Quant, getppq("W")]
-    rotor_diameter: Annotated[Quant, getppq("m")]
-    turbine_class: TurbineClass
-    tower_length: Annotated[Quant, getppq("m")]
-    blade_number: Annotated[Quant, getppq("count")]
-    blade_has_carbon: bool
-    max_tip_speed: Annotated[Quant, getppq("m/s")]
-    max_efficiency: Annotated[Quant, getppq("%")]
-    main_bearing_number: Annotated[Quant, getppq("count")]
-    crane: bool
-
-
-class NRELCMOutput(CostModelOutput): ...
-
-
 class NRELCM(CostModel):
+
+    class Input(CostModelInput):
+
+        nwt: Annotated[Quant, getppq("count")]
+        machine_rating: Annotated[Quant, getppq("W")]
+        rotor_diameter: Annotated[Quant, getppq("m")]
+        turbine_class: TurbineClass
+        tower_length: Annotated[Quant, getppq("m")]
+        blade_number: Annotated[Quant, getppq("count")]
+        blade_has_carbon: bool
+        max_tip_speed: Annotated[Quant, getppq("m/s")]
+        max_efficiency: Annotated[Quant, getppq("%")]
+        main_bearing_number: Annotated[Quant, getppq("count")]
+        crane: bool
+
+    class Output(CostModelOutput): ...
 
     def __init__(self):
         from openmdao.api import Problem
@@ -42,7 +40,7 @@ class NRELCM(CostModel):
         self.prob.setup()
         super().__init__()
 
-    def run(self, misepc: NRELCMInput) -> NRELCMOutput:
+    def run(self, misepc: Input) -> Output:
         self.prob["machine_rating"] = misepc.machine_rating.m
         self.prob["rotor_diameter"] = misepc.rotor_diameter.m
         self.prob["turbine_class"] = misepc.turbine_class.value
@@ -64,7 +62,7 @@ class NRELCM(CostModel):
         # these might be included in the model already
         capex = Quant(wtc, "MEUR") * misepc.nwt
 
-        return NRELCMOutput(
+        return self.Output(
             capex=capex,
             opex=Quant(0.0, "MEUR"),
             lcoe=Quant(0.0, "EUR/MWh"),
@@ -75,7 +73,7 @@ class NRELCM(CostModel):
 
 if __name__ == "__main__":
 
-    cmi = NRELCMInput(
+    cmi = NRELCM.Input(
         eprice=0.2,
         inflation=2,
         nwt=10,

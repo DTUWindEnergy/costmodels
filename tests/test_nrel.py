@@ -1,6 +1,6 @@
 import openmdao.api as om
 
-from costmodels.nrel import NRELCM, NRELCMInput, NRELCMOutput
+from costmodels.nrel import NRELCM
 from costmodels.nrel_csm_mass_2015 import nrel_csm_2015
 
 
@@ -27,7 +27,7 @@ def test_nrel():
 
     nrel_cm = NRELCM()
     NWT = 10
-    nrel_cm_input = NRELCMInput(
+    nrel_cm_input = NRELCM.Input(
         machine_rating=5000.0,
         rotor_diameter=126.0,
         turbine_class=2,
@@ -43,5 +43,5 @@ def test_nrel():
         nwt=NWT,
     )
 
-    nrel_cmo: NRELCMOutput = nrel_cm.run(nrel_cm_input)
+    nrel_cmo: NRELCM.Output = nrel_cm.run(nrel_cm_input)
     assert (nrel_cmo.capex.m / NWT) == prob.model._outputs["turbine_cost"]

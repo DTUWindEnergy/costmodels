@@ -10,94 +10,6 @@ from costmodels.base import CostModel, CostModelInput, CostModelOutput
 from costmodels.units import Quant, getppq
 
 
-class MinimalisticCMInput(CostModelInput):
-    """Parameters:
-    Pg : float, optional
-        Nameplate capacity (generator power) in W. The default is 7.0*10**6.
-    Nturb : float, optional
-        Number of turbines. The default is 37.
-    Area : float, optional
-        Area of wind farm in m^^2. The default is 65*10**6.
-    D : float, optional
-        Rotor diameter. The default is 154.
-    depth : float, optional
-        Water depth. The default is 46.75.
-    L : float, optional
-        Distance to the shore [km]. The default is 8.
-    AA : list, optional
-        Weibull parameter A.
-    Prop_A : list, optional
-        Probability of A.
-    kw : float, optional
-        Weibull parameter1. The default is 2.72.
-    H : float, optional
-        Tower height. The default is 106.7.
-    CT : reference CT
-    CP : reference CP
-    Lref : reference distance to shore [km]
-    rho : air density [kg/m3]
-    Uin : Cut-in wind speed [m/s]
-    Uout : Cut-out wind speed [m/s]
-    YO : Years of operation
-    z0 : Roughness length [m]
-    kappa : Von Karman constant
-    f : Coriolis parameter at latitude 55 degrees
-    """
-
-    Pg: float = 7.0 * 10**6
-    Nturb: float = 37
-    Area: float = 65 * 10**6
-    D: float = 154
-    depth: float = 46.75
-    L: float = 8
-    AA: list = [
-        7.81993787,
-        6.5474264,
-        6.70129293,
-        8.28121347,
-        9.73116453,
-        9.2493092,
-        6.96107307,
-        3.1630036,
-        3.76551013,
-        4.6669416,
-        4.5387168,
-        7.1521344,
-        7.81993787,
-    ]
-    Prop_A: list = [
-        1.23102344,
-        2.06216461,
-        5.10379159,
-        26.0662667,
-        47.89597244,
-        12.82908865,
-        2.08892594,
-        0.48890485,
-        0.2342071,
-        0.43738423,
-        0.44136423,
-        1.12090622,
-        1.23102344,
-    ]  # Probability of A
-    kw: float = 2.72
-    H: float = 106.7
-    CT: float = 0.75
-    CP: float = 0.48
-    Lref: float = 20.0
-    rho: float = 1.25
-    Uin: float = 4.0
-    Uout: float = 25.0
-    YO: int = Field(default=20, gt=0)  # years of operation
-    z0: float = 0.0001
-    kappa: float = 0.4
-    f: float = 1.2e-4 * np.exp(4.0)
-
-
-class MinimalisticCMOutput(CostModelOutput):
-    aep: Annotated[Quant, getppq("GWh"), Field(gt=PydanticPintValue(0, "Wh"))]
-
-
 class MinimalisticCM(CostModel):
     """
     Python implementation of: "Sørensen, J. N., & Larsen, G. C. (2021). A
@@ -106,7 +18,93 @@ class MinimalisticCM(CostModel):
     https://doi.org/10.3390/en14020448"
     """
 
-    def run(self, mispec: MinimalisticCMInput) -> MinimalisticCMOutput:
+    class Input(CostModelInput):
+        """Parameters:
+        Pg : float, optional
+            Nameplate capacity (generator power) in W. The default is 7.0*10**6.
+        Nturb : float, optional
+            Number of turbines. The default is 37.
+        Area : float, optional
+            Area of wind farm in m^^2. The default is 65*10**6.
+        D : float, optional
+            Rotor diameter. The default is 154.
+        depth : float, optional
+            Water depth. The default is 46.75.
+        L : float, optional
+            Distance to the shore [km]. The default is 8.
+        AA : list, optional
+            Weibull parameter A.
+        Prop_A : list, optional
+            Probability of A.
+        kw : float, optional
+            Weibull parameter1. The default is 2.72.
+        H : float, optional
+            Tower height. The default is 106.7.
+        CT : reference CT
+        CP : reference CP
+        Lref : reference distance to shore [km]
+        rho : air density [kg/m3]
+        Uin : Cut-in wind speed [m/s]
+        Uout : Cut-out wind speed [m/s]
+        YO : Years of operation
+        z0 : Roughness length [m]
+        kappa : Von Karman constant
+        f : Coriolis parameter at latitude 55 degrees
+        """
+
+        Pg: float = 7.0 * 10**6
+        Nturb: float = 37
+        Area: float = 65 * 10**6
+        D: float = 154
+        depth: float = 46.75
+        L: float = 8
+        AA: list = [
+            7.81993787,
+            6.5474264,
+            6.70129293,
+            8.28121347,
+            9.73116453,
+            9.2493092,
+            6.96107307,
+            3.1630036,
+            3.76551013,
+            4.6669416,
+            4.5387168,
+            7.1521344,
+            7.81993787,
+        ]
+        Prop_A: list = [
+            1.23102344,
+            2.06216461,
+            5.10379159,
+            26.0662667,
+            47.89597244,
+            12.82908865,
+            2.08892594,
+            0.48890485,
+            0.2342071,
+            0.43738423,
+            0.44136423,
+            1.12090622,
+            1.23102344,
+        ]  # Probability of A
+        kw: float = 2.72
+        H: float = 106.7
+        CT: float = 0.75
+        CP: float = 0.48
+        Lref: float = 20.0
+        rho: float = 1.25
+        Uin: float = 4.0
+        Uout: float = 25.0
+        YO: int = Field(default=20, gt=0)  # years of operation
+        z0: float = 0.0001
+        kappa: float = 0.4
+        f: float = 1.2e-4 * np.exp(4.0)
+
+    class Output(CostModelOutput):
+        aep: Annotated[Quant, getppq("GWh"), Field(gt=PydanticPintValue(0, "Wh"))]
+
+    def run(self, mispec: Input) -> Output:
         """Run minimalistic cost model.
 
         Parameters
@@ -265,7 +263,7 @@ class MinimalisticCM(CostModel):
             for year in range(1, YO + 1)
         ]
 
-        return MinimalisticCMOutput(
+        return self.Output(
             capex=Quant(CAPEX / 10**6, "MEUR"),
             opex=Quant(OPEXtot / 10**6, "MEUR"),
             aep=Quant(aep_Wh / 10**9, "GWh"),

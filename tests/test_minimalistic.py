@@ -1,18 +1,18 @@
-from costmodels import MinimalisticCM, MinimalisticCMInput, MinimalisticCMOutput
+from costmodels import MinimalisticCM
 from costmodels.units import Quant
 
 
 def test_minimalistic_cost_model():
     mcm = MinimalisticCM()
 
-    cmi = MinimalisticCMInput(
+    cmi = MinimalisticCM.Input(
         eprice=Quant(0.2, "EUR/kWh"),
         inflation=Quant(8, "%"),
     )
 
     cmo = mcm.run(cmi)
 
-    assert isinstance(cmo, MinimalisticCMOutput)
+    assert isinstance(cmo, MinimalisticCM.Output)
     assert cmo.npv.magnitude > 0
 
     cmi.Area /= 2

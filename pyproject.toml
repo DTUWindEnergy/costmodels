@@ -18,7 +18,7 @@ addopts = "--dist=worksteal"
 
 [tool.pixi.project]
 channels = ["conda-forge"]
-platforms = ["linux-64"]
+platforms = ["linux-64", "win-64"]
 
 [tool.pixi.pypi-dependencies]
 costmodels = { path = ".", editable = true }
@@ -33,6 +33,7 @@ openmdao = ">=3.36.0,<4"
 numpy-financial = ">=1.0.0,<2"
 pint = ">=0.24.4,<0.25"
 matplotlib = ">=3.10.0,<4"
+xlwings = ">=0.33.9,<0.34"
 
 [tool.pixi.feature.test.dependencies]
 pytest = ">=8.3.4,<9"

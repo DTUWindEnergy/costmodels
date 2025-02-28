@@ -1,11 +1,11 @@
-from costmodels import DTUOffshoreCM, DTUOffshoreCMInput, DTUOffshoreCMOutput
+from costmodels import DTUOffshoreCM
 from costmodels.units import Quant
 
 
 def test_dtu_offshore():
     cm = DTUOffshoreCM()
 
-    cm_input = DTUOffshoreCMInput(
+    cm_input = DTUOffshoreCM.Input(
         rated_power=5.111111111111111,
         rotor_diameter=0.060314403509210746,
         rotor_speed=9.444444444444445,
@@ -27,7 +27,7 @@ def test_dtu_offshore():
         aep=1e9,
     )
     cm_output = cm.run(cm_input)
-    assert isinstance(cm_output, DTUOffshoreCMOutput)
+    assert isinstance(cm_output, DTUOffshoreCM.Output)
 
     cm_input.aep = 1.0
     cm_output_aep = cm.run(cm_input)

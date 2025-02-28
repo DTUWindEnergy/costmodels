@@ -31,11 +31,23 @@ class _StrReprInOut:
     def __str__(self: PydanticBaseModel):
         data = self.model_dump()
         header = f"{self.__class__.__name__}:"
+
+        def __print_val(val):
+            from numbers import Number
+
+            from numpy import number
+
+            if hasattr(val, "magnitude"):
+                return round(float(val.magnitude), 3)
+            elif isinstance(val, (Number, number)):
+                return round(float(val), 3)
+            return val
+
         return (
             header
             + "\n"
             + "\n".join(
-                f"{key}: {round(float(value.magnitude), 2)} {value.units}"
+                f"{key}: {__print_val(value)} {value.units if hasattr(value, "units") else ''}"
                 for key, value in data.items()
             )
         )

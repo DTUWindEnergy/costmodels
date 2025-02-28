@@ -17,83 +17,81 @@ class Foundation(Enum):
     FLOATING_MOCKUP = 4
 
 
-class DTUOffshoreCMInput(CostModelInput):
-    """Input specification for the DTU Offshore Cost Model.
-
-    Inputs:
-        rated_power: Rated power of the wind turbine.
-        rotor_speed: Speed of the rotor.
-        rotor_diameter: Diameter of the rotor.
-        hub_height: Height of the tower.
-        foundation_option: Option for foundation (0: none, 1: monopile, 2: gravity, 3: jacket, 4: floating mockup)
-        water_depth: Depth of water for offshore installation.
-        currency: Currency for financial calculations ('DKK', 'EURO', 'DKK/KW', 'EURO/KW')
-        eur_to_dkk: Rate of change of Dkk to Euro
-        wacc: Weighted Average Cost of Capital in nominal terms.
-        devex (float or None): Development expenditures.
-        decline_factor (float): Annual Energy Production decline factor.
-        inflation (float): Inflation rate.
-        project_lifetime (int): Project lifespan in years.
-        opex (float or None): Operational expenditures.
-        abex (float or None): Asset-based expenditures.
-        capacity_factor (float or None): Capacity factor.
-        profit: Profit margin.
-        AEP (float, array): Annual Energy Production, from Pywake.
-        nwt (int or None): Number of wind turbines.
-        electrical_cost (int): Electrical infrastructure cost in MEURO/MW
-    """
-
-    rated_power: float
-    rotor_diameter: float
-    rotor_speed: float
-    hub_height: float
-    profit: float
-    capacity_factor: float
-    decline_factor: float
-    nwt: int = Field(gt=0)
-    project_lifetime: int
-    wacc: float
-    inflation: float
-    opex: float
-    devex: float
-    water_depth: float
-    abex: float = 0.0
-    electrical_cost: float = 0.0
-    currency: str = "EUR/kW"
-    eur_to_dkk: float = 7.54
-    foundation_option: Foundation = Foundation.MONOPILE
-    aep: Optional[float] = None
-
-
-class DTUOffshoreCMOutput(CostModelOutput):
-    """Output specification for the DTU Offshore Cost Model.
-
-    Outputs:
-        production_net: AEP net
-        production_discount: AEP discount
-        aep_net: AEPNet / self.project_lifetime
-        aep_discount: AEPDiscount / self.project_lifetime
-        devex_net: DEVEX Net
-        devex_discount: DEVEX Discounted
-        capex_discount: CAPEX Discounted
-        opex_discount: OPEX Net
-        co2_emission_per_wt: Total Co2 emission per turbine
-        cost_per_wt: Turbine cost
-    """
-
-    production_net: float
-    production_discount: float
-    aep_net: float
-    aep_discount: float
-    devex_net: float
-    devex_discount: float
-    capex_discount: float
-    opex_discount: float
-    co2_emission_per_wt: list[float]
-    cost_per_wt: list[float]
-
-
 class DTUOffshoreCM(CostModel):
+
+    class Input(CostModelInput):
+        """Input specification for the DTU Offshore Cost Model.
+
+        Inputs:
+            rated_power: Rated power of the wind turbine.
+            rotor_speed: Speed of the rotor.
+            rotor_diameter: Diameter of the rotor.
+            hub_height: Height of the tower.
+            foundation_option: Option for foundation (0: none, 1: monopile, 2: gravity, 3: jacket, 4: floating mockup)
+            water_depth: Depth of water for offshore installation.
+            currency: Currency for financial calculations ('DKK', 'EURO', 'DKK/KW', 'EURO/KW')
+            eur_to_dkk: Rate of change of Dkk to Euro
+            wacc: Weighted Average Cost of Capital in nominal terms.
+            devex (float or None): Development expenditures.
+            decline_factor (float): Annual Energy Production decline factor.
+            inflation (float): Inflation rate.
+            project_lifetime (int): Project lifespan in years.
+            opex (float or None): Operational expenditures.
+            abex (float or None): Asset-based expenditures.
+            capacity_factor (float or None): Capacity factor.
+            profit: Profit margin.
+            AEP (float, array): Annual Energy Production, from Pywake.
+            nwt (int or None): Number of wind turbines.
+            electrical_cost (int): Electrical infrastructure cost in MEURO/MW
+        """
+
+        rated_power: float
+        rotor_diameter: float
+        rotor_speed: float
+        hub_height: float
+        profit: float
+        capacity_factor: float
+        decline_factor: float
+        nwt: int = Field(gt=0)
+        project_lifetime: int
+        wacc: float
+        inflation: float
+        opex: float
+        devex: float
+        water_depth: float
+        abex: float = 0.0
+        electrical_cost: float = 0.0
+        currency: str = "EUR/kW"
+        eur_to_dkk: float = 7.54
+        foundation_option: Foundation = Foundation.MONOPILE
+        aep: Optional[float] = None
+
+    class Output(CostModelOutput):
+        """Output specification for the DTU Offshore Cost Model.
+
+        Outputs:
+            production_net: AEP net
+            production_discount: AEP discount
+            aep_net: AEPNet / self.project_lifetime
+            aep_discount: AEPDiscount / self.project_lifetime
+            devex_net: DEVEX Net
+            devex_discount: DEVEX Discounted
+            capex_discount: CAPEX Discounted
+            opex_discount: OPEX Net
+            co2_emission_per_wt: Total Co2 emission per turbine
+            cost_per_wt: Turbine cost
+        """
+
+        production_net: float
+        production_discount: float
+        aep_net: float
+        aep_discount: float
+        devex_net: float
+        devex_discount: float
+        capex_discount: float
+        opex_discount: float
+        co2_emission_per_wt: list[float]
+        cost_per_wt: list[float]
 
     def set_inputs(self, **kwargs):
         nwt = kwargs["nwt"]
@@ -1251,7 +1249,7 @@ class DTUOffshoreCM(CostModel):
     def NVP_abex(self):
         return self.abexDiscount() / self.LCOENumerator()
 
-    def run(self, mispec: DTUOffshoreCMInput) -> DTUOffshoreCMOutput:
+    def run(self, mispec: Input) -> Output:
         self.set_inputs(**mispec.model_dump())
         self.rotor_area = np.pi * (self.rotor_diameter / 2) ** 2
         self.specific_power = 1_000_000 * self.rated_power / self.rotor_area
@@ -1294,7 +1292,7 @@ class DTUOffshoreCM(CostModel):
             for year in range(1, self.project_lifetime + 1)
         ]
 
-        return DTUOffshoreCMOutput(
+        return self.Output(
             production_net=AEPNet,
             production_discount=AEPDiscount,
             aep_net=AEPNet / self.project_lifetime,
