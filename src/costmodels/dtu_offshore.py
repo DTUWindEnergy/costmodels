@@ -9,7 +9,7 @@ from costmodels.base import CostModel, CostModelInput, CostModelOutput
 from costmodels.units import _UREG, Quant
 
 
-class FoundationOption(Enum):
+class Foundation(Enum):
     NONE = 0
     MONOPILE = 1
     GRAVITY = 2
@@ -61,7 +61,7 @@ class DTUOffshoreCMInput(CostModelInput):
     electrical_cost: float = 0.0
     currency: str = "EUR/kW"  # TODO: split into currency and energy unit
     eur_to_dkk: float = 7.54  # TODO: hardcoded DKK conversion
-    foundation_option: FoundationOption = FoundationOption.MONOPILE
+    foundation_option: Foundation = Foundation.MONOPILE
     aep: Optional[float] = None
 
 
@@ -120,52 +120,6 @@ class DTUOffshoreCM(CostModel):
                     setattr(self, k, int(v))
                 else:
                     setattr(self, k, v)
-
-    def RotorTorque(self):
-        """
-        Calculate and return rotor torque in Mega Newton-meters (MNm).
-        Returns:
-            np.ndarray or float: Rotor torque in MNm.
-        """
-        rotor_torque = 1.1 * 60 * self.rated_power / (2 * np.pi * self.rotor_speed)
-        return rotor_torque
-
-    def RotorArea(self):
-        """
-        Calculate and return rotor area in square meters (m²).
-        Returns:
-            np.ndarray or float: Rotor area in m².
-        """
-        rotor_area = np.pi * (self.rotor_diameter / 2) ** 2
-        return rotor_area
-
-    def SpecificPower(self):
-        """
-        Calculate and return specific power in W/m².
-        Returns:
-            np.ndarray or float: Specific power in W/m².
-        """
-        rotor_area = self.RotorArea()
-        specific_power = 1_000_000 * self.rated_power / rotor_area
-        return specific_power
-
-    def TipSpeed(self):
-        """
-        Calculate and return the tip speed in meters per second (m/s).
-        Returns:
-            np.ndarray or float: Tip speed in m/s.
-        """
-        tip_speed = (self.rotor_speed / 60) * 2 * np.pi * (self.rotor_diameter / 2)
-        return tip_speed
-
-    def TotalBladeMass(
-        self, mass_coeff=1.65, mass_intercept=0.0, user_exp=2.5
-    ) -> float:
-        """Calculate the total blade mass."""
-        blade_mass = (
-            mass_coeff * ((self.rotor_diameter / 2) ** user_exp) + mass_intercept
-        )
-        return blade_mass
 
     def HubStructureMass(
         self, mass_coeff=0.5, mass_intercept=6000.0, user_exp=2.5
@@ -242,7 +196,8 @@ class DTUOffshoreCM(CostModel):
         self, mass_coeff=12500.0, mass_intercept=0.0, user_exp=1.0
     ) -> float:
         """Calculate the mass of the gearbox based on torque."""
-        gearbox_mass = mass_coeff * (self.RotorTorque() ** user_exp) + mass_intercept
+        rotor_torque = 1.1 * 60 * self.rated_power / (2 * np.pi * self.rotor_speed)
+        gearbox_mass = mass_coeff * (rotor_torque**user_exp) + mass_intercept
         return gearbox_mass
 
     def CouplingPlusBrakeSystemMass(
@@ -311,7 +266,7 @@ class DTUOffshoreCM(CostModel):
     ) -> float:
         """Calculate the mass of the tower structure."""
         tower_structure_mass = (
-            mass_coeff * (self.hub_height * self.RotorArea()) ** user_exp
+            mass_coeff * (self.hub_height * self.rotor_area) ** user_exp
             + mass_intercept
         )
         return tower_structure_mass
@@ -393,14 +348,14 @@ class DTUOffshoreCM(CostModel):
     def BOMTotalMass(self) -> float:
         """Calculate the total Bill of Materials (BOM) mass by summing all component masses."""
         return (
-            self.TotalBladeMass()
+            self.total_blade_mass
             + self.HubTotalMass()
             + self.NacelleTotalMass()
             + self.TowerTotalMass()
         )
 
     def BladeTotalCost(self, rate=15.0) -> float:
-        blade_cost = self.TotalBladeMass() * rate
+        blade_cost = self.total_blade_mass * rate
 
         return blade_cost
 
@@ -888,7 +843,7 @@ class DTUOffshoreCM(CostModel):
     def BladeCo2Emission(
         self, emissionfactor=4.00
     ) -> float:  # emissionFactor  is in kg CO2/kg
-        return emissionfactor * self.TotalBladeMass()
+        return emissionfactor * self.total_blade_mass
 
     def HubStructureCo2Emission(self, emissionfactor=1.83) -> float:
         return emissionfactor * self.HubStructureMass()
@@ -1304,6 +1259,17 @@ class DTUOffshoreCM(CostModel):
 
     def run(self, mispec: DTUOffshoreCMInput) -> DTUOffshoreCMOutput:
         self.set_inputs(**mispec.model_dump())
+        self.rotor_area = np.pi * (self.rotor_diameter / 2) ** 2
+        self.specific_power = 1_000_000 * self.rated_power / self.rotor_area
+        self.tip_speed = (self.rotor_speed / 60) * 2 * np.pi * (self.rotor_diameter / 2)
+
+        self.mass_coeff = 1.65
+        self.mass_intercept = 0.0
+        self.user_exp = 2.5
+        self.total_blade_mass = (
+            self.mass_coeff * ((self.rotor_diameter / 2) ** self.user_exp)
+            + self.mass_intercept
+        )
 
         LCOE = self.LCOE()
         devexNet = self.devexNet()
@@ -1348,6 +1314,6 @@ class DTUOffshoreCM(CostModel):
             lcoe=Quant(LCOE, "EUR/MWh"),
             capex=Quant(CAPEXNet, "MEUR"),
             opex=Quant(opexNet, "MEUR"),
-            npv=Quant(0.0, "MEUR"),  # TODO;
+            npv=Quant(npf.npv(self.RealWACC(), cashflows), "EUR"),
             irr=Quant(npf.irr(cashflows), "%"),
         )

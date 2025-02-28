@@ -11,6 +11,7 @@ test_linux:
   image: ghcr.io/prefix-dev/pixi:latest
   stage: test
   script:
+    - apt update && apt install git -y
     - pixi run -e test pytest
   artifacts:
     paths:
