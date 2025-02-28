@@ -3,6 +3,7 @@ from typing import Annotated
 import numpy as np
 import numpy_financial as npf
 from pydantic import Field
+from pydantic_pint import PydanticPintValue
 from scipy.special import gamma, gammainc
 
 from costmodels.base import CostModel, CostModelInput, CostModelOutput
@@ -10,40 +11,37 @@ from costmodels.units import Quant, getppq
 
 
 class MinimalisticCMInput(CostModelInput):
-    """TODO: format properly
-
-    Parameters:
-        Pg : float, optional
-            Nameplate capacity (generator power) in W. The default is 7.0*10**6.
-        Nturb : float, optional
-            Number of turbines. The default is 37.
-        Area : float, optional
-            Area of wind farm in m^^2. The default is 65*10**6.
-        D : float, optional
-            Rotor diameter. The default is 154.
-        depth : float, optional
-            Water depth. The default is 46.75.
-        L : float, optional
-            Distance to the shore [km]. The default is 8.
-        AA : list, optional
-            Weibull parameter A. The default is [7.81993787, 6.5474264 , 6.70129293, 8.28121347, 9.73116453, 9.2493092 , 6.96107307, 3.1630036 , 3.76551013, 4.6669416 ,  4.5387168 , 7.1521344 , 7.81993787].
-        Prop_A : list, optional
-            Probability of A. The default is [ 1.23102344,  2.06216461,  5.10379159, 26.0662667 , 47.89597244,   12.82908865,  2.08892594,  0.48890485,  0.2342071 ,  0.43738423,  0.44136423,  1.12090622,  1.23102344].
-        kw : float, optional
-            Weibull parameter1. The default is 2.72.
-        H : float, optional
-            Tower height. The default is 106.7.
-
-        CT : reference CT
-        CP : reference CP
-        Lref : reference distance to shore [km]
-        rho : air density [kg/m3]
-        Uin : Cut-in wind speed [m/s]
-        Uout : Cut-out wind speed [m/s]
-        YO : Years of operation
-        z0 : Roughness length [m]
-        kappa : Von Karman constant
-        f : Coriolis parameter at latitude 55 degrees
+    """Parameters:
+    Pg : float, optional
+        Nameplate capacity (generator power) in W. The default is 7.0*10**6.
+    Nturb : float, optional
+        Number of turbines. The default is 37.
+    Area : float, optional
+        Area of wind farm in m^^2. The default is 65*10**6.
+    D : float, optional
+        Rotor diameter. The default is 154.
+    depth : float, optional
+        Water depth. The default is 46.75.
+    L : float, optional
+        Distance to the shore [km]. The default is 8.
+    AA : list, optional
+        Weibull parameter A.
+    Prop_A : list, optional
+        Probability of A.
+    kw : float, optional
+        Weibull parameter1. The default is 2.72.
+    H : float, optional
+        Tower height. The default is 106.7.
+    CT : reference CT
+    CP : reference CP
+    Lref : reference distance to shore [km]
+    rho : air density [kg/m3]
+    Uin : Cut-in wind speed [m/s]
+    Uout : Cut-out wind speed [m/s]
+    YO : Years of operation
+    z0 : Roughness length [m]
+    kappa : Von Karman constant
+    f : Coriolis parameter at latitude 55 degrees
     """
 
     Pg: float = 7.0 * 10**6
@@ -97,20 +95,7 @@ class MinimalisticCMInput(CostModelInput):
 
 
 class MinimalisticCMOutput(CostModelOutput):
-    """
-    Returns
-    -------
-    CAPEX : float
-        CAPEX in M€.
-    OPEX : float
-        OPEX in M€ (over 20 years).
-    Production : float
-        Production per year in GWh.
-    LCoE : float
-        LCOE in €/MWh.
-    """
-
-    aep: Annotated[Quant, getppq("GWh")]  # TODO: > 0 check
+    aep: Annotated[Quant, getppq("GWh"), Field(gt=PydanticPintValue(0, "Wh"))]
 
 
 class MinimalisticCM(CostModel):
@@ -122,7 +107,7 @@ class MinimalisticCM(CostModel):
     """
 
     def run(self, mispec: MinimalisticCMInput) -> MinimalisticCMOutput:
-        """TODO:
+        """Run minimalistic cost model.
 
         Parameters
         ----------
@@ -161,7 +146,7 @@ class MinimalisticCM(CostModel):
         # Derived input data
         Ur = (8 * Pg / (np.pi * rho * CP * D**2)) ** (1 / 3)
         # Rated wind speed
-        Gx = gamma(1 + 1 / kw)  # TODO? Um / A_average
+        Gx = gamma(1 + 1 / kw)
         Uh0 = Gx * A_average
         # Mean velocity at hub height
         Nrow = 3.5 * np.sqrt(Nturb)
@@ -273,7 +258,7 @@ class MinimalisticCM(CostModel):
         aep_Wh = Pg * (365 * 24) * ((Nturb - Nrow) * eta + Nrow * eta0)
 
         annual_revenue = aep_Wh * (mispec.eprice.magnitude / 1e3)
-        annual_cashflow = annual_revenue - OPEX  # TODO;
+        annual_cashflow = annual_revenue - OPEX
         cashflows = [-CAPEX] + [
             annual_cashflow
             * ((1 + mispec.inflation.to_base_units().magnitude) ** (year - 1))

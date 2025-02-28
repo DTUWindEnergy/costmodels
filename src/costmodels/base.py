@@ -51,10 +51,15 @@ class CostModelInput(_StrReprInOut, ABC, PydanticBaseModel):
 class CostModelOutput(_StrReprInOut, ABC, PydanticBaseModel):
     """Base class for all the cost model outputs."""
 
+    # Capital expenditure
     capex: Annotated[Quant, getppq("MEUR"), AfterValidator(_gtt(0))]
+    # Operational expenditure
     opex: Annotated[Quant, getppq("MEUR"), AfterValidator(_gtt(0))]
+    # Levelized cost of electricity
     lcoe: Annotated[Quant, getppq("EUR/MWh"), AfterValidator(_gtt(0))]
+    # Net present value
     npv: Annotated[Quant, getppq("MEUR")]
+    # Internal rate of return
     irr: Annotated[Quant, getppq("%")]
 
     model_config = ConfigDict(frozen=True)

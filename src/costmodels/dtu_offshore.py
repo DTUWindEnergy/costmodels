@@ -18,9 +18,9 @@ class Foundation(Enum):
 
 
 class DTUOffshoreCMInput(CostModelInput):
-    """TODO: validation and docs.
+    """Input specification for the DTU Offshore Cost Model.
 
-    Parameters:
+    Inputs:
         rated_power: Rated power of the wind turbine.
         rotor_speed: Speed of the rotor.
         rotor_diameter: Diameter of the rotor.
@@ -59,28 +59,26 @@ class DTUOffshoreCMInput(CostModelInput):
     water_depth: float
     abex: float = 0.0
     electrical_cost: float = 0.0
-    currency: str = "EUR/kW"  # TODO: split into currency and energy unit
-    eur_to_dkk: float = 7.54  # TODO: hardcoded DKK conversion
+    currency: str = "EUR/kW"
+    eur_to_dkk: float = 7.54
     foundation_option: Foundation = Foundation.MONOPILE
     aep: Optional[float] = None
 
 
 class DTUOffshoreCMOutput(CostModelOutput):
-    """TODO: validation and docs.
+    """Output specification for the DTU Offshore Cost Model.
 
-    "Production net (MWh)": AEPNet,
-    "Production discount (MWh)": AEPDiscount,
-    "AEP net (MWh)": AEPNet / self.project_lifetime,
-    "AEP discount (MWh)": AEPDiscount / self.project_lifetime,
-    "DEVEX net (EURO)": devexNet,
-    "DEVEX discount (EURO)": devexDiscount,
-    "CAPEX net (EURO)": CAPEXNet,
-    "CAPEX discount (EURO)": CAPEXDiscount,
-    "OPEX net (EURO)": opexNet,
-    "OPEX discount (EURO)": opexDiscount,
-    "LCOE (EURO/MWh)": LCOE,
-    "Total Co2 emission per turbine (kg CO2 eq)": Total_Co2Emission,
-    "Turbine cost (EURO)": turbine_cost,
+    Outputs:
+        production_net: AEP net
+        production_discount: AEP discount
+        aep_net: AEPNet / self.project_lifetime
+        aep_discount: AEPDiscount / self.project_lifetime
+        devex_net: DEVEX Net
+        devex_discount: DEVEX Discounted
+        capex_discount: CAPEX Discounted
+        opex_discount: OPEX Net
+        co2_emission_per_wt: Total Co2 emission per turbine
+        cost_per_wt: Turbine cost
     """
 
     production_net: float
@@ -93,10 +91,6 @@ class DTUOffshoreCMOutput(CostModelOutput):
     opex_discount: float
     co2_emission_per_wt: list[float]
     cost_per_wt: list[float]
-
-    # TODO: for numpy array types need extra handling
-    # from pydantic import ConfigDict
-    # model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class DTUOffshoreCM(CostModel):
