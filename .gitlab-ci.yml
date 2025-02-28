@@ -20,3 +20,18 @@ test_linux:
     expire_in: "2 days"
   tags:
     - linux
+
+test_windows:
+  variables:
+    GIT_SUBMODULE_STRATEGY: normal
+    GIT_CLEAN_FLAGS: -ffdx -e .pixi/
+  stage: test
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  script:
+    - setx PIXI_CACHE_DIR D:\.pixi_cache
+    - $env:PIXI_CACHE_DIR = [System.Environment]::GetEnvironmentVariable("PIXI_CACHE_DIR","User")
+    - C:\Users\ernim\.pixi\bin\pixi.exe clean
+    - C:\Users\ernim\.pixi\bin\pixi.exe run pip install -e .
+    - C:\Users\ernim\.pixi\bin\pixi.exe run -e test pytest
+  tags:
+    - ANMH_old
