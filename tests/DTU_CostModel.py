@@ -1,8 +1,7 @@
 import numpy as np
-from cost_model import BaseCostModel
 
 
-class DTUOffshoreCostModel(BaseCostModel):
+class DTUOffshoreCostModel:
 
     def __init__(
         self,
@@ -50,7 +49,6 @@ class DTUOffshoreCostModel(BaseCostModel):
         nwt (int or None): Number of wind turbines.
         electrical_cost (int): Electrical infrastructure cost in MEURO/MW
         """
-        BaseCostModel.__init__(self)
         self.annual_hours = 8760
         # Convert all inputs to numpy arrays for consistent array operations
         self.set_inputs(
