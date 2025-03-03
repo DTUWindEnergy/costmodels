@@ -47,12 +47,12 @@ def test_win_single_case():
         input_map=input_map,
         output_map=output_map,
     )
-    assert excel_result["OPEX net (EURO)"] == results.opex.to("EUR").m
+    assert excel_result["OPEX net (EURO)"] == results.opex.to("MEUR").m
 
 
 @pytest.mark.skipif(platform.system() != "Windows", reason="Only run on Windows")
 def test_original_dtu_cm_implementation_win_excel():
-    from .DTU_CostModel import DTUOffshoreCostModel
+    from .DTU_CostModel_org import DTUOffshoreCostModel
 
     params = {
         "rated_power": 3.111111111111111,
