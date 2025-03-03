@@ -1,6 +1,6 @@
 # CostModels
 
-Development install:
+Development install (requires `pixi` https://pixi.sh/latest/#installation):
 
 ```sh
 pixi shell -e test # env activate 
