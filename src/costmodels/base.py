@@ -1,11 +1,13 @@
 from abc import ABC, abstractmethod
 from typing import Annotated, Callable
 
+import numpy as np
 from pydantic import AfterValidator
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import ConfigDict
 
 from costmodels.units import Quant, getppq
+from costmodels.utils import np2scalar
 
 
 def _is_valid_percentage(value: Quant) -> Quant:
@@ -93,6 +95,49 @@ class CostModel(ABC):
             Model input specification.
         """
         pass
+
+    def grad(
+        self, input_spec: CostModelInput, of: str, wrt: list[str], delta: float = 1e-6
+    ) -> dict:
+        for pname in wrt:
+            assert hasattr(input_spec, pname), f"Parameter {pname} not found in input."
+
+        wrt_params = {
+            pname: pval
+            for pname, pval in input_spec.model_dump().items()
+            if pname in wrt
+        }
+
+        gradients = {}
+        for pname, pval in wrt_params.items():
+            step = max(
+                abs(pval * delta),
+                delta if pval == 0 else abs(pval) * 1e-6,
+            )
+            input_plus = input_spec.model_copy(deep=True)
+            input_minus = input_spec.model_copy(deep=True)
+
+            setattr(input_plus, pname, pval + step)
+            setattr(input_minus, pname, pval - step)
+
+            output_plus = self.run(input_plus)
+            output_minus = self.run(input_minus)
+
+            plus_val = output_plus.model_dump()[of]
+            minus_val = output_minus.model_dump()[of]
+
+            if hasattr(plus_val, "magnitude"):
+                plus_val = plus_val.magnitude
+                minus_val = minus_val.magnitude
+            if hasattr(step, "magnitude"):
+                step = step.magnitude
+
+            gradient = np.gradient(
+                [np2scalar(minus_val), np2scalar(plus_val)], 2 * step
+            )[1]
+            gradients[pname] = gradient
+
+        return gradients
 
 
 if __name__ == "__main__":

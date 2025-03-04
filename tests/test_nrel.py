@@ -45,3 +45,6 @@ def test_nrel():
 
     nrel_cmo: NRELCM.Output = nrel_cm.run(nrel_cm_input)
     assert (nrel_cmo.capex.m / NWT) == prob.model._outputs["turbine_cost"]
+
+    grads = nrel_cm.grad(nrel_cm_input, "capex", ("rotor_diameter",))
+    assert "rotor_diameter" in grads.keys()
