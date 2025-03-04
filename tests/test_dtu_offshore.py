@@ -35,3 +35,6 @@ def test_dtu_offshore():
     assert cm_output_aep.aep_net != cm_output.aep_net
     print(f"{cm_output.irr=}")
     print(f"{cm_output.npv=}")
+
+    grads = cm.grad(cm_input, "lcoe", ("water_depth",))
+    assert "water_depth" in grads.keys()

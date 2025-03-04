@@ -260,7 +260,7 @@ class MinimalisticCM(CostModel):
         cashflows = [-CAPEX] + [
             annual_cashflow
             * ((1 + mispec.inflation.to_base_units().magnitude) ** (year - 1))
-            for year in range(1, YO + 1)
+            for year in range(1, int(YO + 1))
         ]
 
         return self.Output(
@@ -273,3 +273,14 @@ class MinimalisticCM(CostModel):
                 npf.npv(mispec.inflation.to_base_units().magnitude, cashflows), "MEUR"
             ),
         )
+
+
+if __name__ == "__main__":
+    mcm = MinimalisticCM()
+
+    cmi = mcm.Input(
+        eprice=Quant(0.2, "EUR/kWh"),
+        inflation=Quant(8, "%"),
+    )
+    grad = mcm.grad(cmi, "lcoe", ("depth", "Area"))
+    print(grad)

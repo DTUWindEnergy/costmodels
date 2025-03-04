@@ -22,3 +22,7 @@ def test_minimalistic_cost_model():
     assert cm_output_small_area.lcoe > cmo.lcoe
 
     print(f"CAPEX: {cmo}")
+
+    grad = mcm.grad(cmi, "lcoe", ("depth", "Area"))
+    assert "depth" in grad.keys()
+    assert "Area" in grad.keys()

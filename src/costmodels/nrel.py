@@ -51,10 +51,18 @@ class NRELCM(CostModel):
         self.prob["max_efficiency"] = misepc.max_efficiency.m
         self.prob["main_bearing_number"] = misepc.main_bearing_number.m
         self.prob["crane"] = misepc.crane
+
+        __Jac = self.prob.compute_totals(
+            of=["turbine_cost"],
+            wrt=[
+                "machine_rating",
+            ],
+        )  # does not work
+
         self.prob.run_model()
 
-        self.prob.model.list_inputs(units=True)
-        self.prob.model.list_outputs(units=True)
+        # self.prob.model.list_inputs(units=True)
+        # self.prob.model.list_outputs(units=True)
 
         wtc = self.prob.model._outputs["turbine_cost"]
 
@@ -90,4 +98,9 @@ if __name__ == "__main__":
     )
 
     model = NRELCM()
-    model.run(cmi)
+    cmo = model.run(cmi)
+    print(cmo)
+
+    grads = model.grad(cmi, "capex", ("machine_rating",))
+    assert "machine_rating" in grads.keys()
+    print(grads)
