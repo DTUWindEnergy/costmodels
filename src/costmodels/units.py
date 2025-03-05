@@ -1,13 +1,13 @@
 from pint import UnitRegistry
 from pydantic_pint import PydanticPintQuantity, set_registry
 
-_UREG = UnitRegistry()
-_UREG.define("EUR = [currency]")
-_UREG.define("USD = [currency]")
-_UREG.formatter.default_format = "~#P"
-Quant = _UREG.Quantity
+ureg = UnitRegistry()
+ureg.define("EUR = [currency]")
+ureg.define("USD = [currency]")
+ureg.formatter.default_format = "~#P"
+Quant = ureg.Quantity
 
-set_registry(_UREG)
+set_registry(ureg)
 
 
 def getppq(units=""):

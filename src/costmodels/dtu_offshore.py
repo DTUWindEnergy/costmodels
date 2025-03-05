@@ -6,7 +6,7 @@ import numpy_financial as npf
 from pydantic import Field
 
 from costmodels.base import CostModel
-from costmodels.units import _UREG, Quant
+from costmodels.units import Quant, ureg
 
 
 class Foundation(Enum):
@@ -1279,18 +1279,13 @@ class DTUOffshoreCM(CostModel):
         co2_emmisions = self.Total_Co2Emission()
         wt_cost = self.TotalCostCalculation()
 
-        aep = Quant(AEPNet / self.project_lifetime, "MWh")
-        annual_revenue = aep * mispec.eprice
-        assert (
-            annual_revenue.to_base_units().units == _UREG.EUR
-        ), "Annual revenue must be in EUR"
-        annual_cashflow = annual_revenue - Quant(self.opexTotal(), "EUR")
-        cashflows = [-CAPEXNet] + [
-            (annual_cashflow * ((1 + mispec.inflation) ** (year - 1)))
-            .to_base_units()
-            .magnitude
-            for year in range(1, self.project_lifetime + 1)
-        ]
+        cashflows = self.cashflows(
+            mispec,
+            Quant(CAPEXNet, "EUR"),
+            Quant(opexNet, "EUR"),
+            Quant(AEPNet / self.project_lifetime, "MWh"),
+            self.project_lifetime,
+        )
 
         return self.Output(
             production_net=AEPNet,

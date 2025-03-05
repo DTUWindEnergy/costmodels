@@ -6,7 +6,7 @@ from pydantic import AfterValidator
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import ConfigDict
 
-from costmodels.units import Quant, getppq
+from costmodels.units import Quant, getppq, ureg
 from costmodels.utils import np2scalar
 
 
@@ -89,7 +89,7 @@ class CostModel(ABC):
 
         Parameters
         ----------
-        mispec : CostModelInput
+        mispec : CostModel.Input
             Model input specification.
         """
         pass
@@ -136,6 +136,31 @@ class CostModel(ABC):
             gradients[pname] = gradient
 
         return gradients
+
+    @staticmethod
+    def cashflows(
+        mispec: Input,
+        capex: Quant,
+        opex: Quant,
+        aep: Quant,
+        lifetime: int,
+    ) -> list[float]:
+        annual_revenue = aep * mispec.eprice
+        assert annual_revenue.check("EUR"), "Annual revenue must be in EUR"
+        annual_cashflow = annual_revenue - opex
+        cashflows = [-capex.magnitude] + [
+            (annual_cashflow * ((1 + mispec.inflation) ** (year - 1)))
+            .to_base_units()
+            .magnitude
+            for year in range(1, lifetime + 1)
+        ]
+        return cashflows
+
+    @staticmethod
+    def lceo(capex: Quant, opex: Quant, aep: Quant, lifetime: int) -> Quant:
+        lceo = (capex + opex * lifetime) / (aep * lifetime / 10**6)
+        assert lceo.check("EUR/Wh")
+        return lceo
 
 
 if __name__ == "__main__":

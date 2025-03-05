@@ -255,19 +255,24 @@ class MinimalisticCM(CostModel):
         OPEXtot = OPEX * YO
         aep_Wh = Pg * (365 * 24) * ((Nturb - Nrow) * eta + Nrow * eta0)
 
-        annual_revenue = aep_Wh * (mispec.eprice.magnitude / 1e3)
-        annual_cashflow = annual_revenue - OPEX
-        cashflows = [-CAPEX] + [
-            annual_cashflow
-            * ((1 + mispec.inflation.to_base_units().magnitude) ** (year - 1))
-            for year in range(1, int(YO + 1))
-        ]
+        cashflows = self.cashflows(
+            mispec,
+            Quant(CAPEX, "EUR"),
+            Quant(OPEX, "EUR"),
+            Quant(aep_Wh, "Wh"),
+            YO,
+        )
 
         return self.Output(
             capex=Quant(CAPEX / 10**6, "MEUR"),
             opex=Quant(OPEXtot / 10**6, "MEUR"),
             aep=Quant(aep_Wh / 10**9, "GWh"),
-            lcoe=Quant((CAPEX + OPEX * YO) / (YO * aep_Wh / 10**6), "EUR/MWh"),
+            lcoe=self.lceo(
+                Quant(CAPEX, "EUR"),
+                Quant(OPEX, "EUR"),
+                Quant(aep_Wh, "Wh"),
+                YO,
+            ),
             irr=Quant(npf.irr(cashflows) * 100, "%"),
             npv=Quant(
                 npf.npv(mispec.inflation.to_base_units().magnitude, cashflows), "MEUR"
@@ -282,5 +287,47 @@ if __name__ == "__main__":
         eprice=Quant(0.2, "EUR/kWh"),
         inflation=Quant(8, "%"),
     )
-    grad = mcm.grad(cmi, "lcoe", ("depth", "Area"))
+    grad = mcm.grad(cmi, "irr", ("depth", "Area"))
     print(grad)
+
+    depths = np.linspace(0, 100, 100)
+    npv_values = [
+        mcm.run(
+            mcm.Input(
+                eprice=Quant(0.2, "EUR/kWh"),
+                inflation=Quant(8, "%"),
+                depth=depth,
+            ),
+        ).npv.magnitude
+        for depth in depths
+    ]
+
+    import matplotlib.pyplot as plt
+
+    plt.plot(depths, npv_values)
+    plt.title("NPV vs Depth")
+    plt.xlabel("Depth (m)")
+    plt.ylabel("NPV (MEUR)")
+    plt.grid()
+    plt.show()
+
+    depths = np.linspace(30, 40, 200)
+    npv_grads = [
+        mcm.grad(
+            mcm.Input(
+                eprice=Quant(0.2, "EUR/kWh"),
+                inflation=Quant(8, "%"),
+                depth=depth,
+            ),
+            "npv",
+            ("depth",),
+        )["depth"]
+        for depth in depths
+    ]
+
+    plt.plot(depths, npv_grads)
+    plt.title("NPV Gradient vs Depth")
+    plt.xlabel("Depth (m)")
+    plt.ylabel("NPV Gradient")
+    plt.grid()
+    plt.show()
