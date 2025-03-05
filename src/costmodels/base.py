@@ -6,14 +6,8 @@ from pydantic import AfterValidator
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import ConfigDict
 
-from costmodels.units import Quant, getppq, ureg
+from costmodels.units import IsValidPercent, Quant, getppq
 from costmodels.utils import np2scalar
-
-
-def _is_valid_percentage(value: Quant) -> Quant:
-    if value < Quant(0, "%") or value > Quant(100, "%"):
-        raise ValueError("percentage must be between 0 and 100")
-    return value
 
 
 def _gtt(cmp: float) -> Callable:
@@ -62,7 +56,7 @@ class CostModel(ABC):
         """Base class for all the cost model inputs."""
 
         eprice: Annotated[Quant, getppq("EUR/kWh")]
-        inflation: Annotated[Quant, getppq("%"), AfterValidator(_is_valid_percentage)]
+        inflation: Annotated[Quant, getppq("%"), IsValidPercent]
 
     class Output(_StrReprInOut, ABC, PydanticBaseModel):
         """Base class for all the cost model outputs."""

@@ -6,13 +6,13 @@ def test_dtu_offshore():
     cm = DTUOffshoreCM()
 
     cm_input = cm.Input(
-        rated_power=5.111111111111111,
+        rated_power=Quant(5.111111111111111, "MW"),
         rotor_diameter=0.060314403509210746,
         rotor_speed=9.444444444444445,
         hub_height=20.111486515663536,
-        profit=0.01,
-        capacity_factor=0.3333333333333333,
-        decline_factor=-0.02,
+        profit=Quant(1, "%"),
+        capacity_factor=Quant(33.333, "%"),
+        decline_factor=Quant(2, "%"),
         nwt=290,
         project_lifetime=27,
         wacc=0.07222222222222223,

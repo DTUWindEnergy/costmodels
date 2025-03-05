@@ -1,12 +1,13 @@
 from enum import Enum
-from typing import Optional
+from typing import Annotated, Optional
 
 import numpy as np
 import numpy_financial as npf
 from pydantic import Field
+from pydantic_pint import PydanticPintQuantity
 
 from costmodels.base import CostModel
-from costmodels.units import Quant, ureg
+from costmodels.units import IsValidPercent, Quant
 
 
 class Foundation(Enum):
@@ -27,44 +28,51 @@ class DTUOffshoreCM(CostModel):
             rotor_speed: Speed of the rotor.
             rotor_diameter: Diameter of the rotor.
             hub_height: Height of the tower.
-            foundation_option: Option for foundation (0: none, 1: monopile, 2: gravity, 3: jacket, 4: floating mockup)
+            foundation_option (Foundation): Option for foundation.
             water_depth: Depth of water for offshore installation.
             currency: Currency for financial calculations ('DKK', 'EURO', 'DKK/KW', 'EURO/KW')
             eur_to_dkk: Rate of change of Dkk to Euro
             wacc: Weighted Average Cost of Capital in nominal terms.
-            devex (float or None): Development expenditures.
-            decline_factor (float): Annual Energy Production decline factor.
-            inflation (float): Inflation rate.
-            project_lifetime (int): Project lifespan in years.
-            opex (float or None): Operational expenditures.
-            abex (float or None): Asset-based expenditures.
-            capacity_factor (float or None): Capacity factor.
+            devex: Development expenditures.
+            decline_factor: Annual Energy Production decline.
+            inflation: Inflation rate.
+            project_lifetime: Project life time in years.
+            opex: Yearly operational expenditures.
+            abex: Asset-based expenditures.
+            capacity_factor: Capacity factor.
             profit: Profit margin.
-            AEP (float, array): Annual Energy Production, from Pywake.
-            nwt (int or None): Number of wind turbines.
-            electrical_cost (int): Electrical infrastructure cost in MEURO/MW
+            aep: Annual Energy Production, for instance PyWake AEP.
+            nwt: Number of wind turbines.
+            electrical_cost: Electrical infrastructure cost in MEURO/MW
         """
 
-        rated_power: float
-        rotor_diameter: float
-        rotor_speed: float
-        hub_height: float
-        profit: float
-        capacity_factor: float
-        decline_factor: float
+        rated_power: Annotated[Quant, PydanticPintQuantity("kW", strict=False)]
+        rotor_diameter: Annotated[Quant, PydanticPintQuantity("m", strict=False)]
+        rotor_speed: Annotated[Quant, PydanticPintQuantity("rpm", strict=False)]
+        hub_height: Annotated[Quant, PydanticPintQuantity("m", strict=False)]
+        foundation_option: Foundation = Foundation.MONOPILE
+        profit: Annotated[
+            Quant, PydanticPintQuantity("%", strict=False), IsValidPercent
+        ]
+        capacity_factor: Annotated[
+            Quant, PydanticPintQuantity("%", strict=False), IsValidPercent
+        ]
+        decline_factor: Annotated[
+            Quant, PydanticPintQuantity("%", strict=False), IsValidPercent
+        ]
         nwt: int = Field(gt=0)
         project_lifetime: int
-        wacc: float
-        inflation: float
-        opex: float
-        devex: float
-        water_depth: float
-        abex: float = 0.0
-        electrical_cost: float = 0.0
+        wacc: Annotated[Quant, PydanticPintQuantity("%", strict=False)]
+        opex: Annotated[Quant, PydanticPintQuantity("EUR/kW/year", strict=False)]
+        devex: Annotated[Quant, PydanticPintQuantity("EUR/kW", strict=False)]
+        water_depth: Annotated[Quant, PydanticPintQuantity("m", strict=False)]
+        abex: float = Annotated[Quant, PydanticPintQuantity("EUR", strict=False)]
+        electrical_cost: Annotated[
+            Quant, PydanticPintQuantity("MEUR/MW", strict=False)
+        ] = 0.0
         currency: str = "EUR/kW"
         eur_to_dkk: float = 7.54
-        foundation_option: Foundation = Foundation.MONOPILE
-        aep: Optional[float] = None
+        aep: Optional[float | list[float]] = None
 
     class Output(CostModel.Output):
         """Output specification for the DTU Offshore Cost Model.
@@ -95,23 +103,30 @@ class DTUOffshoreCM(CostModel):
 
     def set_inputs(self, **kwargs):
         nwt = kwargs["nwt"]
+
         for k, v in kwargs.items():
-            if k in [
-                "rated_power",
-                "rotor_speed",
-                "rotor_diameter",
-                "hub_height",
-                "water_depth",
-            ]:
-                if np.size(v) == 1:
-                    setattr(self, k, np.tile(v, nwt))
-                else:
-                    setattr(self, k, v)
-            else:
-                if k in ["nwt", "project_lifetime"]:
-                    setattr(self, k, int(v))
-                else:
-                    setattr(self, k, v)
+            vmag = v.m if isinstance(v, Quant) else v
+            if isinstance(v, Quant) and str(v.u) == "%":
+                vmag /= 100
+            if (
+                k
+                in (
+                    "rated_power",
+                    "rotor_speed",
+                    "rotor_diameter",
+                    "hub_height",
+                    "water_depth",
+                )
+                and np.size(v) == 1
+            ):
+                setattr(self, k, np.tile(vmag, nwt))
+                continue
+            if k in ("nwt", "project_lifetime"):
+                setattr(self, k, int(vmag))
+                continue
+            if k == "decline_factor":
+                vmag *= -1
+            setattr(self, k, vmag)
 
     def HubStructureMass(
         self, mass_coeff=0.5, mass_intercept=6000.0, user_exp=2.5
@@ -587,6 +602,7 @@ class DTUOffshoreCM(CostModel):
         return self.TotalAdditionalCost() + self.TotalProductionCost()
 
     def ProfitCalculation(self) -> float:
+        print(f"{self.profit=}")
         return -(1 - 1 / (1 - self.profit)) * self.TotalCostCalculation()
 
     def SalesPriceCalculation(self) -> float:
