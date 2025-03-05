@@ -35,3 +35,17 @@ test_windows:
     - C:\Users\ernim\.pixi\bin\pixi.exe run -e test pytest
   tags:
     - ANMH_old
+
+test_pip_install:
+  image: ghcr.io/prefix-dev/pixi:latest
+  stage: test
+  script:
+    - apt update && apt install git -y
+    - mkdir test_pip_install
+    - cd test_pip_install
+    - pixi init
+    - pixi add python==3.12 pip
+    - pixi run pip install -e ..[test]
+    - pixi run pytest ../tests
+  tags:
+    - linux
