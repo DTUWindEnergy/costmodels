@@ -6,7 +6,7 @@ from pydantic import Field
 from pydantic_pint import PydanticPintValue
 from scipy.special import gamma, gammainc
 
-from costmodels.base import CostModel, CostModelInput, CostModelOutput
+from costmodels.base import CostModel
 from costmodels.units import Quant, getppq
 
 
@@ -18,7 +18,7 @@ class MinimalisticCM(CostModel):
     https://doi.org/10.3390/en14020448"
     """
 
-    class Input(CostModelInput):
+    class Input(CostModel.Input):
         """Parameters:
         Pg : float, optional
             Nameplate capacity (generator power) in W. The default is 7.0*10**6.
@@ -101,7 +101,7 @@ class MinimalisticCM(CostModel):
         kappa: float = 0.4
         f: float = 1.2e-4 * np.exp(4.0)
 
-    class Output(CostModelOutput):
+    class Output(CostModel.Output):
         aep: Annotated[Quant, getppq("GWh"), Field(gt=PydanticPintValue(0, "Wh"))]
 
     def run(self, mispec: Input) -> Output:

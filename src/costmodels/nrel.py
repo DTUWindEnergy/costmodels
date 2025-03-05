@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Annotated
 
-from costmodels.base import CostModel, CostModelInput, CostModelOutput
+from costmodels.base import CostModel
 from costmodels.units import Quant, getppq
 
 
@@ -13,7 +13,7 @@ class TurbineClass(Enum):
 
 class NRELCM(CostModel):
 
-    class Input(CostModelInput):
+    class Input(CostModel.Input):
 
         nwt: Annotated[Quant, getppq("count")]
         machine_rating: Annotated[Quant, getppq("W")]
@@ -27,7 +27,7 @@ class NRELCM(CostModel):
         main_bearing_number: Annotated[Quant, getppq("count")]
         crane: bool
 
-    class Output(CostModelOutput): ...
+    class Output(CostModel.Output): ...
 
     def __init__(self):
         from openmdao.api import Problem
@@ -52,17 +52,7 @@ class NRELCM(CostModel):
         self.prob["main_bearing_number"] = misepc.main_bearing_number.m
         self.prob["crane"] = misepc.crane
 
-        __Jac = self.prob.compute_totals(
-            of=["turbine_cost"],
-            wrt=[
-                "machine_rating",
-            ],
-        )  # does not work
-
         self.prob.run_model()
-
-        # self.prob.model.list_inputs(units=True)
-        # self.prob.model.list_outputs(units=True)
 
         wtc = self.prob.model._outputs["turbine_cost"]
 
@@ -77,6 +67,12 @@ class NRELCM(CostModel):
             npv=Quant(0.0, "MEUR"),
             irr=Quant(0.0, "%"),
         )
+
+    def _list_inputs(self):
+        return self.prob.model.list_inputs(units=True)
+
+    def _list_outputs(self):
+        return self.prob.model.list_outputs(units=True)
 
 
 if __name__ == "__main__":

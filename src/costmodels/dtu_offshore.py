@@ -5,7 +5,7 @@ import numpy as np
 import numpy_financial as npf
 from pydantic import Field
 
-from costmodels.base import CostModel, CostModelInput, CostModelOutput
+from costmodels.base import CostModel
 from costmodels.units import _UREG, Quant
 
 
@@ -19,7 +19,7 @@ class Foundation(Enum):
 
 class DTUOffshoreCM(CostModel):
 
-    class Input(CostModelInput):
+    class Input(CostModel.Input):
         """Input specification for the DTU Offshore Cost Model.
 
         Inputs:
@@ -66,7 +66,7 @@ class DTUOffshoreCM(CostModel):
         foundation_option: Foundation = Foundation.MONOPILE
         aep: Optional[float] = None
 
-    class Output(CostModelOutput):
+    class Output(CostModel.Output):
         """Output specification for the DTU Offshore Cost Model.
 
         Outputs:

@@ -55,38 +55,36 @@ class _StrReprInOut:
         )
 
 
-class CostModelInput(_StrReprInOut, ABC, PydanticBaseModel):
-    """Base class for all the cost model inputs."""
-
-    eprice: Annotated[Quant, getppq("EUR/kWh")]
-    inflation: Annotated[Quant, getppq("%"), AfterValidator(_is_valid_percentage)]
-
-
-class CostModelOutput(_StrReprInOut, ABC, PydanticBaseModel):
-    """Base class for all the cost model outputs."""
-
-    # Capital expenditure
-    capex: Annotated[Quant, getppq("MEUR"), AfterValidator(_gtt(0))]
-    # Operational expenditure
-    opex: Annotated[Quant, getppq("MEUR"), AfterValidator(_gtt(0))]
-    # Levelized cost of electricity
-    lcoe: Annotated[Quant, getppq("EUR/MWh"), AfterValidator(_gtt(0))]
-    # Net present value
-    npv: Annotated[Quant, getppq("MEUR")]
-    # Internal rate of return
-    irr: Annotated[Quant, getppq("%")]
-
-    model_config = ConfigDict(frozen=True)
-
-
 class CostModel(ABC):
     """Base class for all the cost models."""
+
+    class Input(_StrReprInOut, ABC, PydanticBaseModel):
+        """Base class for all the cost model inputs."""
+
+        eprice: Annotated[Quant, getppq("EUR/kWh")]
+        inflation: Annotated[Quant, getppq("%"), AfterValidator(_is_valid_percentage)]
+
+    class Output(_StrReprInOut, ABC, PydanticBaseModel):
+        """Base class for all the cost model outputs."""
+
+        # Capital expenditure
+        capex: Annotated[Quant, getppq("MEUR"), AfterValidator(_gtt(0))]
+        # Operational expenditure
+        opex: Annotated[Quant, getppq("MEUR"), AfterValidator(_gtt(0))]
+        # Levelized cost of electricity
+        lcoe: Annotated[Quant, getppq("EUR/MWh"), AfterValidator(_gtt(0))]
+        # Net present value
+        npv: Annotated[Quant, getppq("MEUR")]
+        # Internal rate of return
+        irr: Annotated[Quant, getppq("%")]
+
+        model_config = ConfigDict(frozen=True)
 
     def __init__(self):  # pragma: no cover
         pass
 
     @abstractmethod
-    def run(self, mispec: CostModelInput):  # pragma: no cover
+    def run(self, mispec: Input) -> Output:  # pragma: no cover
         """Abstract method to run the cost model.
 
         Parameters
@@ -97,7 +95,7 @@ class CostModel(ABC):
         pass
 
     def grad(
-        self, input_spec: CostModelInput, of: str, wrt: list[str], delta: float = 1e-6
+        self, input_spec: Input, of: str, wrt: list[str], delta: float = 1e-6
     ) -> dict:
         for pname in wrt:
             assert hasattr(input_spec, pname), f"Parameter {pname} not found in input."
@@ -142,12 +140,12 @@ class CostModel(ABC):
 
 if __name__ == "__main__":
 
-    cmi0 = CostModelInput(
+    cmi0 = CostModel.Input(
         eprice=0.2,
         inflation=2,
     )
     print(cmi0, "\n")
-    cmi1 = CostModelInput(
+    cmi1 = CostModel.Input(
         eprice=Quant(0.2, "EUR/kWh"),
         inflation=Quant(2, "%"),
     )
@@ -155,7 +153,7 @@ if __name__ == "__main__":
     assert cmi0.eprice == cmi1.eprice
     assert cmi0.inflation == cmi1.inflation
 
-    cmo = CostModelOutput(
+    cmo = CostModel.Output(
         capex=Quant(1.0, "MEUR"),
         opex=Quant(0.1, "MEUR"),
         lcoe=Quant(10.0, "EUR/MWh"),
