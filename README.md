@@ -2,8 +2,16 @@
 
 !!! Please READ ME !!!
 
+## Install
+
+```bash
+git clone git@gitlab.windenergy.dtu.dk:TOPFARM/costmodels.git
+pip install -e costmodels/
+```
+
 ## Usage
 
+- The package is under heavy development; No stability is to be expected! It will change abruply and break more often than not, thus please regularly update the installation and follow updates in the `README.md` file. And report any bugs you find : )
 - There are no docs yet; Take a sneek peak into the testing folder for desired model and how to run it.
     - Test for specific model are in the files prefixed with `test_`; For instance, DTU Offshore Cost model tests are in `test_dtu_offshore.py`
     - Go through source code for units and extensive input reference; There is some info on those in the docstrings of classes and functions.
