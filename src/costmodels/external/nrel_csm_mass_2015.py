@@ -7,7 +7,7 @@ from __future__ import print_function
 import numpy as np
 import openmdao.api as om
 
-from costmodels.nrel_csm_cost_2015 import Turbine_CostsSE_2015
+from costmodels.external.nrel_csm_cost_2015 import Turbine_CostsSE_2015
 
 
 # --------------------------------------------------------------------

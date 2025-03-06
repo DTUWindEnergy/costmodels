@@ -1,7 +1,7 @@
 import openmdao.api as om
 
+from costmodels.external.nrel_csm_mass_2015 import nrel_csm_2015
 from costmodels.nrel import NRELCM
-from costmodels.nrel_csm_mass_2015 import nrel_csm_2015
 from costmodels.units import Quant
 
 

@@ -30,9 +30,10 @@ class NRELCM(CostModel):
     class Output(CostModel.Output): ...
 
     def __init__(self):
-        from openmdao.api import Problem
-
-        from costmodels.nrel_csm_mass_2015 import nrel_csm_2015
+        from openmdao.api import Problem  # fmt:skip isort:skip
+        from costmodels.external.nrel_csm_mass_2015 import (  # fmt:skip isort:skip
+            nrel_csm_2015,
+        )
 
         self.org_impl = nrel_csm_2015()
         self.prob = Problem(reports=False)
