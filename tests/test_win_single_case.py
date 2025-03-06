@@ -25,7 +25,7 @@ def test_win_single_case():
         "capacity_factor": 0.3333333333333333,
         "decline_factor": -0.02,
         "nwt": 290,
-        "lifetime": 27,
+        "project_lifetime": 27,
         "wacc": 0.07222222222222223,
         "inflation": 0.08,
         "opex": 30.0,
@@ -40,12 +40,15 @@ def test_win_single_case():
     cm = DTUOCM()
 
     # fractions need to be converted to percentages
-    adapted_params = params.copy()
+    adaptedp = params.copy()
     # decline factor is negated inside the model
-    adapted_params["decline_factor"] *= -100
-    adapted_params["profit"] *= 100
-    adapted_params["capacity_factor"] *= 100
-    cmi = DTUOCM.Input(**adapted_params)
+    adaptedp["decline_factor"] *= -100
+    adaptedp["profit"] *= 100
+    adaptedp["capacity_factor"] *= 100
+    adaptedp["wacc"] *= 100
+    # rename project_lifetime to lifetime
+    adaptedp["lifetime"] = adaptedp.pop("project_lifetime")
+    cmi = DTUOCM.Input(**adaptedp)
 
     # run the model
     results: DTUOCM.Output = cm.run(cmi)
