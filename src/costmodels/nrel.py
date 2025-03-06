@@ -40,32 +40,33 @@ class NRELCM(CostModel):
         self.prob.setup()
         super().__init__()
 
-    def run(self, misepc: Input) -> Output:
-        self.prob["machine_rating"] = misepc.machine_rating.m
-        self.prob["rotor_diameter"] = misepc.rotor_diameter.m
-        self.prob["turbine_class"] = misepc.turbine_class.value
-        self.prob["tower_length"] = misepc.tower_length.m
-        self.prob["blade_number"] = misepc.blade_number.m
+    def run(self, mispec: Input) -> Output:
+        self.prob["machine_rating"] = mispec.machine_rating.to("kW").m
+        self.prob["rotor_diameter"] = mispec.rotor_diameter.m
+        self.prob["turbine_class"] = mispec.turbine_class.value
+        self.prob["tower_length"] = mispec.tower_length.m
+        self.prob["blade_number"] = mispec.blade_number.m
         self.prob["blade_has_carbon"] = False
-        self.prob["max_tip_speed"] = misepc.max_tip_speed.m
-        self.prob["max_efficiency"] = misepc.max_efficiency.m
-        self.prob["main_bearing_number"] = misepc.main_bearing_number.m
-        self.prob["crane"] = misepc.crane
+        self.prob["max_tip_speed"] = mispec.max_tip_speed.m
+        self.prob["max_efficiency"] = mispec.max_efficiency.m
+        self.prob["main_bearing_number"] = mispec.main_bearing_number.m
+        self.prob["crane"] = mispec.crane
 
         self.prob.run_model()
 
-        wtc = self.prob.model._outputs["turbine_cost"]
-
-        # + electrical_infrastructure + foundation
-        # these might be included in the model already
-        capex = Quant(wtc, "MEUR") * misepc.nwt
+        wtc = self.prob.model._outputs["turbine_cost"][0]
+        capex = Quant(wtc, "EUR") * mispec.nwt
+        opex_total = mispec.opex * mispec.machine_rating
+        cashflows = self.cashflows(
+            mispec, capex, opex_total, mispec.aep, mispec.lifetime
+        )
 
         return self.Output(
             capex=capex,
-            opex=Quant(0.0, "MEUR"),
-            lcoe=Quant(0.0, "EUR/MWh"),
-            npv=Quant(0.0, "MEUR"),
-            irr=Quant(0.0, "%"),
+            opex=opex_total,
+            lcoe=self.lceo(capex, opex_total, mispec.aep, mispec.lifetime),
+            npv=self.npv(mispec.inflation.to_base_units().m, cashflows),
+            irr=self.irr(cashflows),
         )
 
     def _list_inputs(self):
@@ -91,6 +92,7 @@ if __name__ == "__main__":
         max_efficiency=Quant(0.90, "%"),
         main_bearing_number=Quant(2, "count"),
         crane=True,
+        lifetime=20,
     )
 
     model = NRELCM()

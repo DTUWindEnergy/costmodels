@@ -254,13 +254,8 @@ class MinimalisticCM(CostModel):
 
         OPEXtot = OPEX * YO
         aep_Wh = Pg * (365 * 24) * ((Nturb - Nrow) * eta + Nrow * eta0)
-
         cashflows = self.cashflows(
-            mispec,
-            Quant(CAPEX, "EUR"),
-            Quant(OPEX, "EUR"),
-            Quant(aep_Wh, "Wh"),
-            YO,
+            mispec, Quant(CAPEX, "EUR"), Quant(OPEX, "EUR"), Quant(aep_Wh, "Wh"), YO
         )
 
         return self.Output(
@@ -268,15 +263,10 @@ class MinimalisticCM(CostModel):
             opex=Quant(OPEXtot / 10**6, "MEUR"),
             aep=Quant(aep_Wh / 10**9, "GWh"),
             lcoe=self.lceo(
-                Quant(CAPEX, "EUR"),
-                Quant(OPEX, "EUR"),
-                Quant(aep_Wh, "Wh"),
-                YO,
+                Quant(CAPEX, "EUR"), Quant(OPEX, "EUR"), Quant(aep_Wh, "Wh"), YO
             ),
-            irr=Quant(npf.irr(cashflows) * 100, "%"),
-            npv=Quant(
-                npf.npv(mispec.inflation.to_base_units().magnitude, cashflows), "MEUR"
-            ),
+            irr=self.irr(cashflows),
+            npv=self.npv(mispec.inflation.to_base_units().m, cashflows),
         )
 
 

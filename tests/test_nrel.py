@@ -2,6 +2,7 @@ import openmdao.api as om
 
 from costmodels.nrel import NRELCM
 from costmodels.nrel_csm_mass_2015 import nrel_csm_2015
+from costmodels.units import Quant
 
 
 def test_nrel():
@@ -28,7 +29,7 @@ def test_nrel():
     nrel_cm = NRELCM()
     NWT = 10
     nrel_cm_input = NRELCM.Input(
-        machine_rating=5000.0,
+        machine_rating=Quant(5.0, "MW"),
         rotor_diameter=126.0,
         turbine_class=2,
         tower_length=90.0,
@@ -41,10 +42,12 @@ def test_nrel():
         eprice=0.2,
         inflation=2,
         nwt=NWT,
+        lifetime=20,
+        opex=Quant(20.0, "MEUR/kW"),
     )
 
     nrel_cmo: NRELCM.Output = nrel_cm.run(nrel_cm_input)
-    assert (nrel_cmo.capex.m / NWT) == prob.model._outputs["turbine_cost"]
+    assert (nrel_cmo.capex.to("EUR").m / NWT) == prob.model._outputs["turbine_cost"][0]
 
     grads = nrel_cm.grad(nrel_cm_input, "capex", ("rotor_diameter",))
     assert "rotor_diameter" in grads.keys()

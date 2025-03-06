@@ -36,12 +36,10 @@ class DTUOffshoreCM(CostModel):
             devex: Development expenditures.
             decline_factor: Annual Energy Production decline.
             inflation: Inflation rate.
-            project_lifetime: Project life time in years.
-            opex: Yearly operational expenditures.
             abex: Asset-based expenditures.
             capacity_factor: Capacity factor.
             profit: Profit margin.
-            aep: Annual Energy Production, for instance PyWake AEP.
+            aep: Annual Energy Production, MWh per turbine. Or list for all turbines.
             nwt: Number of wind turbines.
             electrical_cost: Electrical infrastructure cost in MEURO/MW
         """
@@ -61,9 +59,7 @@ class DTUOffshoreCM(CostModel):
             Quant, PydanticPintQuantity("%", strict=False), IsValidPercent
         ]
         nwt: int = Field(gt=0)
-        project_lifetime: int
         wacc: Annotated[Quant, PydanticPintQuantity("%", strict=False)]
-        opex: Annotated[Quant, PydanticPintQuantity("EUR/kW/year", strict=False)]
         devex: Annotated[Quant, PydanticPintQuantity("EUR/kW", strict=False)]
         water_depth: Annotated[Quant, PydanticPintQuantity("m", strict=False)]
         abex: float = Annotated[Quant, PydanticPintQuantity("EUR", strict=False)]
@@ -80,8 +76,8 @@ class DTUOffshoreCM(CostModel):
         Outputs:
             production_net: AEP net
             production_discount: AEP discount
-            aep_net: AEPNet / self.project_lifetime
-            aep_discount: AEPDiscount / self.project_lifetime
+            aep_net: AEPNet / lifetime
+            aep_discount: AEPDiscount / lifetime
             devex_net: DEVEX Net
             devex_discount: DEVEX Discounted
             capex_discount: CAPEX Discounted
@@ -121,7 +117,7 @@ class DTUOffshoreCM(CostModel):
             ):
                 setattr(self, k, np.tile(vmag, nwt))
                 continue
-            if k in ("nwt", "project_lifetime"):
+            if k in ("nwt", "lifetime"):
                 setattr(self, k, int(vmag))
                 continue
             if k == "decline_factor":
@@ -1115,7 +1111,8 @@ class DTUOffshoreCM(CostModel):
 
         discount_factor = []
         # Calculate the discount factors based on project lifetime and WACC
-        for year in range(-2, self.project_lifetime):
+
+        for year in range(-2, self.lifetime):
             discount_factor.append(1 / (1 + self.RealWACC()) ** year)
 
         return discount_factor
@@ -1124,14 +1121,14 @@ class DTUOffshoreCM(CostModel):
 
         discount_factor = []
         # Calculate the discount factors based on project lifetime and WACC
-        for year in range(-2, self.project_lifetime):
+        for year in range(-2, self.lifetime):
             discount_factor.append(1 / (1 + self.wacc) ** year)
 
         return discount_factor
 
     def AEPNet(self) -> float:
         AEP_net = []
-        for year in range(self.project_lifetime):
+        for year in range(self.lifetime):
             AEP_ = self.AEP_WindFarm() * ((1 + self.decline_factor) ** year)
             AEP_net.append(AEP_)
 
@@ -1140,7 +1137,7 @@ class DTUOffshoreCM(CostModel):
 
     def AEPDiscount(self) -> float:
         AEP_discount = []
-        for year in range(self.project_lifetime):
+        for year in range(self.lifetime):
             AEP_d = (self.AEP_WindFarm() * (1 + self.decline_factor) ** year) * (
                 1 / (1 + self.RealWACC()) ** year
             )
@@ -1193,7 +1190,7 @@ class DTUOffshoreCM(CostModel):
     def opexNET(self) -> float:
 
         opex_net = []
-        for year in range(self.project_lifetime):
+        for year in range(self.lifetime):
             opex_ = self.opexTotal() * ((1 + self.inflation) ** year)
             opex_net.append(opex_)
 
@@ -1205,7 +1202,7 @@ class DTUOffshoreCM(CostModel):
         base_yaer_indx = 2  # year = 0
         discount_factors = self.DiscountFactor_WACC_n()
         opex_d = []
-        for indx, year in enumerate(range(self.project_lifetime)):
+        for indx, year in enumerate(range(self.lifetime)):
 
             opex_ = (
                 self.opexTotal() * (1 + self.inflation) ** year
@@ -1299,15 +1296,15 @@ class DTUOffshoreCM(CostModel):
             mispec,
             Quant(CAPEXNet, "EUR"),
             Quant(opexNet, "EUR"),
-            Quant(AEPNet / self.project_lifetime, "MWh"),
-            self.project_lifetime,
+            Quant(AEPNet / self.lifetime, "MWh"),
+            self.lifetime,
         )
 
         return self.Output(
             production_net=AEPNet,
             production_discount=AEPDiscount,
-            aep_net=AEPNet / self.project_lifetime,
-            aep_discount=AEPDiscount / self.project_lifetime,
+            aep_net=AEPNet / self.lifetime,
+            aep_discount=AEPDiscount / self.lifetime,
             devex_net=devexNet,
             devex_discount=devexDiscount,
             capex_discount=CAPEXDiscount,

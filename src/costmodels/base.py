@@ -2,9 +2,11 @@ from abc import ABC, abstractmethod
 from typing import Annotated, Callable
 
 import numpy as np
+import numpy_financial as npf
 from pydantic import AfterValidator
 from pydantic import BaseModel as PydanticBaseModel
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
+from pydantic_pint import PydanticPintQuantity
 
 from costmodels.units import IsValidPercent, Quant, getppq
 from costmodels.utils import np2scalar
@@ -57,6 +59,13 @@ class CostModel(ABC):
 
         eprice: Annotated[Quant, getppq("EUR/kWh")]
         inflation: Annotated[Quant, getppq("%"), IsValidPercent]
+        lifetime: int = Field(gt=0)
+        aep: Annotated[Quant, PydanticPintQuantity("MWh", strict=False)] = Quant(
+            0.0, "MWh"
+        )
+        opex: Annotated[Quant, PydanticPintQuantity("EUR/kW", strict=False)] = Quant(
+            0.0, "MEUR/kW"
+        )
 
     class Output(_StrReprInOut, ABC, PydanticBaseModel):
         """Base class for all the cost model outputs."""
@@ -140,7 +149,9 @@ class CostModel(ABC):
         lifetime: int,
     ) -> list[float]:
         annual_revenue = aep * mispec.eprice
-        assert annual_revenue.check("EUR"), "Annual revenue must be in EUR"
+        assert annual_revenue.check(
+            "EUR"
+        ), f"Annual revenue must be in EUR not in {annual_revenue.units}"
         annual_cashflow = annual_revenue - opex
         cashflows = [-capex.magnitude] + [
             (annual_cashflow * ((1 + mispec.inflation) ** (year - 1)))
@@ -156,17 +167,21 @@ class CostModel(ABC):
         assert lceo.check("EUR/Wh")
         return lceo
 
+    @staticmethod
+    def irr(cashflows: list[float]) -> Quant:
+        return Quant(npf.irr(cashflows) * 100, "%")
+
+    @staticmethod
+    def npv(discount, cashflows):
+        return Quant(npf.npv(discount, cashflows), "MEUR")
+
 
 if __name__ == "__main__":
 
-    cmi0 = CostModel.Input(
-        eprice=0.2,
-        inflation=2,
-    )
+    cmi0 = CostModel.Input(eprice=0.2, inflation=2, lifetime=20)
     print(cmi0, "\n")
     cmi1 = CostModel.Input(
-        eprice=Quant(0.2, "EUR/kWh"),
-        inflation=Quant(2, "%"),
+        eprice=Quant(0.2, "EUR/kWh"), inflation=Quant(2, "%"), lifetime=20
     )
     assert cmi0 == cmi1
     assert cmi0.eprice == cmi1.eprice

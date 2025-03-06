@@ -14,7 +14,7 @@ def test_dtu_offshore():
         capacity_factor=Quant(33.333, "%"),
         decline_factor=Quant(2, "%"),
         nwt=290,
-        project_lifetime=27,
+        lifetime=27,
         wacc=0.07222222222222223,
         inflation=0.08,
         opex=0.0,
@@ -24,7 +24,7 @@ def test_dtu_offshore():
         electrical_cost=0.0,
         foundation_option=0,
         eprice=Quant(0.2, "EUR/kWh"),
-        aep=1e9,
+        aep=5 * 1e6 * 8760,
     )
     cm_output = cm.run(cm_input)
     assert isinstance(cm_output, cm.Output)

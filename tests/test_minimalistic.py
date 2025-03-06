@@ -8,6 +8,7 @@ def test_minimalistic_cost_model():
     cmi = MinimalisticCM.Input(
         eprice=Quant(0.2, "EUR/kWh"),
         inflation=Quant(8, "%"),
+        lifetime=20,
     )
 
     cmo = mcm.run(cmi)
