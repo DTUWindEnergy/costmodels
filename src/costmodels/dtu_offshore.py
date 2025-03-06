@@ -598,7 +598,6 @@ class DTUOffshoreCM(CostModel):
         return self.TotalAdditionalCost() + self.TotalProductionCost()
 
     def ProfitCalculation(self) -> float:
-        print(f"{self.profit=}")
         return -(1 - 1 / (1 - self.profit)) * self.TotalCostCalculation()
 
     def SalesPriceCalculation(self) -> float:

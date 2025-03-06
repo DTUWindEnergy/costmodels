@@ -42,17 +42,13 @@ def test_win_single_case():
     # fractions need to be converted to percentages
     adaptedp = params.copy()
     # decline factor is negated inside the model
-    adaptedp["decline_factor"] *= -100
-    adaptedp["profit"] *= 100
-    adaptedp["capacity_factor"] *= 100
-    adaptedp["wacc"] *= 100
-    # rename project_lifetime to lifetime
+    for key in ["decline_factor", "profit", "capacity_factor", "wacc", "inflation"]:
+        adaptedp[key] *= -100 if key == "decline_factor" else 100
     adaptedp["lifetime"] = adaptedp.pop("project_lifetime")
     cmi = DTUOCM.Input(**adaptedp)
 
     # run the model
     results: DTUOCM.Output = cm.run(cmi)
-
     # run model with original excel
     input_map = dtu_offshore_cm_input_map(**params)
     output_map = dtu_offshore_cm_output_map()
