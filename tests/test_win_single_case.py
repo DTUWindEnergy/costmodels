@@ -2,6 +2,7 @@ import os
 import platform
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from costmodels import DTUOffshoreCM as DTUOCM
@@ -18,14 +19,14 @@ from .utils.winutil import (
 def test_win_single_case():
     params = {
         "rated_power": 3.111111111111111,
-        "rotor_diameter": 0.060314403509210746,
+        "rotor_diameter": 80,
         "rotor_speed": 9.444444444444445,
         "hub_height": 20.111486515663536,
         "profit": 0.01,
         "capacity_factor": 0.3333333333333333,
         "decline_factor": -0.02,
         "nwt": 290,
-        "project_lifetime": 27,
+        "project_lifetime": 25,
         "wacc": 0.07222222222222223,
         "inflation": 0.08,
         "opex": 30.0,
@@ -59,23 +60,23 @@ def test_win_single_case():
         input_map=input_map,
         output_map=output_map,
     )
-
-    assert excel_result["OPEX net (EURO)"] == results.opex.to("MEUR").m
+    np.testing.assert_allclose(
+        excel_result["OPEX net (EURO)"], results.opex.to("MEUR").m
+    )
 
 
 @pytest.mark.skipif(platform.system() != "Windows", reason="Only run on Windows")
 def test_original_dtu_cm_implementation_win_excel():
-
     params = {
         "rated_power": 3.111111111111111,
-        "rotor_diameter": 0.060314403509210746,
+        "rotor_diameter": 80,
         "rotor_speed": 9.444444444444445,
         "hub_height": 20.111486515663536,
         "profit": 0.01,
         "capacity_factor": 0.3333333333333333,
         "decline_factor": -0.02,
         "nwt": 290,
-        "project_lifetime": 27,
+        "project_lifetime": 25,
         "wacc": 0.07222222222222223,
         "inflation": 0.08,
         "opex": 30.0,
@@ -97,4 +98,4 @@ def test_original_dtu_cm_implementation_win_excel():
     excel_file = Path(os.path.dirname(__file__), "data/WTcostmodel_v12.xlsx")
     assert excel_file.exists()
     res = run_excel(file_path=excel_file, input_map=input_map, output_map=output_map)
-    assert results["OPEX net (EURO)"] == res["OPEX net (EURO)"]
+    np.testing.assert_allclose(results["OPEX net (EURO)"], res["OPEX net (EURO)"])

@@ -45,7 +45,7 @@ class _StrReprInOut:
             header
             + "\n"
             + "\n".join(
-                f"{key}: {__print_val(value)} {value.units if hasattr(value, "units") else ''}"
+                f"{key}: {__print_val(value)} {value.units if hasattr(value, 'units') else ''}"
                 for key, value in data.items()
             )
         )
