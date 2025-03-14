@@ -54,6 +54,7 @@ pytest-xdist = ">=3.6.1,<4"
 pre-commit = ">=4.1.0,<5"
 pip = ">=25.0.1,<26"
 xlwings = ">=0.33.9,<0.34"
+mypy = ">=1.15.0,<2"
 
 [tool.pixi.feature.test.tasks]
 pytest = "pytest --cov-report=term-missing:skip-covered --cov-report=html --cov=src/costmodels"
