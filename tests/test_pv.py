@@ -9,16 +9,14 @@ def test_run_pv_model():
 
     # good run
     pv_cm = PVCostModel()
-    output = pv_cm.run(solar_capacity=solar_capacity)
-    print(f"CAPEX = {output["capex"]:.2f}")
-    print(f"OPEX = {output["opex"]:.3f}")
+    _ = pv_cm.run(solar_capacity=solar_capacity)
 
     # wrong units
     pv_cm = PVCostModel()
     with pytest.raises(ValueError):
-        output = pv_cm.run(solar_capacity=solar_capacity, panel_cost=Quant(1.1e5, "m"))
+        _ = pv_cm.run(solar_capacity=solar_capacity, panel_cost=Quant(1.1e5, "m"))
 
     # missing required input
     pv_cm = PVCostModel()
     with pytest.raises(ValueError):
-        output = pv_cm.run()
+        _ = pv_cm.run()
