@@ -6,14 +6,11 @@ requires-python = ">=3.9,<3.13"
 version = "0.1.0"
 dependencies = [
     "numpy>=2.2.2,<3",
-    "pydantic>=2.10.6,<3",
     "scipy>=1.15.1,<2",
     "openmdao>=3.36.0,<4",
     "numpy-financial>=1.0.0,<2",
     "pint>=0.24.4,<0.25",
     "matplotlib>=3.10.0,<4",
-    "pydantic-pint @ git+https://github.com/tylerh111/pydantic-pint.git@main"
-    # "jax>=0.5.1,<0.6"
 ]
 
 [project.optional-dependencies]

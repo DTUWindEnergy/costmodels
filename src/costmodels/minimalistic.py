@@ -1,16 +1,11 @@
-from typing import Annotated
-
 import numpy as np
-import numpy_financial as npf
-from pydantic import Field
-from pydantic_pint import PydanticPintValue
 from scipy.special import gamma, gammainc
 
 from costmodels.base import CostModel
-from costmodels.units import Quant, getppq
+from costmodels.units import Quant
 
 
-class MinimalisticCM(CostModel):
+class MinimalisticCostModel(CostModel):
     """
     Python implementation of: "Sørensen, J. N., & Larsen, G. C. (2021). A
     Minimalistic Prediction Model to Determine Energy Production and Costs of
@@ -18,7 +13,7 @@ class MinimalisticCM(CostModel):
     https://doi.org/10.3390/en14020448"
     """
 
-    class Input(CostModel.Input):
+    class Input:
         """Parameters:
         Pg : float, optional
             Nameplate capacity (generator power) in W. The default is 7.0*10**6.
@@ -96,25 +91,28 @@ class MinimalisticCM(CostModel):
         rho: float = 1.25
         Uin: float = 4.0
         Uout: float = 25.0
-        YO: int = Field(default=20, gt=0)  # years of operation
+        YO: int  # years of operation
         z0: float = 0.0001
         kappa: float = 0.4
         f: float = 1.2e-4 * np.exp(4.0)
 
-    class Output(CostModel.Output):
-        aep: Annotated[Quant, getppq("GWh"), Field(gt=PydanticPintValue(0, "Wh"))]
+    class Output:
+        ...
+        # aep: Annotated[
+        #     Quant, PydanticPintQuantity("GWh"), Field(gt=PydanticPintValue(0, "Wh"))
+        # ]
 
     def run(self, mispec: Input) -> Output:
         """Run minimalistic cost model.
 
         Parameters
         ----------
-        mspec : MinimalisticCMInput
+        mspec : MinimalisticCostModelInput
             Model input specification.
 
         Returns
         -------
-        MinimalisticCMOutput
+        MinimalisticCostModelOutput
             Model output specification.
         """
 
@@ -271,7 +269,7 @@ class MinimalisticCM(CostModel):
 
 
 if __name__ == "__main__":
-    mcm = MinimalisticCM()
+    mcm = MinimalisticCostModel()
 
     cmi = mcm.Input(
         eprice=Quant(0.2, "EUR/kWh"),

@@ -1,13 +1,9 @@
 from enum import Enum
-from typing import Annotated, Optional
 
 import numpy as np
-import numpy_financial as npf
-from pydantic import Field
-from pydantic_pint import PydanticPintQuantity
 
 from costmodels.base import CostModel
-from costmodels.units import IsValidPercent, Quant
+from costmodels.units import Quant
 
 
 class Foundation(Enum):
@@ -18,84 +14,33 @@ class Foundation(Enum):
     FLOATING_MOCKUP = 4
 
 
-class DTUOffshoreCM(CostModel):
+class DTUOffshoreCostModel(CostModel):
 
-    class Input(CostModel.Input):
-        """Input specification for the DTU Offshore Cost Model.
-
-        Inputs:
-            rated_power: Rated power of the wind turbine.
-            rotor_speed: Speed of the rotor.
-            rotor_diameter: Diameter of the rotor.
-            hub_height: Height of the tower.
-            foundation_option (Foundation): Option for foundation.
-            water_depth: Depth of water for offshore installation.
-            currency: Currency for financial calculations ('DKK', 'EURO', 'DKK/KW', 'EURO/KW')
-            eur_to_dkk: Rate of change of Dkk to Euro
-            wacc: Weighted Average Cost of Capital in nominal terms.
-            devex: Development expenditures.
-            decline_factor: Annual Energy Production decline.
-            inflation: Inflation rate.
-            abex: Asset-based expenditures.
-            capacity_factor: Capacity factor.
-            profit: Profit margin.
-            aep: Annual Energy Production, MWh per turbine. Or list for all turbines.
-            nwt: Number of wind turbines.
-            electrical_cost: Electrical infrastructure cost in MEURO/MW
-        """
-
-        rated_power: Annotated[Quant, PydanticPintQuantity("kW", strict=False)]
-        rotor_diameter: Annotated[Quant, PydanticPintQuantity("m", strict=False)]
-        rotor_speed: Annotated[Quant, PydanticPintQuantity("rpm", strict=False)]
-        hub_height: Annotated[Quant, PydanticPintQuantity("m", strict=False)]
-        foundation_option: Foundation = Foundation.MONOPILE
-        profit: Annotated[
-            Quant, PydanticPintQuantity("%", strict=False), IsValidPercent
-        ]
-        capacity_factor: Annotated[
-            Quant, PydanticPintQuantity("%", strict=False), IsValidPercent
-        ]
-        decline_factor: Annotated[
-            Quant, PydanticPintQuantity("%", strict=False), IsValidPercent
-        ]
-        nwt: int = Field(gt=0)
-        wacc: Annotated[Quant, PydanticPintQuantity("%", strict=False)]
-        devex: Annotated[Quant, PydanticPintQuantity("EUR/kW", strict=False)]
-        water_depth: Annotated[Quant, PydanticPintQuantity("m", strict=False)]
-        abex: float = Annotated[Quant, PydanticPintQuantity("EUR", strict=False)]
-        electrical_cost: Annotated[
-            Quant, PydanticPintQuantity("MEUR/MW", strict=False)
-        ] = 0.0
-        currency: str = "EUR/kW"
-        eur_to_dkk: float = 7.54
-        aep: Optional[float | list[float]] = None
-
-    class Output(CostModel.Output):
-        """Output specification for the DTU Offshore Cost Model.
-
-        Outputs:
-            production_net: AEP net
-            production_discount: AEP discount
-            aep_net: AEPNet / lifetime
-            aep_discount: AEPDiscount / lifetime
-            devex_net: DEVEX Net
-            devex_discount: DEVEX Discounted
-            capex_discount: CAPEX Discounted
-            opex_discount: OPEX Net
-            co2_emission_per_wt: Total Co2 emission per turbine
-            cost_per_wt: Turbine cost
-        """
-
-        production_net: float
-        production_discount: float
-        aep_net: float
-        aep_discount: float
-        devex_net: float
-        devex_discount: float
-        capex_discount: float
-        opex_discount: float
-        co2_emission_per_wt: list[float]
-        cost_per_wt: list[float]
+    @property
+    def _cm_input_def(self) -> dict:
+        return {
+            "rated_power": Quant(np.nan, "kW"),
+            "rotor_speed": Quant(np.nan, "rpm"),
+            "rotor_diameter": Quant(np.nan, "m"),
+            "hub_height": Quant(np.nan, "m"),
+            "foundation_option": Foundation.MONOPILE,
+            "profit": Quant(np.nan, "%"),
+            "capacity_factor": Quant(np.nan, "%"),
+            "decline_factor": Quant(np.nan, "%"),
+            "nwt": np.nan,
+            "wacc": Quant(np.nan, "%"),
+            "devex": Quant(np.nan, "EUR/kW"),
+            "water_depth": Quant(np.nan, "m"),
+            "abex": Quant(np.nan, "EUR"),
+            "electrical_cost": Quant(np.nan, "MEUR/MW"),
+            "currency": "EUR/kW",
+            "eur_to_dkk": 7.54,
+            "aep": Quant(np.nan, "MWh"),
+            "lifetime": np.nan,
+            "inflation": Quant(np.nan, "%"),
+            "opex": Quant(np.nan, "EUR/kW"),
+            "eprice": Quant(np.nan, "EUR/kWh"),
+        }
 
     def set_inputs(self, **kwargs):
         nwt = kwargs["nwt"]
@@ -1261,8 +1206,10 @@ class DTUOffshoreCM(CostModel):
     def NVP_abex(self):
         return self.abexDiscount() / self.LCOENumerator()
 
-    def run(self, mispec: Input) -> Output:
-        self.set_inputs(**mispec.model_dump())
+    def _run(self):
+
+        print(self._cm_input)
+
         self.rotor_area = np.pi * (self.rotor_diameter / 2) ** 2
         self.specific_power = 1_000_000 * self.rated_power / self.rotor_area
         self.tip_speed = (self.rotor_speed / 60) * 2 * np.pi * (self.rotor_diameter / 2)
@@ -1299,20 +1246,20 @@ class DTUOffshoreCM(CostModel):
             self.lifetime,
         )
 
-        return self.Output(
-            production_net=AEPNet,
-            production_discount=AEPDiscount,
-            aep_net=AEPNet / self.lifetime,
-            aep_discount=AEPDiscount / self.lifetime,
-            devex_net=devexNet,
-            devex_discount=devexDiscount,
-            capex_discount=CAPEXDiscount,
-            opex_discount=opexDiscount,
-            co2_emission_per_wt=co2_emmisions,
-            cost_per_wt=wt_cost,
-            lcoe=Quant(LCOE, "EUR/MWh"),
-            capex=Quant(CAPEXNet, "MEUR"),
-            opex=Quant(opexNet, "MEUR"),
-            npv=Quant(npf.npv(self.RealWACC(), cashflows), "EUR"),
-            irr=Quant(npf.irr(cashflows), "%"),
-        )
+        return {
+            "production_net": AEPNet,
+            "production_discount": AEPDiscount,
+            "aep_net": AEPNet / self.lifetime,
+            "aep_discount": AEPDiscount / self.lifetime,
+            "devex_net": devexNet,
+            "devex_discount": devexDiscount,
+            "capex_discount": CAPEXDiscount,
+            "opex_discount": opexDiscount,
+            "co2_emission_per_wt": co2_emmisions,
+            "cost_per_wt": wt_cost,
+            "lcoe": Quant(LCOE, "EUR/MWh"),
+            "capex": Quant(CAPEXNet, "MEUR"),
+            "opex": Quant(opexNet, "MEUR"),
+            "npv": self.npv(self.RealWACC(), cashflows),
+            "irr": self.irr(cashflows),
+        }

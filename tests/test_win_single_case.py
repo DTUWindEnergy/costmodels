@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from costmodels import DTUOffshoreCM as DTUOCM
+from costmodels import DTUOffshoreCostModel as DTUOCM
 
 from .utils.DTU_CostModel_org import DTUOffshoreCostModel
 from .utils.winutil import (

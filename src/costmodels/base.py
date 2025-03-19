@@ -1,131 +1,132 @@
 from abc import ABC, abstractmethod
-from typing import Annotated, Callable
+from enum import Enum
+from numbers import Number
 
 import numpy as np
 import numpy_financial as npf
-from pydantic import AfterValidator
-from pydantic import BaseModel as PydanticBaseModel
-from pydantic import ConfigDict, Field
-from pydantic_pint import PydanticPintQuantity
+import pint
 
-from costmodels.units import IsValidPercent, Quant, getppq
+from costmodels.units import Quant
 from costmodels.utils import np2scalar
-
-
-def _gtt(cmp: float) -> Callable:
-    def _gtt(value: Quant) -> Quant:  # fmt:skip
-        if value < Quant(cmp, value.units):
-            raise ValueError(f"must be greater than {cmp}")
-        return value
-    return _gtt
-
-
-class _StrReprInOut:
-    def __new__(cls, *_, **__):
-        if cls is _StrReprInOut:
-            raise TypeError("StrRepr cannot be instantiated directly")
-        return super().__new__(cls)
-
-    def __str__(self: PydanticBaseModel):
-        data = self.model_dump()
-        header = f"{self.__class__.__name__}:"
-
-        def __print_val(val):
-            from numbers import Number
-
-            from numpy import number
-
-            if hasattr(val, "magnitude"):
-                return round(float(val.magnitude), 3)
-            elif isinstance(val, (Number, number)):
-                return round(float(val), 3)
-            return val
-
-        return (
-            header
-            + "\n"
-            + "\n".join(
-                f"{key}: {__print_val(value)} {value.units if hasattr(value, 'units') else ''}"
-                for key, value in data.items()
-            )
-        )
 
 
 class CostModel(ABC):
     """Base class for all the cost models."""
 
-    class Input(_StrReprInOut, ABC, PydanticBaseModel):
-        """Base class for all the cost model inputs."""
+    def __init__(self, **kwargs):
+        self._cm_input = self._cm_input_def
+        self._set_input(**kwargs)
 
-        eprice: Annotated[Quant, getppq("EUR/kWh")]
-        inflation: Annotated[Quant, getppq("%"), IsValidPercent]
-        lifetime: int = Field(gt=0)
-        aep: Annotated[Quant, PydanticPintQuantity("MWh", strict=False)] = Quant(
-            0.0, "MWh"
-        )
-        opex: Annotated[Quant, PydanticPintQuantity("EUR/kW", strict=False)] = Quant(
-            0.0, "MEUR/kW"
-        )
+    def __getattr__(self, name):
+        # this makes sure to propagate any errors that occur in the
+        # self._cm_input = self._cm_input_def assignment in constructor
+        if name in ["_cm_input", "_cm_input_def"]:
+            return super().__getattribute__(name)
 
-    class Output(_StrReprInOut, ABC, PydanticBaseModel):
-        """Base class for all the cost model outputs."""
+        # treat keys of self._cm_input as attributes of the cost models
+        if name in super().__getattribute__("_cm_input"):
+            return self._cm_input[name]
 
-        # Capital expenditure
-        capex: Annotated[Quant, getppq("MEUR"), AfterValidator(_gtt(0))]
-        # Operational expenditure
-        opex: Annotated[Quant, getppq("MEUR"), AfterValidator(_gtt(0))]
-        # Levelized cost of electricity
-        lcoe: Annotated[Quant, getppq("EUR/MWh"), AfterValidator(_gtt(0))]
-        # Net present value
-        npv: Annotated[Quant, getppq("MEUR")]
-        # Internal rate of return
-        irr: Annotated[Quant, getppq("%")]
+        # default behavior
+        return super().__getattribute__(name)
 
-        model_config = ConfigDict(frozen=True)
+    @property
+    @abstractmethod
+    def _cm_input_def(self) -> dict:  # pragma: no cover
+        """Definition of cost model input."""
+        ...
 
-    def __init__(self):  # pragma: no cover
-        pass
+    def list_input(self) -> dict:
+        """List all inputs of the cost model."""
+        formatted_inputs = {}
+        for key, value in self._cm_input.items():
+            formatted_inputs[key] = {
+                "default": value,
+                "type": type(value),
+                "unit": value.units if isinstance(value, Quant) else None,
+            }
+        return formatted_inputs
+
+    def print_input(self) -> None:
+        """Show all inputs of the cost model."""
+        print(f"{self.__class__.__name__} inputs:")
+        for k, v in self.list_input().items():
+            print(f"  {k}")
+            default = v["default"].m if hasattr(v["default"], "m") else v["default"]
+            print(f"\tDefault: {default}")
+            print(f"\tType: {v['type']}")
+            print(f"\tUnit: {v['unit'] if v['unit'] else 'N/A'}")
+
+    def _set_input(self, **kwargs) -> None:
+        for key, value in kwargs.items():
+            assert key in self._cm_input.keys(), f"Invalid input '{key}'"
+
+            if isinstance(self._cm_input[key], bool):
+                assert isinstance(
+                    value, type(self._cm_input[key])
+                ), f"Invalid type for '{key}', must be {type(self._cm_input[key])}"
+                self._cm_input[key] = value
+            elif isinstance(self._cm_input[key], Enum):
+                if not isinstance(value, Enum):
+                    value = self._cm_input[key].__class__(value)
+                self._cm_input[key] = value
+            elif isinstance(self._cm_input[key], (Quant, Number, np.number)):
+                is_quant_expected = isinstance(self._cm_input[key], Quant)
+                if is_quant_expected:
+                    # the default value is a Quantity and we try to assign units to provided number
+                    units = self._cm_input[key].units
+                    try:
+                        quant = (
+                            value.to(units)
+                            if isinstance(value, Quant)
+                            else Quant(value, units)
+                        )
+                    except pint.errors.DimensionalityError:
+                        raise ValueError(
+                            f"Invalid unit for '{key}'; Expected [{units}] and got [{value.units}]."
+                        )
+                else:
+                    # keep a unitless number; input specification does not expect a unit
+                    quant = value
+                self._cm_input[key] = quant
+            else:
+                raise ValueError(f"Invalid type for '{key}'")
+
+    def run(self, **kwargs) -> dict:
+        self._set_input(**kwargs)
+        return self._run()
 
     @abstractmethod
-    def run(self, mispec: Input) -> Output:  # pragma: no cover
-        """Abstract method to run the cost model.
-
-        Parameters
-        ----------
-        mispec : CostModel.Input
-            Model input specification.
-        """
+    def _run(self, **kwargs) -> dict:  # pragma: no cover
+        """Abstract method to run the cost model."""
         pass
 
-    def grad(
-        self, input_spec: Input, of: str, wrt: list[str], delta: float = 1e-6
-    ) -> dict:
-        for pname in wrt:
-            assert hasattr(input_spec, pname), f"Parameter {pname} not found in input."
-
-        wrt_params = {
-            pname: pval
-            for pname, pval in input_spec.model_dump().items()
-            if pname in wrt
-        }
-
+    def grad(self, of: str, wrt: list[str], delta: float = 1e-6) -> dict:
+        """Compute the gradient of the cost model output with respect to the input parameters."""
         gradients = {}
-        for pname, pval in wrt_params.items():
+        for pname in wrt:
+            assert hasattr(
+                self, pname
+            ), f"Parameter {pname} not found in cost model input."
+            pval = getattr(self, pname)
+
             step = max(
                 abs(pval * delta),
                 delta if pval == 0 else abs(pval) * 1e-6,
             )
-            input_plus = input_spec.model_copy(deep=True)
-            input_minus = input_spec.model_copy(deep=True)
 
-            setattr(input_plus, pname, pval + step)
-            setattr(input_minus, pname, pval - step)
+            output_plus = self.run(**{pname: pval + step})
+            output_minus = self.run(**{pname: pval - step})
+            # reset the input value to the original value
+            self._set_input(**{pname: pval})
 
-            output_plus = self.run(input_plus)
-            output_minus = self.run(input_minus)
-
-            plus_val = output_plus.model_dump()[of]
-            minus_val = output_minus.model_dump()[of]
+            try:
+                plus_val = output_plus[of]
+                minus_val = output_minus[of]
+            except KeyError:
+                raise KeyError(
+                    f"Output '{of}' not found in the cost model. Available outputs: {output_plus.keys()}"
+                )
 
             if hasattr(plus_val, "magnitude"):
                 plus_val = plus_val.magnitude
@@ -142,56 +143,38 @@ class CostModel(ABC):
 
     @staticmethod
     def cashflows(
-        mispec: Input,
+        epice: Quant,
+        inflation: Quant,
         capex: Quant,
         opex: Quant,
         aep: Quant,
-        lifetime: int,
-    ) -> list[float]:
-        annual_revenue = aep * mispec.eprice
-        assert annual_revenue.check(
-            "EUR"
-        ), f"Annual revenue must be in EUR not in {annual_revenue.units}"
+        lifetime: int | Quant,
+    ) -> Quant:
+        annual_revenue = aep * epice
         annual_cashflow = annual_revenue - opex
-        cashflows = [-capex.magnitude] + [
-            (annual_cashflow * ((1 + mispec.inflation) ** (year - 1)))
-            .to_base_units()
-            .magnitude
+        lifetime = lifetime.m if isinstance(lifetime, Quant) else lifetime
+        if not annual_cashflow.check(capex.units):
+            raise ValueError(
+                f"annual_cashflow units {annual_cashflow.units} do not match capex units {capex.units}"
+            )
+        cashflows = [-capex.to_base_units().m] + [
+            (annual_cashflow * ((1 + inflation) ** (year - 1))).to_base_units().m
             for year in range(1, lifetime + 1)
         ]
-        return cashflows
+        return Quant(cashflows, annual_cashflow.units).to_reduced_units()
 
     @staticmethod
-    def lceo(capex: Quant, opex: Quant, aep: Quant, lifetime: int) -> Quant:
-        lceo = (capex + opex * lifetime) / (aep * lifetime / 10**6)
-        assert lceo.check("EUR/Wh")
-        return lceo
+    def lceo(cashflows: Quant, aep: Quant) -> Quant:
+        return Quant(0.0, "EUR/MWh")  # TODO:
 
     @staticmethod
     def irr(cashflows: list[float]) -> Quant:
-        return Quant(npf.irr(cashflows) * 100, "%")
+        if np.isnan(cashflows.m).any():
+            raise ValueError("Cashflows contain NaN values. Cannot compute IRR.")
+        return Quant(npf.irr(cashflows.m) * 100, "%")
 
     @staticmethod
-    def npv(discount, cashflows):
-        return Quant(npf.npv(discount, cashflows), "MEUR")
-
-
-if __name__ == "__main__":
-
-    cmi0 = CostModel.Input(eprice=0.2, inflation=2, lifetime=20)
-    print(cmi0, "\n")
-    cmi1 = CostModel.Input(
-        eprice=Quant(0.2, "EUR/kWh"), inflation=Quant(2, "%"), lifetime=20
-    )
-    assert cmi0 == cmi1
-    assert cmi0.eprice == cmi1.eprice
-    assert cmi0.inflation == cmi1.inflation
-
-    cmo = CostModel.Output(
-        capex=Quant(1.0, "MEUR"),
-        opex=Quant(0.1, "MEUR"),
-        lcoe=Quant(10.0, "EUR/MWh"),
-        npv=Quant(100.0, "MEUR"),
-        irr=Quant(10.0, "%"),
-    )
-    print(cmo)
+    def npv(discount: Quant, cashflows: Quant):
+        if np.isnan(cashflows.m).any():
+            raise ValueError("Cashflows contain NaN values. Cannot compute NPV.")
+        return Quant(npf.npv(discount.to_base_units().m, cashflows.m), "MEUR")

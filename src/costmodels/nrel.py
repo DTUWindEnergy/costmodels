@@ -1,9 +1,8 @@
 from enum import Enum
-from numbers import Number
 
 import numpy as np
-import pint
 
+from costmodels.base import CostModel
 from costmodels.units import Quant
 
 
@@ -13,10 +12,11 @@ class TurbineClass(Enum):
     II = 2
 
 
-class NRELCM:
+class NRELCostModel(CostModel):
 
-    def __init__(self, **kwargs):
-        self._cm_input = {
+    @property
+    def _cm_input_def(self):
+        return {
             "nwt": Quant(np.nan, "count"),
             "machine_rating": Quant(np.nan, "W"),
             "rotor_diameter": Quant(np.nan, "m"),
@@ -31,10 +31,11 @@ class NRELCM:
             "eprice": Quant(0.2, "EUR/kWh"),
             "inflation": Quant(2, "%"),
             "lifetime": Quant(20, "count"),
-            "opex": Quant(0.0, "EUR/kW"),  # TODO: per year?
+            "opex": Quant(np.nan, "EUR/kW"),
+            "aep": Quant(np.nan, "MWh"),
         }
-        self.__set_input(**kwargs)
 
+    def __init__(self, **kwargs):
         from openmdao.api import Problem  # fmt:skip isort:skip
         from costmodels.external.nrel_csm_mass_2015 import (  # fmt:skip isort:skip
             nrel_csm_2015,
@@ -44,41 +45,9 @@ class NRELCM:
         self.prob = Problem(reports=False)
         self.prob.model = nrel_csm_2015()
         self.prob.setup()
-        super().__init__()
+        super().__init__(**kwargs)
 
-    def __getattr__(self, name):
-        if name in super().__getattribute__("_cm_input"):
-            return self._cm_input[name]
-        return super().__getattribute__(name)
-
-    def __set_input(self, **kwargs):
-        for key, value in kwargs.items():
-            assert key in self._cm_input.keys(), f"Invalid input '{key}'"
-
-            if isinstance(self._cm_input[key], (Enum, bool)):
-                assert isinstance(
-                    value, type(self._cm_input[key])
-                ), f"Invalid type for '{key}'"
-                self._cm_input[key] = value
-            elif isinstance(self._cm_input[key], (Quant, Number, np.number)):
-                units = self._cm_input[key].units
-                try:
-                    quant = (
-                        value.to(units)
-                        if isinstance(value, Quant)
-                        else Quant(value, units)
-                    )
-                except pint.errors.DimensionalityError:
-                    raise ValueError(
-                        f"Invalid unit for '{key}'; Expected [{units}] and got [{value.units}]."
-                    )
-                self._cm_input[key] = quant
-            else:
-                raise ValueError(f"Invalid type for '{key}'")
-
-    def run(self, **kwargs):
-        self.__set_input(**kwargs)
-
+    def _run(self):
         self.prob["machine_rating"] = self.machine_rating.to("kW").m
         self.prob["rotor_diameter"] = self.rotor_diameter.m
         self.prob["turbine_class"] = self.turbine_class.value
@@ -95,14 +64,16 @@ class NRELCM:
         wtc = self.prob.model._outputs["turbine_cost"][0]
         capex = Quant(wtc, "EUR") * self.nwt
         opex_total = self.opex * self.machine_rating
-        # cashflows = self.cashflows(self, capex, opex_total, self.aep, self.lifetime)
+        cashflows = self.cashflows(
+            self.eprice, self.inflation, capex, opex_total, self.aep, self.lifetime
+        )
 
         return {
             "capex": capex,
             "opex": opex_total.to_base_units(),
-            # "lcoe": self.lceo(capex, opex_total, self.aep, self.lifetime),
-            # "npv": self.npv(self.inflation.to_base_units().m, cashflows),
-            # "irr": self.irr(cashflows),
+            "lcoe": self.lceo(cashflows, self.aep),
+            "npv": self.npv(self.inflation, cashflows),
+            "irr": self.irr(cashflows),
         }
 
     def _list_inputs(self):
@@ -112,9 +83,9 @@ class NRELCM:
         return self.prob.model.list_outputs(units=True)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
 
-    model = NRELCM(
+    model = NRELCostModel(
         eprice=0.2,
         inflation=2,
         nwt=10,
@@ -128,13 +99,14 @@ if __name__ == "__main__":
         main_bearing_number=Quant(2, "count"),
         crane=True,
         lifetime=20,
-    )
-    cmo = model.run(
         machine_rating=Quant(5000.0, "kW"),
     )
-    print(cmo["opex"])
+    cmo = model.run(
+        opex=Quant(1.0, "EUR/kW"),
+        aep=Quant(10.0, "GWh"),
+    )
+    print(cmo)
 
-    # TODO;
-    # grads = model.grad(cmi, "capex", ("machine_rating",))
-    # assert "machine_rating" in grads.keys()
-    # print(grads)
+    grads = model.grad("capex", ("machine_rating",))
+    assert "machine_rating" in grads.keys()
+    print(grads)

@@ -1,13 +1,11 @@
-import os  # fmt:skip
-
-os.environ["PYDANTIC_ERRORS_INCLUDE_URL"] = "0"
-
-from costmodels.dtu_offshore import DTUOffshoreCM
-from costmodels.minimalistic import MinimalisticCM
-from costmodels.nrel import NRELCM
+from costmodels.dtu_offshore import DTUOffshoreCostModel
+from costmodels.minimalistic import MinimalisticCostModel
+from costmodels.nrel import NRELCostModel
+from costmodels.pv import PVCostModel
 
 __all__ = [
-    "DTUOffshoreCM",
-    "MinimalisticCM",
-    "NRELCM",
+    "DTUOffshoreCostModel",
+    "MinimalisticCostModel",
+    "NRELCostModel",
+    "PVCostModel",
 ]

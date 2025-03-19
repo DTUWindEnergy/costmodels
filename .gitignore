@@ -11,3 +11,4 @@ hydesignp/
 sandbox.py
 .vscode/
 test_pip_install/
+.mypy_cache
