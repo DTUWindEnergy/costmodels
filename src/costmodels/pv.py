@@ -37,20 +37,3 @@ class PVCostModel(CostModel):
             "capex": capex,
             "opex": opex,
         }
-
-
-if __name__ == "__main__":  # pragma: no cover
-    solar_capacity = Quant(150, "MW")
-    pv_cm = PVCostModel(
-        panel_cost=1.1e5,
-        hardware_installation_cost=1e5,
-        inverter_cost=2e4,
-        fixed_onm_cost=4.5e3,
-        dc_ac_ratio=1.5,
-    )
-    pv_cm.print_input()
-
-    output = pv_cm.run(solar_capacity=solar_capacity)
-    print("Output:")
-    print(f"  CAPEX = {output["capex"]:.2f}")
-    print(f"  OPEX = {output["opex"]:.3f}")

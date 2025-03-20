@@ -436,7 +436,7 @@ packages:
 - pypi: .
   name: costmodels
   version: 0.1.0
-  sha256: c844ecd4b790ab7ea18e3c446983d2e96ce4de272d9033793a3a7c197d1dd6c7
+  sha256: 685a2857889930577ae1b65f841336d1120ed1a4d6024beb9ca6a65f07f67139
   requires_dist:
   - numpy>=2.2.2,<3
   - scipy>=1.15.1,<2

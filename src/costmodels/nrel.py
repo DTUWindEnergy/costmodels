@@ -81,32 +81,3 @@ class NRELCostModel(CostModel):
 
     def _list_outputs(self):
         return self.prob.model.list_outputs(units=True)
-
-
-if __name__ == "__main__":  # pragma: no cover
-
-    model = NRELCostModel(
-        eprice=0.2,
-        inflation=2,
-        nwt=10,
-        rotor_diameter=Quant(126.0, "m"),
-        turbine_class=TurbineClass.II,
-        tower_length=Quant(90.0, "m"),
-        blade_number=Quant(3, "count"),
-        blade_has_carbon=False,
-        max_tip_speed=Quant(80.0, "m/s"),
-        max_efficiency=Quant(90, "%"),
-        main_bearing_number=Quant(2, "count"),
-        crane=True,
-        lifetime=20,
-        machine_rating=Quant(5000.0, "kW"),
-    )
-    cmo = model.run(
-        opex=Quant(1.0, "EUR/kW"),
-        aep=Quant(10.0, "GWh"),
-    )
-    print(cmo)
-
-    grads = model.grad("capex", ("machine_rating",))
-    assert "machine_rating" in grads.keys()
-    print(grads)

@@ -1,3 +1,4 @@
+import warnings
 from abc import ABC, abstractmethod
 from enum import Enum
 from numbers import Number
@@ -97,11 +98,11 @@ class CostModel(ABC):
         return self._run()
 
     @abstractmethod
-    def _run(self, **kwargs) -> dict:  # pragma: no cover
+    def _run(self) -> dict:  # pragma: no cover
         """Abstract method to run the cost model."""
         pass
 
-    def grad(self, of: str, wrt: list[str], delta: float = 1e-6) -> dict:
+    def grad(self, of: str, wrt: list[str] | tuple[str], delta: float = 1e-6) -> dict:
         """Compute the gradient of the cost model output with respect to the input parameters."""
         gradients = {}
         for pname in wrt:
@@ -161,20 +162,29 @@ class CostModel(ABC):
             (annual_cashflow * ((1 + inflation) ** (year - 1))).to_base_units().m
             for year in range(1, lifetime + 1)
         ]
-        return Quant(cashflows, annual_cashflow.units).to_reduced_units()
+        qcashflows = Quant(cashflows, annual_cashflow.units)
+        qcashflows.ito_reduced_units()
+        return qcashflows
 
     @staticmethod
     def lceo(cashflows: Quant, aep: Quant) -> Quant:
         return Quant(0.0, "EUR/MWh")  # TODO:
 
+    NAN_RETURN_WARN = (
+        "Cashflows contain NaN values. Returning NaN for $var. "
+        "The input data is likely missing values like AEP or OPEX."
+    )
+
     @staticmethod
-    def irr(cashflows: list[float]) -> Quant:
+    def irr(cashflows: Quant) -> Quant:
         if np.isnan(cashflows.m).any():
-            raise ValueError("Cashflows contain NaN values. Cannot compute IRR.")
+            warnings.warn(CostModel.NAN_RETURN_WARN.replace("$var", "IRR"))
+            return Quant(np.nan, "%")
         return Quant(npf.irr(cashflows.m) * 100, "%")
 
     @staticmethod
     def npv(discount: Quant, cashflows: Quant):
         if np.isnan(cashflows.m).any():
-            raise ValueError("Cashflows contain NaN values. Cannot compute NPV.")
-        return Quant(npf.npv(discount.to_base_units().m, cashflows.m), "MEUR")
+            warnings.warn(CostModel.NAN_RETURN_WARN.replace("$var", "NPV"))
+            return Quant(np.nan, "MEUR")
+        return Quant(npf.npv(discount.to_base_units().m, cashflows.m), cashflows.units)

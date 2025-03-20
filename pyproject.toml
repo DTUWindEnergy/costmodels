@@ -62,3 +62,8 @@ pytest = "pytest --cov-report=term-missing:skip-covered --cov-report=html --cov=
 [tool.pixi.environments]
 test = { features = ["test"] }
 # examples = { features = ["examples"] }
+
+[tool.mypy]
+files = "src/costmodels"
+exclude = "src/costmodels/external"
+ignore_missing_imports = true
