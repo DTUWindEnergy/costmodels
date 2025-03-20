@@ -42,33 +42,6 @@ class DTUOffshoreCostModel(CostModel):
             "eprice": Quant(np.nan, "EUR/kWh"),
         }
 
-    def set_inputs(self, **kwargs):
-        nwt = kwargs["nwt"]
-
-        for k, v in kwargs.items():
-            vmag = v.m if isinstance(v, Quant) else v
-            if isinstance(v, Quant) and str(v.u) == "%":
-                vmag /= 100
-            if (
-                k
-                in (
-                    "rated_power",
-                    "rotor_speed",
-                    "rotor_diameter",
-                    "hub_height",
-                    "water_depth",
-                )
-                and np.size(v) == 1
-            ):
-                setattr(self, k, np.tile(vmag, nwt))
-                continue
-            if k in ("nwt", "lifetime"):
-                setattr(self, k, int(vmag))
-                continue
-            if k == "decline_factor":
-                vmag *= -1
-            setattr(self, k, vmag)
-
     def HubStructureMass(
         self, mass_coeff=0.5, mass_intercept=6000.0, user_exp=2.5
     ) -> float:
@@ -1206,9 +1179,35 @@ class DTUOffshoreCostModel(CostModel):
     def NVP_abex(self):
         return self.abexDiscount() / self.LCOENumerator()
 
-    def _run(self):
+    def reformat_input(self, **kwargs):
+        nwt = kwargs["nwt"]
 
-        print(self._cm_input)
+        for k, v in kwargs.items():
+            vmag = v.m if isinstance(v, Quant) else v
+            if isinstance(v, Quant) and str(v.u) == "%":
+                vmag /= 100
+            if (
+                k
+                in (
+                    "rated_power",
+                    "rotor_speed",
+                    "rotor_diameter",
+                    "hub_height",
+                    "water_depth",
+                )
+                and np.size(v) == 1
+            ):
+                setattr(self, k, np.tile(vmag, nwt))
+                continue
+            if k in ("nwt", "lifetime"):
+                setattr(self, k, int(vmag))
+                continue
+            if k == "decline_factor":
+                vmag *= -1
+            setattr(self, k, vmag)
+
+    def _run(self):
+        self.reformat_input(**self._cm_input)
 
         self.rotor_area = np.pi * (self.rotor_diameter / 2) ** 2
         self.specific_power = 1_000_000 * self.rated_power / self.rotor_area
@@ -1239,7 +1238,8 @@ class DTUOffshoreCostModel(CostModel):
         wt_cost = self.TotalCostCalculation()
 
         cashflows = self.cashflows(
-            mispec,
+            self._cm_input["eprice"],
+            self._cm_input["inflation"],
             Quant(CAPEXNet, "EUR"),
             Quant(opexNet, "EUR"),
             Quant(AEPNet / self.lifetime, "MWh"),
@@ -1260,6 +1260,6 @@ class DTUOffshoreCostModel(CostModel):
             "lcoe": Quant(LCOE, "EUR/MWh"),
             "capex": Quant(CAPEXNet, "MEUR"),
             "opex": Quant(opexNet, "MEUR"),
-            "npv": self.npv(self.RealWACC(), cashflows),
+            "npv": self.npv(Quant(self.RealWACC() * 100, "%"), cashflows),
             "irr": self.irr(cashflows),
         }
