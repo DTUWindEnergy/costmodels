@@ -11,10 +11,9 @@ class MinimalisticCostModel(CostModel):
     Minimalistic Prediction Model to Determine Energy Production and Costs of
     Offshore Wind Farms. Energies, 14(2), Article 448.
     https://doi.org/10.3390/en14020448"
-    """
 
-    class Input:
-        """Parameters:
+    Parameters:
+
         Pg : float, optional
             Nameplate capacity (generator power) in W. The default is 7.0*10**6.
         Nturb : float, optional
@@ -45,64 +44,64 @@ class MinimalisticCostModel(CostModel):
         z0 : Roughness length [m]
         kappa : Von Karman constant
         f : Coriolis parameter at latitude 55 degrees
-        """
+    """
 
-        Pg: float = 7.0 * 10**6
-        Nturb: float = 37
-        Area: float = 65 * 10**6
-        D: float = 154
-        depth: float = 46.75
-        L: float = 8
-        AA: list = [
-            7.81993787,
-            6.5474264,
-            6.70129293,
-            8.28121347,
-            9.73116453,
-            9.2493092,
-            6.96107307,
-            3.1630036,
-            3.76551013,
-            4.6669416,
-            4.5387168,
-            7.1521344,
-            7.81993787,
-        ]
-        Prop_A: list = [
-            1.23102344,
-            2.06216461,
-            5.10379159,
-            26.0662667,
-            47.89597244,
-            12.82908865,
-            2.08892594,
-            0.48890485,
-            0.2342071,
-            0.43738423,
-            0.44136423,
-            1.12090622,
-            1.23102344,
-        ]  # Probability of A
-        kw: float = 2.72
-        H: float = 106.7
-        CT: float = 0.75
-        CP: float = 0.48
-        Lref: float = 20.0
-        rho: float = 1.25
-        Uin: float = 4.0
-        Uout: float = 25.0
-        YO: int  # years of operation
-        z0: float = 0.0001
-        kappa: float = 0.4
-        f: float = 1.2e-4 * np.exp(4.0)
+    @property
+    def _cm_input_def(self):
+        return {
+            "Pg": 7.0 * 10**6,
+            "Nturb": 37,
+            "Area": 65 * 10**6,
+            "D": 154,
+            "depth": 46.75,
+            "L": 8,
+            "AA": [
+                7.81993787,
+                6.5474264,
+                6.70129293,
+                8.28121347,
+                9.73116453,
+                9.2493092,
+                6.96107307,
+                3.1630036,
+                3.76551013,
+                4.6669416,
+                4.5387168,
+                7.1521344,
+                7.81993787,
+            ],
+            "Prop_A": [
+                1.23102344,
+                2.06216461,
+                5.10379159,
+                26.0662667,
+                47.89597244,
+                12.82908865,
+                2.08892594,
+                0.48890485,
+                0.2342071,
+                0.43738423,
+                0.44136423,
+                1.12090622,
+                1.23102344,
+            ],  # Probability of A
+            "kw": 2.72,
+            "H": 106.7,
+            "CT": 0.75,
+            "CP": 0.48,
+            "Lref": 20.0,
+            "rho": 1.25,
+            "Uin": 4.0,
+            "Uout": 25.0,
+            "z0": 0.0001,
+            "kappa": 0.4,
+            "f": 1.2e-4 * np.exp(4.0),
+            "eprice": Quant(0.2, "EUR/kWh"),
+            "inflation": Quant(8, "%"),
+            "lifetime": 20,
+        }
 
-    class Output:
-        ...
-        # aep: Annotated[
-        #     Quant, PydanticPintQuantity("GWh"), Field(gt=PydanticPintValue(0, "Wh"))
-        # ]
-
-    def run(self, mispec: Input) -> Output:
+    def _run(self) -> dict:
         """Run minimalistic cost model.
 
         Parameters
@@ -116,28 +115,28 @@ class MinimalisticCostModel(CostModel):
             Model output specification.
         """
 
-        A_average = sum(np.asarray(mispec.AA) * np.asarray(mispec.Prop_A)) / sum(
-            np.asarray(mispec.Prop_A)
+        A_average = sum(np.asarray(self.AA) * np.asarray(self.Prop_A)) / sum(
+            np.asarray(self.Prop_A)
         )
 
-        CT = mispec.CT
-        CP = mispec.CP
-        Lref = mispec.Lref
-        rho = mispec.rho
-        Uin = mispec.Uin
-        Uout = mispec.Uout
-        YO = mispec.YO
-        z0 = mispec.z0
-        kappa = mispec.kappa
-        f = mispec.f
-        Pg = mispec.Pg
-        Nturb = mispec.Nturb
-        Area = mispec.Area
-        D = mispec.D
-        depth = mispec.depth
-        L = mispec.L
-        kw = mispec.kw
-        H = mispec.H
+        CT = self.CT
+        CP = self.CP
+        Lref = self.Lref
+        rho = self.rho
+        Uin = self.Uin
+        Uout = self.Uout
+        YO = self.lifetime
+        z0 = self.z0
+        kappa = self.kappa
+        f = self.f
+        Pg = self.Pg
+        Nturb = self.Nturb
+        Area = self.Area
+        D = self.D
+        depth = self.depth
+        L = self.L
+        kw = self.kw
+        H = self.H
 
         # Derived input data
         Ur = (8 * Pg / (np.pi * rho * CP * D**2)) ** (1 / 3)
@@ -253,19 +252,22 @@ class MinimalisticCostModel(CostModel):
         OPEXtot = OPEX * YO
         aep_Wh = Pg * (365 * 24) * ((Nturb - Nrow) * eta + Nrow * eta0)
         cashflows = self.cashflows(
-            mispec, Quant(CAPEX, "EUR"), Quant(OPEX, "EUR"), Quant(aep_Wh, "Wh"), YO
+            self.eprice,
+            self.inflation,
+            Quant(CAPEX, "EUR"),
+            Quant(OPEX, "EUR"),
+            Quant(aep_Wh, "Wh"),
+            YO,
         )
 
-        return self.Output(
-            capex=Quant(CAPEX / 10**6, "MEUR"),
-            opex=Quant(OPEXtot / 10**6, "MEUR"),
-            aep=Quant(aep_Wh / 10**9, "GWh"),
-            lcoe=self.lceo(
-                Quant(CAPEX, "EUR"), Quant(OPEX, "EUR"), Quant(aep_Wh, "Wh"), YO
-            ),
-            irr=self.irr(cashflows),
-            npv=self.npv(mispec.inflation.to_base_units().m, cashflows),
-        )
+        return {
+            "capex": Quant(CAPEX / 10**6, "MEUR"),
+            "opex": Quant(OPEXtot / 10**6, "MEUR"),
+            "aep": Quant(aep_Wh / 10**9, "GWh"),
+            "lcoe": self.lceo(cashflows, Quant(aep_Wh, "Wh")),
+            "irr": self.irr(cashflows),
+            "npv": self.npv(self.inflation, cashflows),
+        }
 
 
 if __name__ == "__main__":
