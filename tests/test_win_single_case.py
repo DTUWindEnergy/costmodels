@@ -48,7 +48,7 @@ def test_win_single_case():
     cm = DTUOCM(**adaptedp)
 
     # run the model
-    results: DTUOCM.Output = cm.run()
+    results = cm.run()
     # run model with original excel
     input_map = dtu_offshore_cm_input_map(**params)
     output_map = dtu_offshore_cm_output_map()
@@ -60,7 +60,7 @@ def test_win_single_case():
         output_map=output_map,
     )
     np.testing.assert_allclose(
-        excel_result["OPEX net (EURO)"], results.opex.to("MEUR").m
+        excel_result["OPEX net (EURO)"], results["opex"].to("MEUR").m
     )
 
 
