@@ -1,10 +1,12 @@
-import numpy as np # fmt: skip
+import numpy as np  # fmt: skip
+
 np.random.seed(42)
 import xarray as xr
-from scipy.optimize import minimize
-from py_wake.site import XRSite
 from py_wake.examples.data.hornsrev1 import V80
 from py_wake.literature.gaussian_models import Bastankhah_PorteAgel_2014
+from py_wake.site import XRSite
+from scipy.optimize import minimize
+
 from costmodels import NRELCostModel
 from costmodels.units import Quant
 
@@ -70,6 +72,7 @@ def objective(dv):
     )
     return -npv
 
+
 def spacing_constraint_between_turbines(dv):
     wtx = dv[: len(dv) // 2]
     wty = dv[len(dv) // 2 :]
@@ -97,5 +100,6 @@ opt_x = res.x[: len(res.x) // 2]
 opt_y = res.x[len(res.x) // 2 :]
 flow_map = wfm(opt_x, opt_y, time=[0]).flow_map()
 flow_map.plot_wake_map()
-import matplotlib.pyplot as plt # fmt:skip
+import matplotlib.pyplot as plt  # fmt:skip
+
 plt.show()
