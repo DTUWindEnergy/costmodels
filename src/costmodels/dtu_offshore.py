@@ -15,11 +15,34 @@ class Foundation(Enum):
 
 
 class DTUOffshoreCostModel(CostModel):
+    """
+    Parameters:
+        rated_power: Rated power of the wind turbine.
+        rotor_speed: Speed of the rotor.
+        rotor_diameter: Diameter of the rotor.
+        hub_height: Height of the tower.
+        foundation_option: Option for foundation (0: none, 1: monopile, 2: gravity, 3: jacket, 4: floating mockup)
+        water_depth: Depth of water for offshore installation.
+        currency: Currency for financial calculations ('DKK', 'EURO', 'DKK/KW', 'EURO/KW')
+        eur_to_dkk: Rate of change of Dkk to Euro
+        wacc: Weighted Average Cost of Capital in nominal terms.
+        devex (float or None): Development expenditures.
+        decline_factor (float): Annual Energy Production decline factor.
+        inflation (float): Inflation rate.
+        project_lifetime (int): Project lifespan in years.
+        opex (float or None): Operational expenditures.
+        abex (float or None): Asset-based expenditures.
+        capacity_factor (float or None): Capacity factor.
+        profit: Profit margin.
+        AEP (float, array): Annual Energy Production, from Pywake.
+        nwt (int or None): Number of wind turbines.
+        electrical_cost (int): Electrical infrastructure cost in MEURO/MW
+    """
 
     @property
     def _cm_input_def(self) -> dict:
         return {
-            "rated_power": Quant(np.nan, "kW"),
+            "rated_power": Quant(np.nan, "MW"),
             "rotor_speed": Quant(np.nan, "rpm"),
             "rotor_diameter": Quant(np.nan, "m"),
             "hub_height": Quant(np.nan, "m"),

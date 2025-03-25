@@ -162,7 +162,7 @@ class CostModel(ABC):
             (annual_cashflow * ((1 + inflation) ** (year - 1))).to_base_units().m
             for year in range(1, lifetime + 1)
         ]
-        qcashflows = Quant(cashflows, annual_cashflow.units)
+        qcashflows = Quant(cashflows, "EUR")
         qcashflows.ito_reduced_units()
         return qcashflows
 
