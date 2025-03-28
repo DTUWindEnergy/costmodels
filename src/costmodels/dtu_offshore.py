@@ -1041,7 +1041,7 @@ class DTUOffshoreCostModel(CostModel):
             4: 1250 * self.eur_to_dkk * 1000,
         }
         foundation_cost = costs.get(
-            self.foundation_option,
+            self.foundation_option.value,
             1000 * (self.water_depth**2) + 100000 * self.water_depth + 1500000,
         )
         return self.convert_currency(foundation_cost)
