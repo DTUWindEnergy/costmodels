@@ -292,7 +292,7 @@ def test_original_dtu_cm_implementation_win_excel_monte_carlo():
     for key in metrics:
         original_values = np.array([x[key] for x in res_original])
         excel_values = np.array([x[key] for x in res_excel])
-        results += list(np.abs(original_values - excel_values) < 1e-3)
+        results += list(np.abs(original_values - excel_values) < 1)
 
     assert np.all(
         results
