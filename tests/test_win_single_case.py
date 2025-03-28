@@ -117,7 +117,7 @@ def test_monte_carlo_excel_comparison():
         capacity_factor=np.linspace(0.3, 0.6, num),
         decline_factor=np.linspace(-0.02, -0.01, num),
         nwt=np.arange(10, 400, 40),
-        project_lifetime=np.arange(16, 25),
+        project_lifetime=np.arange(15, 25),
         wacc=np.linspace(0.05, 0.1, num),
         inflation=np.linspace(0.01, 0.1, num),
         opex=np.linspace(10, 40, num),

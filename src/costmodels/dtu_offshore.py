@@ -1034,7 +1034,7 @@ class DTUOffshoreCostModel(CostModel):
 
     def AEP_WindFarm(self) -> float:
         # Ensure either AEP or capacity_factor is provided and AEP is not NaN
-        if (np.isnan(self.aep) and np.isnan(self.capacity_factor)).any():
+        if np.isnan(self.aep).any() and np.isnan(self.capacity_factor).any():
             raise ValueError(
                 "Either Capacity Factor (capacity_factor) or AEP must be provided."
             )
