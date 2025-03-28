@@ -1,5 +1,6 @@
 import os
 import platform
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -11,7 +12,6 @@ from .utils.DTU_CostModel_org import DTUOffshoreCostModel
 from .utils.winutil import (
     dtu_offshore_cm_input_map,
     dtu_offshore_cm_output_map,
-    run_dtu_offshore_cost_model_excel,
     run_excel,
 )
 
@@ -101,118 +101,8 @@ def test_original_dtu_cm_implementation_win_excel():
     np.testing.assert_allclose(results["OPEX net (EURO)"], res["OPEX net (EURO)"])
 
 
-# @pytest.mark.skipif(platform.system() != "Windows", reason="Only runs on Windows")
-# def test_monte_carlo_excel_comparison():
-#     n_samples = 100
-#     num = 10
-#     sp = 350
-#     clearance = 20
-#     sample_parameters = dict(
-#         rated_power=np.linspace(1, 20, num),
-#         rotor_diameter=np.sqrt(4 * np.linspace(1, 20, num) * 10**6 / (np.pi * sp)),
-#         rotor_speed=np.linspace(5, 10, num),
-#         hub_height=clearance
-#         + np.sqrt(4 * np.linspace(1, 20, num) * 10**6 / (np.pi * sp)) / 2,
-#         profit=np.linspace(0.01, 0.1, num),
-#         capacity_factor=np.linspace(0.3, 0.6, num),
-#         decline_factor=np.linspace(-0.02, -0.01, num),
-#         nwt=np.arange(10, 400, 40),
-#         project_lifetime=np.arange(15, 25),
-#         wacc=np.linspace(0.05, 0.1, num),
-#         inflation=np.linspace(0.01, 0.1, num),
-#         opex=np.linspace(10, 40, num),
-#         devex=np.linspace(0, 20, num),
-#         abex=np.linspace(0, 10, num),
-#         water_depth=np.linspace(0, 100, num),
-#         electrical_cost=np.linspace(0, 10, num),
-#         foundation_option=np.arange(5),
-#     )
-
-#     shape = 16 * (10,) + (5,)
-#     size = 10**16 * 5
-
-#     np.random.seed(42)
-#     sample_nos = np.random.uniform(high=size, size=n_samples)
-#     parameter_idxs = [
-#         np.unravel_index(int(sample_no), shape) for sample_no in sample_nos
-#     ]
-
-#     res_new = []
-#     res_excel = []
-#     excel_file = Path(os.path.dirname(__file__), "data/WTcostmodel_v12.xlsx")
-#     assert excel_file.exists()
-
-#     for parameter_idx in parameter_idxs:
-#         params = {
-#             key: sample_parameters[key][idx]
-#             for key, idx in zip(sample_parameters.keys(), parameter_idx)
-#         }
-
-#         input_map = dtu_offshore_cm_input_map(**params)
-#         output_map = dtu_offshore_cm_output_map()
-#         excel_file = Path(os.path.dirname(__file__), "data/WTcostmodel_v12.xlsx")
-#         assert excel_file.exists()
-#         excel_result = run_excel(
-#             file_path=excel_file,
-#             input_map=input_map,
-#             output_map=output_map,
-#         )
-#         res_excel.append(excel_result)
-
-#         adapted_params = params.copy()
-#         for key in ["decline_factor", "profit", "capacity_factor", "wacc", "inflation"]:
-#             adapted_params[key] *= -100 if key == "decline_factor" else 100
-#         adapted_params["lifetime"] = adapted_params.pop("project_lifetime")
-#         if "eprice" not in adapted_params:
-#             adapted_params["eprice"] = 0.2
-
-#         new_cm = DTUOCM(**adapted_params)
-#         results_new = new_cm.run()
-
-#         new_results_mapped = {
-#             "AEP net (MWh)": results_new["aep_net"],
-#             "AEP discount (MWh)": results_new["aep_discount"],
-#             "DEVEX net (EURO)": results_new["devex_net"],
-#             "DEVEX discount (EURO)": results_new["devex_discount"],
-#             "CAPEX net (EURO)": results_new["capex"].to("MEUR").m,
-#             "CAPEX discount (EURO)": results_new["capex_discount"],
-#             "OPEX net (EURO)": results_new["opex"].to("MEUR").m,
-#             "OPEX discount (EURO)": results_new["opex_discount"],
-#             "LCOE (EURO/MWh)": results_new["lcoe"].to("EUR/MWh").m,
-#         }
-#         res_new.append(new_results_mapped)
-
-#     metrics = [
-#         "AEP net (MWh)",
-#         "AEP discount (MWh)",
-#         "DEVEX net (EURO)",
-#         "DEVEX discount (EURO)",
-#         "CAPEX net (EURO)",
-#         "CAPEX discount (EURO)",
-#         "OPEX net (EURO)",
-#         "OPEX discount (EURO)",
-#         "LCOE (EURO/MWh)",
-#     ]
-
-#     results = []
-#     for key in metrics:
-#         new_values = np.array([x[key] for x in res_new])
-#         excel_values = np.array([x[key] for x in res_excel])
-#         results += list(np.abs(new_values - excel_values) < 1e-3)
-#         # np.testing.assert_allclose(
-#         #     excel_values,
-#         #     new_values,
-#         #     rtol=1e-6,
-#         #     err_msg=f"Values for {key} don't match between implementations",
-#         # )
-
-#     assert np.all(
-#         results
-#     ), f"{np.sum(results)} out of {len(results)} values are not close enough"
-
-
-@pytest.mark.skipif(platform.system() != "Windows", reason="Only run on Windows")
-def test_original_dtu_cm_implementation_win_excel_monte_carlo():
+@pytest.mark.skipif(platform.system() != "Windows", reason="Only runs on Windows")
+def test_monte_carlo_excel_comparison():
     n_samples = 100
     num = 10
     sp = 350
@@ -247,8 +137,6 @@ def test_original_dtu_cm_implementation_win_excel_monte_carlo():
         np.unravel_index(int(sample_no), shape) for sample_no in sample_nos
     ]
 
-    res_original = []
-    res_excel = []
     excel_file = Path(os.path.dirname(__file__), "data/WTcostmodel_v12.xlsx")
     assert excel_file.exists()
 
@@ -264,8 +152,6 @@ def test_original_dtu_cm_implementation_win_excel_monte_carlo():
         "LCOE (EURO/MWh)",
     ]
 
-    import warnings
-
     failed = False
     for parameter_idx in parameter_idxs:
         params = {
@@ -273,24 +159,42 @@ def test_original_dtu_cm_implementation_win_excel_monte_carlo():
             for key, idx in zip(sample_parameters.keys(), parameter_idx)
         }
 
-        # Run original DTU model implementation
-        cm = DTUOffshoreCostModel(**params)
-        results = cm.run()
-        res_original.append(results)
-
-        # Run Excel implementation
         input_map = dtu_offshore_cm_input_map(**params)
         output_map = dtu_offshore_cm_output_map()
+        excel_file = Path(os.path.dirname(__file__), "data/WTcostmodel_v12.xlsx")
+        assert excel_file.exists()
         excel_result = run_excel(
             file_path=excel_file,
             input_map=input_map,
             output_map=output_map,
-            reuse_excel=True,
         )
-        res_excel.append(excel_result)
+        # res_excel.append(excel_result)
+
+        adapted_params = params.copy()
+        for key in ["decline_factor", "profit", "capacity_factor", "wacc", "inflation"]:
+            adapted_params[key] *= -100 if key == "decline_factor" else 100
+        adapted_params["lifetime"] = adapted_params.pop("project_lifetime")
+        if "eprice" not in adapted_params:
+            adapted_params["eprice"] = 0.2
+
+        new_cm = DTUOCM(**adapted_params)
+        results_new = new_cm.run()
+
+        new_results_mapped = {
+            "AEP net (MWh)": results_new["aep_net"],
+            "AEP discount (MWh)": results_new["aep_discount"],
+            "DEVEX net (EURO)": results_new["devex_net"],
+            "DEVEX discount (EURO)": results_new["devex_discount"],
+            "CAPEX net (EURO)": results_new["capex"].to("MEUR").m,
+            "CAPEX discount (EURO)": results_new["capex_discount"],
+            "OPEX net (EURO)": results_new["opex"].to("MEUR").m,
+            "OPEX discount (EURO)": results_new["opex_discount"],
+            "LCOE (EURO/MWh)": results_new["lcoe"].to("EUR/MWh").m,
+        }
+        # res_new.append(new_results_mapped)
 
         for key in metrics:
-            org_k_val = results[key]
+            org_k_val = new_results_mapped[key]
             if "AEP" in key:
                 org_k_val = org_k_val * params["project_lifetime"]
             excel_k_val = excel_result[key]
@@ -304,3 +208,100 @@ def test_original_dtu_cm_implementation_win_excel_monte_carlo():
     from .utils.winutil import ExcelManager
 
     ExcelManager.close_app()
+
+
+# Works , no need for testing it all the time !!!
+# Works , no need for testing it all the time !!!
+# Works , no need for testing it all the time !!!
+
+# @pytest.mark.skipif(platform.system() != "Windows", reason="Only run on Windows")
+# def test_original_dtu_cm_implementation_win_excel_monte_carlo():
+#     n_samples = 100
+#     num = 10
+#     sp = 350
+#     clearance = 20
+#     sample_parameters = dict(
+#         rated_power=np.linspace(1, 20, num),
+#         rotor_diameter=np.sqrt(4 * np.linspace(1, 20, num) * 10**6 / (np.pi * sp)),
+#         rotor_speed=np.linspace(5, 10, num),
+#         hub_height=clearance
+#         + np.sqrt(4 * np.linspace(1, 20, num) * 10**6 / (np.pi * sp)) / 2,
+#         profit=np.linspace(0.01, 0.1, num),
+#         capacity_factor=np.linspace(0.3, 0.6, num),
+#         decline_factor=np.linspace(-0.02, -0.01, num),
+#         nwt=np.arange(10, 400, 40),
+#         project_lifetime=np.arange(15, 25),
+#         wacc=np.linspace(0.05, 0.1, num),
+#         inflation=np.linspace(0.01, 0.1, num),
+#         opex=np.linspace(10, 40, num),
+#         devex=np.linspace(0, 20, num),
+#         abex=np.linspace(0, 10, num),
+#         water_depth=np.linspace(0, 100, num),
+#         electrical_cost=np.linspace(0, 10, num),
+#         foundation_option=np.arange(5),
+#     )
+
+#     shape = 16 * (10,) + (5,)
+#     size = 10**16 * 5
+
+#     np.random.seed(42)
+#     sample_nos = np.random.uniform(high=size, size=n_samples)
+#     parameter_idxs = [
+#         np.unravel_index(int(sample_no), shape) for sample_no in sample_nos
+#     ]
+
+#     res_original = []
+#     res_excel = []
+#     excel_file = Path(os.path.dirname(__file__), "data/WTcostmodel_v12.xlsx")
+#     assert excel_file.exists()
+
+#     metrics = [
+#         "AEP net (MWh)",
+#         "AEP discount (MWh)",
+#         "DEVEX net (EURO)",
+#         "DEVEX discount (EURO)",
+#         "CAPEX net (EURO)",
+#         "CAPEX discount (EURO)",
+#         "OPEX net (EURO)",
+#         "OPEX discount (EURO)",
+#         "LCOE (EURO/MWh)",
+#     ]
+
+#     failed = False
+#     for parameter_idx in parameter_idxs:
+#         params = {
+#             key: sample_parameters[key][idx]
+#             for key, idx in zip(sample_parameters.keys(), parameter_idx)
+#         }
+
+#         # Run original DTU model implementation
+#         cm = DTUOffshoreCostModel(**params)
+#         results = cm.run()
+#         res_original.append(results)
+
+#         # Run Excel implementation
+#         input_map = dtu_offshore_cm_input_map(**params)
+#         output_map = dtu_offshore_cm_output_map()
+#         excel_result = run_excel(
+#             file_path=excel_file,
+#             input_map=input_map,
+#             output_map=output_map,
+#             reuse_excel=True,
+#         )
+#         res_excel.append(excel_result)
+
+#         for key in metrics:
+#             org_k_val = results[key]
+#             if "AEP" in key:
+#                 org_k_val = org_k_val * params["project_lifetime"]
+#             excel_k_val = excel_result[key]
+#             if (np.abs(org_k_val - excel_k_val) > 1).any():
+#                 warnings.warn(
+#                     f"Warning: {key} values are not close enough. Original: {org_k_val}, Excel: {excel_k_val}; Parameters: {params}"
+#                 )
+#                 failed = True
+
+#     assert not failed
+#     from .utils.winutil import ExcelManager
+
+#     ExcelManager.close_app()
