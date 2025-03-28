@@ -2,6 +2,7 @@ formatting:
   image: ghcr.io/prefix-dev/pixi:latest
   stage: test
   script:
+    - pixi global install git
     - pixi run -e test pre-commit run --all-files
   tags:
     - linux

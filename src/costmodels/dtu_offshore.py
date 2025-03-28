@@ -1034,15 +1034,14 @@ class DTUOffshoreCostModel(CostModel):
 
     def AEP_WindFarm(self) -> float:
         # Ensure either AEP or capacity_factor is provided and AEP is not NaN
-        if self.aep is None and self.capacity_factor is None:
+        if np.isnan(self.aep) and np.isnan(self.capacity_factor):
             raise ValueError(
                 "Either Capacity Factor (capacity_factor) or AEP must be provided."
             )
 
-        if self.aep is not None:
+        if not np.isnan(self.aep):
             AEP_farm = np.sum(self.aep)
-
-        elif self.capacity_factor is not None:
+        elif not np.isnan(self.capacity_factor):
             AEP_farm = np.sum(self.capacity_factor * self.rated_power * (365 * 24))
 
         return AEP_farm
