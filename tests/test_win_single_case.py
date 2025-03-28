@@ -291,7 +291,7 @@ def test_original_dtu_cm_implementation_win_excel_monte_carlo():
         for key in metrics:
             org_k_val = results[key]
             excel_k_val = excel_result[key]
-            if (np.abs(org_k_val - excel_k_val) < 1).any():
+            if (np.abs(org_k_val - excel_k_val) > 1).any():
                 warnings.warn(
                     f"Warning: {key} values are not close enough. Original: {org_k_val}, Excel: {excel_k_val}; Parameters: {params}"
                 )
