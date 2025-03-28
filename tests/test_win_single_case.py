@@ -11,6 +11,7 @@ from .utils.DTU_CostModel_org import DTUOffshoreCostModel
 from .utils.winutil import (
     dtu_offshore_cm_input_map,
     dtu_offshore_cm_output_map,
+    run_dtu_offshore_cost_model_excel,
     run_excel,
 )
 
@@ -98,3 +99,110 @@ def test_original_dtu_cm_implementation_win_excel():
     assert excel_file.exists()
     res = run_excel(file_path=excel_file, input_map=input_map, output_map=output_map)
     np.testing.assert_allclose(results["OPEX net (EURO)"], res["OPEX net (EURO)"])
+
+
+@pytest.mark.skipif(platform.system() != "Windows", reason="Only runs on Windows")
+def test_monte_carlo_excel_comparison():
+    n_samples = 100
+    num = 10
+    sp = 350
+    clearance = 20
+
+    sample_parameters = dict(
+        rated_power=np.linspace(1, 20, num),
+        rotor_diameter=np.sqrt(4 * np.linspace(1, 20, num) * 10**6 / (np.pi * sp)),
+        rotor_speed=np.linspace(5, 10, num),
+        hub_height=clearance
+        + np.sqrt(4 * np.linspace(1, 20, num) * 10**6 / (np.pi * sp)) / 2,
+        profit=np.linspace(0.01, 0.1, num),
+        capacity_factor=np.linspace(0.3, 0.6, num),
+        decline_factor=np.linspace(-0.02, -0.01, num),
+        nwt=np.arange(10, 400, 40),
+        project_lifetime=np.arange(16, 26),
+        wacc=np.linspace(0.05, 0.1, num),
+        inflation=np.linspace(0.01, 0.1, num),
+        opex=np.linspace(10, 40, num),
+        devex=np.linspace(0, 20, num),
+        abex=np.linspace(0, 10, num),
+        water_depth=np.linspace(0, 100, num),
+        electrical_cost=np.linspace(0, 10, num),
+        foundation_option=np.arange(5),
+    )
+
+    shape = 16 * (10,) + (5,)
+    size = 10**16 * 5
+
+    np.random.seed(42)
+    sample_nos = np.random.uniform(high=size, size=n_samples)
+    parameter_idxs = [
+        np.unravel_index(int(sample_no), shape) for sample_no in sample_nos
+    ]
+
+    res_new = []
+    res_excel = []
+
+    for parameter_idx in parameter_idxs:
+        params = {
+            key: sample_parameters[key][idx]
+            for key, idx in zip(sample_parameters.keys(), parameter_idx)
+        }
+
+        excel_results = run_dtu_offshore_cost_model_excel(**params)
+        res_excel.append(excel_results)
+
+        adapted_params = params.copy()
+        for key in ["decline_factor", "profit", "capacity_factor", "wacc", "inflation"]:
+            adapted_params[key] *= -100 if key == "decline_factor" else 100
+        adapted_params["lifetime"] = adapted_params.pop("project_lifetime")
+        if "eprice" not in adapted_params:
+            adapted_params["eprice"] = 0.2
+
+        new_cm = DTUOCM(**adapted_params)
+        results_new = new_cm.run()
+
+        new_results_mapped = {
+            "AEP net (MWh)": results_new["aep"].to("MWh").m,
+            "AEP discount (MWh)": results_new["aep_discount"].to("MWh").m,
+            "DEVEX net (EURO)": results_new["devex"].to("MEUR").m,
+            "DEVEX discount (EURO)": results_new["devex_discount"].to("MEUR").m,
+            "CAPEX net (EURO)": results_new["capex"].to("MEUR").m,
+            "CAPEX discount (EURO)": results_new["capex_discount"].to("MEUR").m,
+            "OPEX net (EURO)": results_new["opex"].to("MEUR").m,
+            "OPEX discount (EURO)": results_new["opex_discount"].to("MEUR").m,
+            "LCOE (EURO/MWh)": results_new["lcoe"].to("EUR/MWh").m,
+        }
+
+        if "co2" in results_new:
+            new_results_mapped["CO2 emission (kg CO2 eq))"] = (
+                results_new["co2"].to("kg").m
+            )
+
+        res_new.append(new_results_mapped)
+
+    metrics = [
+        "AEP net (MWh)",
+        "AEP discount (MWh)",
+        "DEVEX net (EURO)",
+        "DEVEX discount (EURO)",
+        "CAPEX net (EURO)",
+        "CAPEX discount (EURO)",
+        "OPEX net (EURO)",
+        "OPEX discount (EURO)",
+        "LCOE (EURO/MWh)",
+    ]
+
+    if (
+        "CO2 emission (kg CO2 eq))" in res_new[0]
+        and "CO2 emission (kg CO2 eq))" in res_excel[0]
+    ):
+        metrics.append("CO2 emission (kg CO2 eq))")
+
+    for key in metrics:
+        new_values = np.array([x[key] for x in res_new])
+        excel_values = np.array([x[key] for x in res_excel])
+        np.testing.assert_allclose(
+            excel_values,
+            new_values,
+            rtol=1e-6,
+            err_msg=f"Values for {key} don't match between implementations",
+        )
