@@ -2,7 +2,6 @@ formatting:
   image: ghcr.io/prefix-dev/pixi:latest
   stage: test
   script:
-    - apt update && apt install git -y
     - pixi run -e test pre-commit run --all-files
   tags:
     - linux
@@ -11,7 +10,6 @@ test_linux:
   image: ghcr.io/prefix-dev/pixi:latest
   stage: test
   script:
-    - apt update && apt install git -y
     - pixi run -e test pytest
     - pixi run -e test mypy src/
   artifacts:
@@ -40,7 +38,6 @@ test_pip_install:
   image: ghcr.io/prefix-dev/pixi:latest
   stage: test
   script:
-    - apt update && apt install git -y
     - mkdir test_pip_install
     - cd test_pip_install
     - pixi init

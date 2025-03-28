@@ -163,9 +163,9 @@ def test_monte_carlo_excel_comparison():
         results_new = new_cm.run()
 
         new_results_mapped = {
-            "AEP net (MWh)": results_new["aep"].to("MWh").m,
+            "AEP net (MWh)": results_new["aep_net"].to("MWh").m,
             "AEP discount (MWh)": results_new["aep_discount"].to("MWh").m,
-            "DEVEX net (EURO)": results_new["devex"].to("MEUR").m,
+            "DEVEX net (EURO)": results_new["devex_net"].to("MEUR").m,
             "DEVEX discount (EURO)": results_new["devex_discount"].to("MEUR").m,
             "CAPEX net (EURO)": results_new["capex"].to("MEUR").m,
             "CAPEX discount (EURO)": results_new["capex_discount"].to("MEUR").m,
