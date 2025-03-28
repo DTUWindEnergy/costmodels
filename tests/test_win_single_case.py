@@ -266,6 +266,7 @@ def test_original_dtu_cm_implementation_win_excel_monte_carlo():
 
     import warnings
 
+    failed = False
     for parameter_idx in parameter_idxs:
         params = {
             key: sample_parameters[key][idx]
@@ -290,26 +291,16 @@ def test_original_dtu_cm_implementation_win_excel_monte_carlo():
 
         for key in metrics:
             org_k_val = results[key]
+            if "AEP" in key:
+                org_k_val = org_k_val * params["project_lifetime"]
             excel_k_val = excel_result[key]
             if (np.abs(org_k_val - excel_k_val) > 1).any():
                 warnings.warn(
                     f"Warning: {key} values are not close enough. Original: {org_k_val}, Excel: {excel_k_val}; Parameters: {params}"
                 )
+                failed = True
 
-    excel_result = run_excel(
-        file_path=excel_file,
-        input_map=input_map,
-        output_map=output_map,
-        reuse_excel=True,
-        close_excel=True,
-    )
+    assert not failed
+    from .utils.winutil import ExcelManager
 
-    results = []
-    for key in metrics:
-        original_values = np.array([x[key] for x in res_original])
-        excel_values = np.array([x[key] for x in res_excel])
-        results += list(np.abs(original_values - excel_values) < 1)
-
-    assert np.all(
-        results
-    ), f"{np.sum(results)} out of {len(results)} values are not close enough"
+    ExcelManager.close_app()

@@ -29,7 +29,7 @@ class DTUOffshoreCostModel(CostModel):
         devex (float or None): Development expenditures.
         decline_factor (float): Annual Energy Production decline factor.
         inflation (float): Inflation rate.
-        project_lifetime (int): Project lifespan in years.
+        lifetime (int): Project lifespan in years.
         opex (float or None): Operational expenditures.
         abex (float or None): Asset-based expenditures.
         capacity_factor (float or None): Capacity factor.
@@ -64,6 +64,52 @@ class DTUOffshoreCostModel(CostModel):
             "opex": Quant(np.nan, "EUR/kW"),
             "eprice": Quant(np.nan, "EUR/kWh"),
         }
+
+    def RotorTorque(self):
+        """
+        Calculate and return rotor torque in Mega Newton-meters (MNm).
+        Returns:
+            np.ndarray or float: Rotor torque in MNm.
+        """
+        rotor_torque = 1.1 * 60 * self.rated_power / (2 * np.pi * self.rotor_speed)
+        return rotor_torque
+
+    def RotorArea(self):
+        """
+        Calculate and return rotor area in square meters (m²).
+        Returns:
+            np.ndarray or float: Rotor area in m².
+        """
+        rotor_area = np.pi * (self.rotor_diameter / 2) ** 2
+        return rotor_area
+
+    def SpecificPower(self):
+        """
+        Calculate and return specific power in W/m².
+        Returns:
+            np.ndarray or float: Specific power in W/m².
+        """
+        rotor_area = self.RotorArea()
+        specific_power = 1_000_000 * self.rated_power / rotor_area
+        return specific_power
+
+    def TipSpeed(self):
+        """
+        Calculate and return the tip speed in meters per second (m/s).
+        Returns:
+            np.ndarray or float: Tip speed in m/s.
+        """
+        tip_speed = (self.rotor_speed / 60) * 2 * np.pi * (self.rotor_diameter / 2)
+        return tip_speed
+
+    def TotalBladeMass(
+        self, mass_coeff=1.65, mass_intercept=0.0, user_exp=2.5
+    ) -> float:
+        """Calculate the total blade mass."""
+        blade_mass = (
+            mass_coeff * ((self.rotor_diameter / 2) ** user_exp) + mass_intercept
+        )
+        return blade_mass
 
     def HubStructureMass(
         self, mass_coeff=0.5, mass_intercept=6000.0, user_exp=2.5
@@ -140,8 +186,7 @@ class DTUOffshoreCostModel(CostModel):
         self, mass_coeff=12500.0, mass_intercept=0.0, user_exp=1.0
     ) -> float:
         """Calculate the mass of the gearbox based on torque."""
-        rotor_torque = 1.1 * 60 * self.rated_power / (2 * np.pi * self.rotor_speed)
-        gearbox_mass = mass_coeff * (rotor_torque**user_exp) + mass_intercept
+        gearbox_mass = mass_coeff * (self.RotorTorque() ** user_exp) + mass_intercept
         return gearbox_mass
 
     def CouplingPlusBrakeSystemMass(
@@ -210,7 +255,7 @@ class DTUOffshoreCostModel(CostModel):
     ) -> float:
         """Calculate the mass of the tower structure."""
         tower_structure_mass = (
-            mass_coeff * (self.hub_height * self.rotor_area) ** user_exp
+            mass_coeff * (self.hub_height * self.RotorArea()) ** user_exp
             + mass_intercept
         )
         return tower_structure_mass
@@ -292,14 +337,14 @@ class DTUOffshoreCostModel(CostModel):
     def BOMTotalMass(self) -> float:
         """Calculate the total Bill of Materials (BOM) mass by summing all component masses."""
         return (
-            self.total_blade_mass
+            self.TotalBladeMass()
             + self.HubTotalMass()
             + self.NacelleTotalMass()
             + self.TowerTotalMass()
         )
 
     def BladeTotalCost(self, rate=15.0) -> float:
-        blade_cost = self.total_blade_mass * rate
+        blade_cost = self.TotalBladeMass() * rate
 
         return blade_cost
 
@@ -787,7 +832,7 @@ class DTUOffshoreCostModel(CostModel):
     def BladeCo2Emission(
         self, emissionfactor=4.00
     ) -> float:  # emissionFactor  is in kg CO2/kg
-        return emissionfactor * self.total_blade_mass
+        return emissionfactor * self.TotalBladeMass()
 
     def HubStructureCo2Emission(self, emissionfactor=1.83) -> float:
         return emissionfactor * self.HubStructureMass()
@@ -1050,7 +1095,6 @@ class DTUOffshoreCostModel(CostModel):
 
         discount_factor = []
         # Calculate the discount factors based on project lifetime and WACC
-
         for year in range(-2, self.lifetime):
             discount_factor.append(1 / (1 + self.RealWACC()) ** year)
 
@@ -1071,8 +1115,8 @@ class DTUOffshoreCostModel(CostModel):
             AEP_ = self.AEP_WindFarm() * ((1 + self.decline_factor) ** year)
             AEP_net.append(AEP_)
 
-        self.AEP_net = np.sum(np.array(AEP_net))
-        return self.AEP_net
+        self.aep_net = np.sum(np.array(AEP_net))
+        return self.aep_net
 
     def AEPDiscount(self) -> float:
         AEP_discount = []
@@ -1082,8 +1126,8 @@ class DTUOffshoreCostModel(CostModel):
             )
             AEP_discount.append(AEP_d)
 
-        self.AEP_discount = np.sum((np.array(AEP_discount)))
-        return self.AEP_discount
+        self.aep_discount = np.sum((np.array(AEP_discount)))
+        return self.aep_discount
 
     def devexNet(self) -> float:
 
@@ -1122,8 +1166,7 @@ class DTUOffshoreCostModel(CostModel):
 
         return self.CAPEXTotal() * discount_factors[base_yaer_indx]
 
-    def TotalCAPEX(self) -> float:
-        # in the excel sheet this is also called CAPEX total
+    def TotalCAPEX(self) -> float:  # in the excel sheet this is also called CAPEX total
         return self.CAPEXDiscount()
 
     def opexNET(self) -> float:
@@ -1230,32 +1273,20 @@ class DTUOffshoreCostModel(CostModel):
 
     def _run(self):
         self.reformat_input(**self._cm_input)
-
-        self.rotor_area = np.pi * (self.rotor_diameter / 2) ** 2
-        self.specific_power = 1_000_000 * self.rated_power / self.rotor_area
-        self.tip_speed = (self.rotor_speed / 60) * 2 * np.pi * (self.rotor_diameter / 2)
-
-        self.mass_coeff = 1.65
-        self.mass_intercept = 0.0
-        self.user_exp = 2.5
-        self.total_blade_mass = (
-            self.mass_coeff * ((self.rotor_diameter / 2) ** self.user_exp)
-            + self.mass_intercept
-        )
+        if self.nwt == 0:
+            raise ValueError(
+                "Number of turbines (nwt) must be provided for this calculation."
+            )
 
         LCOE = self.LCOE()
-        devexNet = self.devexNet()
         devexDiscount = self.devexDiscount()
-
-        CAPEXNet = self.CAPEXNet()
         CAPEXDiscount = self.CAPEXDiscount()
-
-        opexNet = self.opexNET()
         opexDiscount = self.opexDiscount()
-
-        AEPNet = self.AEPNet()
         AEPDiscount = self.AEPDiscount()
-
+        devexNet = self.devexNet()
+        CAPEXNet = self.CAPEXNet()
+        opexNet = self.opexNET()
+        AEPNet = self.AEPNet()
         co2_emmisions = self.Total_Co2Emission()
         wt_cost = self.TotalCostCalculation()
 
