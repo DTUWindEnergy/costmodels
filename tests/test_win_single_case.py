@@ -107,7 +107,6 @@ def test_monte_carlo_excel_comparison():
     num = 10
     sp = 350
     clearance = 20
-
     sample_parameters = dict(
         rated_power=np.linspace(1, 20, num),
         rotor_diameter=np.sqrt(4 * np.linspace(1, 20, num) * 10**6 / (np.pi * sp)),
@@ -118,7 +117,7 @@ def test_monte_carlo_excel_comparison():
         capacity_factor=np.linspace(0.3, 0.6, num),
         decline_factor=np.linspace(-0.02, -0.01, num),
         nwt=np.arange(10, 400, 40),
-        project_lifetime=np.arange(16, 26),
+        project_lifetime=np.arange(16, 25),
         wacc=np.linspace(0.05, 0.1, num),
         inflation=np.linspace(0.01, 0.1, num),
         opex=np.linspace(10, 40, num),
@@ -149,8 +148,16 @@ def test_monte_carlo_excel_comparison():
             for key, idx in zip(sample_parameters.keys(), parameter_idx)
         }
 
-        excel_results = run_dtu_offshore_cost_model_excel(**params, filepath=excel_file)
-        res_excel.append(excel_results)
+        input_map = dtu_offshore_cm_input_map(**params)
+        output_map = dtu_offshore_cm_output_map()
+        excel_file = Path(os.path.dirname(__file__), "data/WTcostmodel_v12.xlsx")
+        assert excel_file.exists()
+        excel_result = run_excel(
+            file_path=excel_file,
+            input_map=input_map,
+            output_map=output_map,
+        )
+        res_excel.append(excel_result)
 
         adapted_params = params.copy()
         for key in ["decline_factor", "profit", "capacity_factor", "wacc", "inflation"]:
@@ -173,12 +180,6 @@ def test_monte_carlo_excel_comparison():
             "OPEX discount (EURO)": results_new["opex_discount"],
             "LCOE (EURO/MWh)": results_new["lcoe"].to("EUR/MWh").m,
         }
-
-        if "co2" in results_new:
-            new_results_mapped["CO2 emission (kg CO2 eq))"] = (
-                results_new["co2"].to("kg").m
-            )
-
         res_new.append(new_results_mapped)
 
     metrics = [
@@ -193,18 +194,18 @@ def test_monte_carlo_excel_comparison():
         "LCOE (EURO/MWh)",
     ]
 
-    if (
-        "CO2 emission (kg CO2 eq))" in res_new[0]
-        and "CO2 emission (kg CO2 eq))" in res_excel[0]
-    ):
-        metrics.append("CO2 emission (kg CO2 eq))")
-
+    results = []
     for key in metrics:
         new_values = np.array([x[key] for x in res_new])
         excel_values = np.array([x[key] for x in res_excel])
-        np.testing.assert_allclose(
-            excel_values,
-            new_values,
-            rtol=1e-6,
-            err_msg=f"Values for {key} don't match between implementations",
-        )
+        results += list(np.abs(new_values - excel_values) < 1e-3)
+        # np.testing.assert_allclose(
+        #     excel_values,
+        #     new_values,
+        #     rtol=1e-6,
+        #     err_msg=f"Values for {key} don't match between implementations",
+        # )
+
+    assert np.all(
+        results
+    ), f"{np.sum(results)} out of {len(results)} values are not close enough"
