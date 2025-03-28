@@ -56,7 +56,7 @@ class DTUOffshoreCostModel(CostModel):
             "water_depth": Quant(np.nan, "m"),
             "abex": Quant(np.nan, "EUR"),
             "electrical_cost": Quant(np.nan, "MEUR/MW"),
-            "currency": "EUR/kW",
+            "currency": "EURO/KW",
             "eur_to_dkk": 7.54,
             "aep": Quant(np.nan, "MWh"),
             "lifetime": np.nan,
@@ -1025,7 +1025,7 @@ class DTUOffshoreCostModel(CostModel):
         }
 
         # Ensure that a valid currency is provided; if not, assume no conversion (1)
-        return foundation_cost * rates.get(self.currency, 1)
+        return foundation_cost * rates.get(self.currency)
 
     def CalculateFoundationCost(self):
         """

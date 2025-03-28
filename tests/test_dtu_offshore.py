@@ -54,7 +54,7 @@ def test_agains_original_dtu_offshore_implementation():
         "abex": 5.555555555555555,
         "water_depth": 33.33333333333333,
         "electrical_cost": 0.0,
-        "foundation_option": 0,
+        "foundation_option": 2,
     }
 
     origcm = FafasDTUOffshoreCostModel(**params)
