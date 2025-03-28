@@ -252,30 +252,6 @@ def test_original_dtu_cm_implementation_win_excel_monte_carlo():
     excel_file = Path(os.path.dirname(__file__), "data/WTcostmodel_v12.xlsx")
     assert excel_file.exists()
 
-    for parameter_idx in parameter_idxs:
-        params = {
-            key: sample_parameters[key][idx]
-            for key, idx in zip(sample_parameters.keys(), parameter_idx)
-        }
-
-        # Run original DTU model implementation
-        cm = DTUOffshoreCostModel(**params)
-        results = cm.run()
-        results["CO2 emission (kg CO2 eq))"] = results[
-            "Total Co2 emission per turbine (kg CO2 eq)"
-        ].mean()
-        res_original.append(results)
-
-        # Run Excel implementation
-        input_map = dtu_offshore_cm_input_map(**params)
-        output_map = dtu_offshore_cm_output_map()
-        excel_result = run_excel(
-            file_path=excel_file,
-            input_map=input_map,
-            output_map=output_map,
-        )
-        res_excel.append(excel_result)
-
     metrics = [
         "AEP net (MWh)",
         "AEP discount (MWh)",
@@ -287,6 +263,46 @@ def test_original_dtu_cm_implementation_win_excel_monte_carlo():
         "OPEX discount (EURO)",
         "LCOE (EURO/MWh)",
     ]
+
+    import warnings
+
+    for parameter_idx in parameter_idxs:
+        params = {
+            key: sample_parameters[key][idx]
+            for key, idx in zip(sample_parameters.keys(), parameter_idx)
+        }
+
+        # Run original DTU model implementation
+        cm = DTUOffshoreCostModel(**params)
+        results = cm.run()
+        res_original.append(results)
+
+        # Run Excel implementation
+        input_map = dtu_offshore_cm_input_map(**params)
+        output_map = dtu_offshore_cm_output_map()
+        excel_result = run_excel(
+            file_path=excel_file,
+            input_map=input_map,
+            output_map=output_map,
+            reuse_excel=True,
+        )
+        res_excel.append(excel_result)
+
+        for key in metrics:
+            org_k_val = results[key]
+            excel_k_val = excel_result[key]
+            if (np.abs(org_k_val - excel_k_val) < 1).any():
+                warnings.warn(
+                    f"Warning: {key} values are not close enough. Original: {org_k_val}, Excel: {excel_k_val}; Parameters: {params}"
+                )
+
+    excel_result = run_excel(
+        file_path=excel_file,
+        input_map=input_map,
+        output_map=output_map,
+        reuse_excel=True,
+        close_excel=True,
+    )
 
     results = []
     for key in metrics:

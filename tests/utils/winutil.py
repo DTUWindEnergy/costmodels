@@ -7,6 +7,35 @@ Created on Tue Dec 10 14:10:46 2024
 import copy
 
 
+class ExcelManager:
+    """Singleton manager for Excel application"""
+
+    _instance = None
+    _app = None
+
+    @classmethod
+    def get_app(cls, visible=False):
+        """Get or create an Excel application instance"""
+        if cls._app is None:
+            import platform
+
+            assert platform.system() in [
+                "Windows",
+                "Darwin",
+            ], "Only Windows and MacOS are supported"
+            import xlwings as xw
+
+            cls._app = xw.App(visible=visible)
+        return cls._app
+
+    @classmethod
+    def close_app(cls):
+        """Close the Excel application if it exists"""
+        if cls._app is not None:
+            cls._app.kill()
+            cls._app = None
+
+
 class Excel:
     def __init__(self, visible=False):
         import platform
@@ -45,7 +74,19 @@ def run_excel(
             }
         ],
     },
+    reuse_excel=False,
+    close_excel=False,
 ):
+    """
+    Run Excel calculations with given inputs and return outputs
+
+    Args:
+        file_path: Path to the Excel file
+        input_map: Dictionary mapping sheet names to lists of input cells and values
+        output_map: Dictionary mapping sheet names to lists of output cells to read
+        reuse_excel: Whether to reuse an existing Excel application
+        close_excel: Whether to close Excel after this operation
+    """
     import platform
 
     assert platform.system() in [
@@ -54,19 +95,40 @@ def run_excel(
     ], "Only Windows and MacOS are supported"
     import xlwings as xw
 
-    with Excel() as app:
+    if reuse_excel:
+        app = ExcelManager.get_app()
         wb = app.books.open(file_path)
-        for sheet, input_list in input_map.items():
-            sht = wb.sheets[sheet]
-            for inputs in input_list:
-                sht[inputs["cell"]].value = inputs["value"]
-        res = copy.deepcopy(output_map)
-        for sheet, output_list in res.items():
-            sht = wb.sheets[sheet]
-            for n, outputs in enumerate(output_list):
-                res[sheet][n]["value"] = sht[outputs["cell"]].value
-    out = simplify_output(res)
-    return out
+        try:
+            for sheet, input_list in input_map.items():
+                sht = wb.sheets[sheet]
+                for inputs in input_list:
+                    sht[inputs["cell"]].value = inputs["value"]
+            res = copy.deepcopy(output_map)
+            for sheet, output_list in res.items():
+                sht = wb.sheets[sheet]
+                for n, outputs in enumerate(output_list):
+                    res[sheet][n]["value"] = sht[outputs["cell"]].value
+            out = simplify_output(res)
+            return out
+        finally:
+            wb.close()
+            if close_excel:
+                ExcelManager.close_app()
+    else:
+        # Original implementation using context manager
+        with Excel() as app:
+            wb = app.books.open(file_path)
+            for sheet, input_list in input_map.items():
+                sht = wb.sheets[sheet]
+                for inputs in input_list:
+                    sht[inputs["cell"]].value = inputs["value"]
+            res = copy.deepcopy(output_map)
+            for sheet, output_list in res.items():
+                sht = wb.sheets[sheet]
+                for n, outputs in enumerate(output_list):
+                    res[sheet][n]["value"] = sht[outputs["cell"]].value
+        out = simplify_output(res)
+        return out
 
 
 def dtu_offshore_cm_input_map(
