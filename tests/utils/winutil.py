@@ -253,6 +253,7 @@ def run_dtu_offshore_cost_model_excel(
     foundation_option=1,
     water_depth=18,
     electrical_cost=0,
+    filepath="WTcostmodel_v12.xlsx",
 ):
     input_map = dtu_offshore_cm_input_map(
         rated_power=rated_power,
@@ -274,9 +275,7 @@ def run_dtu_offshore_cost_model_excel(
         electrical_cost=electrical_cost,
     )
     output_map = dtu_offshore_cm_output_map()
-    return run_excel(
-        file_path="WTcostmodel_v12.xlsx", input_map=input_map, output_map=output_map
-    )
+    return run_excel(file_path=filepath, input_map=input_map, output_map=output_map)
 
 
 def simplify_output(output_map):

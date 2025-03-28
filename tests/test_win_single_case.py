@@ -140,6 +140,8 @@ def test_monte_carlo_excel_comparison():
 
     res_new = []
     res_excel = []
+    excel_file = Path(os.path.dirname(__file__), "data/WTcostmodel_v12.xlsx")
+    assert excel_file.exists()
 
     for parameter_idx in parameter_idxs:
         params = {
@@ -147,7 +149,7 @@ def test_monte_carlo_excel_comparison():
             for key, idx in zip(sample_parameters.keys(), parameter_idx)
         }
 
-        excel_results = run_dtu_offshore_cost_model_excel(**params)
+        excel_results = run_dtu_offshore_cost_model_excel(**params, filepath=excel_file)
         res_excel.append(excel_results)
 
         adapted_params = params.copy()
