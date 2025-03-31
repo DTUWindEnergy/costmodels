@@ -91,7 +91,9 @@ class CostModel(ABC):
                     quant = value
                 self._cm_input[key] = quant
             else:
-                raise ValueError(f"Invalid type for '{key}'")
+                raise ValueError(
+                    f"Invalid type for '{key}'. Only numeric values, pint.Quantity or Enum are allowed."
+                )
 
     def run(self, **kwargs) -> dict:
         self._set_input(**kwargs)
