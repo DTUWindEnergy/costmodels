@@ -71,7 +71,7 @@ class NRELCostModel(CostModel):
         return {
             "capex": capex,
             "opex": opex_total.to_base_units(),
-            "lcoe": self.lceo(cashflows, self.aep),
+            "lcoe": self.lceo(cashflows, self.aep * self.lifetime),
             "npv": self.npv(self.inflation, cashflows),
             "irr": self.irr(cashflows),
         }

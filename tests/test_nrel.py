@@ -6,12 +6,10 @@ from costmodels.units import Quant
 
 
 def test_nrel():
-    # OpenMDAO Problem instance
     prob = om.Problem(reports=False)
     prob.model = nrel_csm_2015()
     prob.setup()
 
-    # Initialize variables for NREL CSM
     prob["machine_rating"] = 5000.0
     prob["rotor_diameter"] = 126.0
     prob["turbine_class"] = 2
@@ -23,7 +21,6 @@ def test_nrel():
     prob["main_bearing_number"] = 2
     prob["crane"] = True
 
-    # Evaluate the model
     prob.run_model()
 
     NWT = 10
@@ -50,5 +47,5 @@ def test_nrel():
         0
     ]
 
-    # grads = nrel_cm.grad(nrel_cm_input, "capex", ("rotor_diameter",))
-    # assert "rotor_diameter" in grads.keys()
+    grads = nrel_cm.grad("capex", ("rotor_diameter",))
+    assert "rotor_diameter" in grads.keys()

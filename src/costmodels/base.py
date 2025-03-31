@@ -166,14 +166,17 @@ class CostModel(ABC):
         qcashflows.ito_reduced_units()
         return qcashflows
 
-    @staticmethod
-    def lceo(cashflows: Quant, aep: Quant) -> Quant:
-        return Quant(0.0, "EUR/MWh")  # TODO:
-
     NAN_RETURN_WARN = (
         "Cashflows contain NaN values. Returning NaN for $var. "
         "The input data is likely missing values like AEP or OPEX."
     )
+
+    @staticmethod
+    def lceo(cashflows: Quant, aep_net: Quant) -> Quant:
+        if np.isnan(cashflows.m).any():
+            warnings.warn(CostModel.NAN_RETURN_WARN.replace("$var", "LCOE"))
+            return Quant(np.nan, "%")
+        return (np.sum(cashflows) / aep_net).to("EUR/MWh")
 
     @staticmethod
     def irr(cashflows: Quant) -> Quant:
