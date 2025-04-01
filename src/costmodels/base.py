@@ -15,7 +15,11 @@ class CostModel(ABC):
     """Base class for all the cost models."""
 
     def __init__(self, **kwargs):
-        self._cm_input = self._cm_input_def
+        self._cm_input = (
+            self._cm_input_def
+            if isinstance(self._cm_input_def, dict)
+            else self._cm_input_def()
+        )
         self._set_input(**kwargs)
 
     def __getattr__(self, name):
@@ -42,7 +46,8 @@ class CostModel(ABC):
         formatted_inputs = {}
         for key, value in self._cm_input.items():
             formatted_inputs[key] = {
-                "default": value,
+                "value": value,
+                "default": self._cm_input_def[key],
                 "type": type(value),
                 "unit": value.units if isinstance(value, Quant) else None,
             }
@@ -53,8 +58,8 @@ class CostModel(ABC):
         print(f"{self.__class__.__name__} inputs:")
         for k, v in self.list_input().items():
             print(f"  {k}")
-            default = v["default"].m if hasattr(v["default"], "m") else v["default"]
-            print(f"\tDefault: {default}")
+            value = v["value"].m if hasattr(v["value"], "m") else v["value"]
+            print(f"\tValue: {value}")
             print(f"\tType: {v['type']}")
             print(f"\tUnit: {v['unit'] if v['unit'] else 'N/A'}")
 

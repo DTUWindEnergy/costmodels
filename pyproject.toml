@@ -63,6 +63,7 @@ jupyterlab = ">=4.3.6,<5"
 [tool.pixi.environments]
 test = { features = ["test"] }
 examples = { features = ["examples"] }
+default = { features = ["test", "examples"] }
 
 [tool.mypy]
 files = "src/costmodels"
