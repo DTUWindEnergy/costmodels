@@ -69,3 +69,6 @@ default = { features = ["test", "examples"] }
 files = "src/costmodels"
 exclude = "src/costmodels/external"
 ignore_missing_imports = true
+
+[dependency-groups]
+examples = ["jax>=0.5.3,<0.6"]
