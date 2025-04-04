@@ -39,9 +39,9 @@ Installation requires `pixi` https://pixi.sh/latest/#installation;
 
 ```bash
 # development environment install & activation (equivalent to `conda activate`)
-pixi shell -e test
+pixi shell
 # pre-commit formatting hooks (run only once)
 pre-commit install
 # run tests
-pytest 
+pytest
 ```
