@@ -181,17 +181,16 @@ def test_monte_carlo_excel_comparison():
         results_new = new_cm.run()
 
         new_results_mapped = {
-            "AEP net (MWh)": results_new["aep_net"],
-            "AEP discount (MWh)": results_new["aep_discount"],
-            "DEVEX net (EURO)": results_new["devex_net"],
-            "DEVEX discount (EURO)": results_new["devex_discount"],
-            "CAPEX net (EURO)": results_new["capex"].to("MEUR").m,
-            "CAPEX discount (EURO)": results_new["capex_discount"],
-            "OPEX net (EURO)": results_new["opex"].to("MEUR").m,
-            "OPEX discount (EURO)": results_new["opex_discount"],
+            "AEP net (MWh)": results_new["aep_net"].m,
+            "AEP discount (MWh)": results_new["aep_discount"].m,
+            "DEVEX net (EURO)": results_new["devex_net"].to("EUR").m,
+            "DEVEX discount (EURO)": results_new["devex_discount"].to("EUR").m,
+            "CAPEX net (EURO)": results_new["capex"].to("EUR").m,
+            "CAPEX discount (EURO)": results_new["capex_discount"].to("EUR").m,
+            "OPEX net (EURO)": results_new["opex"].to("EUR").m,
+            "OPEX discount (EURO)": results_new["opex_discount"].to("EUR").m,
             "LCOE (EURO/MWh)": results_new["lcoe"].to("EUR/MWh").m,
         }
-        # res_new.append(new_results_mapped)
 
         for key in metrics:
             org_k_val = new_results_mapped[key]
