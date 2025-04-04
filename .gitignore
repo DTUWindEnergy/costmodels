@@ -13,3 +13,4 @@ sandbox.py
 test_pip_install/
 .mypy_cache
 *.pstats
+*.out

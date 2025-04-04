@@ -59,6 +59,7 @@ pytest = "pytest --cov-report=term-missing:skip-covered --cov-report=html --cov=
 [tool.pixi.feature.examples.dependencies]
 py-wake = "*"
 jupyterlab = ">=4.3.6,<5"
+topfarm = ">=2.5.1,<3"
 
 [tool.pixi.environments]
 test = { features = ["test"] }

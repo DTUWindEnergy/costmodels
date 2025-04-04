@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 import py_wake.literature
-from py_wake.utils.gradients import autograd, set_vjp
+from py_wake.utils.gradients import autograd
 
 from costmodels.base import CostModel
 from costmodels.units import Quant
@@ -14,8 +14,6 @@ class EPriceAwareCostModel(CostModel):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        # self.run = set_vjp([self._get_run_jac()])(self.run)
-        # self._run = set_vjp([self._get_run_jac()])(self._run)
 
     @property
     def _cm_input_def(self) -> dict:
@@ -43,15 +41,6 @@ class EPriceAwareCostModel(CostModel):
         )
 
         return {"irr": Quant(float(irr) * 100, "%"), "grad_irr": np.array(irr_grad)}
-
-    # def _get_run_jac(self):
-    #     def _f(fa, inputs): # fmt:skip
-    #         print(f"{inputs=}")
-    #         print(f"{fa=}")
-    #         def _g(g): # fmt:skip
-    #             return g * self._run()["grad_irr"]
-    #         return _g
-    #     return _f
 
     @staticmethod
     @partial(jax.jit, static_argnames=("lifetime"))
@@ -81,20 +70,20 @@ class EPriceAwareCostModel(CostModel):
 if __name__ == "__main__":
     cost_model = EPriceAwareCostModel(
         opex=Quant(10, "kEUR"),
-        capex=Quant(20, "MEUR"),
+        capex=Quant(4, "MEUR"),
         lifetime=20,
     )
 
-    NTS = 100
+    NTS = 8760
     # somewhat realistic and smooth electricity price time series
-    eprice = np.random.normal(0.06, 0.02, NTS)
+    eprice = np.random.normal(0.06, 0.01, NTS)
     # smoothen the time series
     eprice = np.convolve(eprice, np.ones(24) / 24, mode="same")
     # deal with boundaries
     eprice[:24] = eprice[24]
     eprice[-24:] = eprice[-24]
     # add some bias that sometimes bring the price below 0
-    eprice += np.random.normal(0, 0.05, NTS)
+    eprice += np.random.normal(0, 0.01, NTS)
 
     if 0:
         import matplotlib.pyplot as plt  # fmt:skip
@@ -116,7 +105,8 @@ if __name__ == "__main__":
 
     site = Hornsrev1Site()
     windTurbines = V80()
-    x, y = [0, 1000, 2000], [0, 0, 0]
+    NWT = 20
+    x, y = np.linspace(0, 2_000, NWT), np.zeros(NWT)
     wfm = py_wake.literature.Niayifar_PorteAgel_2016(site, windTurbines)
 
     WSS = np.random.weibull(2, NTS) * 5.0
@@ -134,62 +124,124 @@ if __name__ == "__main__":
         power_ts = power_ilk.sum(axis=0).reshape(-1)
         return power_ts
 
+    dpowerdxdy_func = autograd(power, vector_interdependence=True, argnum=[0, 1])
     dpowerdx_func = autograd(power, vector_interdependence=True, argnum=0)
     dpowerdy_func = autograd(power, vector_interdependence=True, argnum=1)
-    # dpowerdx = dpowerdx_func(x, y)
-    # print(dpowerdx)
 
-    def irr_obj_func(x, y):
-        power_ilk = wfm(
-            x=x,
-            y=y,
-            time=True,
-            ws=WSS,
-            wd=WDD,
-            return_simulationResult=False,
-        )[2]
-        power_ts = power_ilk.sum(axis=0).reshape(-1)
+    from autograd.extend import defvjp, primitive
+
+    @primitive
+    def power_to_irr(power_ts):
         res = cost_model.run(
-            production=Quant(power_ts, "kWh"),
+            production=Quant(power_ts, "Wh"),
             eprice=Quant(eprice, "EUR/kWh"),
         )
-        return -res["irr"].m
+        return res["irr"].m
 
-    dirr_obj_func = autograd(  # gradient
-        irr_obj_func, vector_interdependence=True, argnum=[0, 1]
+    def irr_from_xy(x, y):
+        power_val = power(x, y)
+        return -power_to_irr(power_val)
+
+    def grad_custom_fn(power_ts):
+        grad_irr = cost_model.run(
+            production=Quant(power_ts, "Wh"),
+            eprice=Quant(eprice, "EUR/kWh"),
+        )["grad_irr"]
+        return grad_irr
+
+    defvjp(
+        power_to_irr,
+        lambda _, power_ts: lambda g: g * grad_custom_fn(power_ts),
     )
-    print(dirr_obj_func(x, y))
+    dirrdxdy_func = autograd(irr_from_xy, vector_interdependence=True, argnum=[0, 1])
 
-    exit(0)
+    def objective(x, y):
+        return irr_from_xy(x, y)
 
-    def dirrdxdy_func(x, y):
+    def objective_jacobian(x, y):
+        jx, jy = dirrdxdy_func(x, y)
+        jac = np.array([np.atleast_2d(jx), np.atleast_2d(jy)])
+        # normalize the jacobian
+        jac /= np.linalg.norm(jac, axis=1, keepdims=True)
+        return jac
+
+    print(f"Objective function value: {objective(x, y)}")
+    # exit()
+
+    import topfarm
+    from topfarm import TopFarmProblem
+    from topfarm.constraint_components.boundary import (
+        CircleBoundaryConstraint,
+    )
+    from topfarm.constraint_components.spacing import SpacingConstraint
+    from topfarm.cost_models.cost_model_wrappers import CostModelComponent
+    from topfarm.easy_drivers import (
+        EasyScipyOptimizeDriver,
+        EasySGDDriver,
+    )
+    from topfarm.plotting import XYPlotComp
+
+    cost_comp = CostModelComponent(
+        input_keys=[topfarm.x_key, topfarm.y_key],
+        n_wt=NWT,
+        cost_function=objective,
+        cost_gradient_function=objective_jacobian,
+    )
+
+    constraints = [
+        CircleBoundaryConstraint(
+            [x.max() / 2, 0.0],
+            radius=x.max() + 200,
+        ),
+        SpacingConstraint(
+            min_spacing=300,
+        ),
+    ]
+
+    opt_driver = EasyScipyOptimizeDriver(
+        optimizer="SLSQP",
+        maxiter=100,
+        disp=True,
+    )
+
+    problem = TopFarmProblem(
+        design_vars={"x": x, "y": y},
+        n_wt=NWT,
+        constraints=constraints,
+        cost_comp=cost_comp,
+        driver=opt_driver,
+        plot_comp=XYPlotComp(
+            save_plot_per_iteration=True,
+            folder_name="figures",
+            plot_initial=False,
+        ),
+    )
+    _, state, recorder = problem.optimize()
+
+    exit()
+    import time
+
+    start = time.time()
+    result = dirrdxdy_func(x, y)
+    print("Gradient with respect to x and y:", result)
+    end = time.time()
+    print(f"Time taken: {end - start:.2f} seconds")
+
+    def dirrdxdy_func2(x, y):
+        """Manual; slow but works for verification"""
+        import time
+
+        start = time.time()
         dpowerdx = dpowerdx_func(x, y)
         dpowerdy = dpowerdy_func(x, y)
+        end = time.time()
+        print(f"Time for dpowerdx: {end - start:.2f} seconds")
 
-        power_ilk = wfm(
-            x=x,
-            y=y,
-            time=True,
-            ws=WSS,
-            wd=WDD,
-            return_simulationResult=False,
-        )[2]
-        power_ts = power_ilk.sum(axis=0).reshape(-1)
-        res = cost_model.run(
-            production=Quant(power_ts, "kWh"),
+        dirrdpower = cost_model.run(
+            production=Quant(power(x, y), "kWh"),
             eprice=Quant(eprice, "EUR/kWh"),
-        )
-        dirrdpower = res["grad_irr"]
+        )["grad_irr"]
 
         dirrdx = -np.dot(dirrdpower, dpowerdx)
         dirrdy = -np.dot(dirrdpower, dpowerdy)
         return dirrdx, dirrdy
-
-    print(irr_obj_func(x, y))
-    print(dirrdxdy_func(x, y))
-
-    # dirr_obj_func = fd(  # gradient
-    #     irr_obj_func, vector_interdependence=True, argnum=[0, 1], step=1
-    # )
-    # dirr = dirr_obj_func(x, y)
-    # print(dirr)
