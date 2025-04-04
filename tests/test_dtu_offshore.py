@@ -76,14 +76,14 @@ def test_agains_original_dtu_offshore_implementation():
     results_our = cm.run()
 
     new_results_mapped = {
-        "AEP net (MWh)": results_our["aep_net"],
-        "AEP discount (MWh)": results_our["aep_discount"],
-        "DEVEX net (EURO)": results_our["devex_net"],
-        "DEVEX discount (EURO)": results_our["devex_discount"],
-        "CAPEX net (EURO)": results_our["capex"].to("MEUR").m,
-        "CAPEX discount (EURO)": results_our["capex_discount"],
-        "OPEX net (EURO)": results_our["opex"].to("MEUR").m,
-        "OPEX discount (EURO)": results_our["opex_discount"],
+        "AEP net (MWh)": results_our["aep_net"].m,
+        "AEP discount (MWh)": results_our["aep_discount"].m,
+        "DEVEX net (EURO)": results_our["devex_net"].to("EUR").m,
+        "DEVEX discount (EURO)": results_our["devex_discount"].to("EUR").m,
+        "CAPEX net (EURO)": results_our["capex"].to("EUR").m,
+        "CAPEX discount (EURO)": results_our["capex_discount"].to("EUR").m,
+        "OPEX net (EURO)": results_our["opex"].to("EUR").m,
+        "OPEX discount (EURO)": results_our["opex_discount"].to("EUR").m,
         "LCOE (EURO/MWh)": results_our["lcoe"].to("EUR/MWh").m,
     }
 
