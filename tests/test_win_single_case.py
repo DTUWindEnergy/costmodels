@@ -61,7 +61,7 @@ def test_win_single_case():
         output_map=output_map,
     )
     np.testing.assert_allclose(
-        excel_result["OPEX net (EURO)"], results["opex"].to("MEUR").m
+        excel_result["OPEX net (EURO)"], results["opex"].to("EUR").m
     )
 
 
