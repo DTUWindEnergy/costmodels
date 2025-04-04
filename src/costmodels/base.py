@@ -179,7 +179,7 @@ class CostModel(ABC):
     )
 
     @staticmethod
-    def lceo(cashflows: Quant, aep_net: Quant) -> Quant:
+    def lcoe(cashflows: Quant, aep_net: Quant) -> Quant:
         if np.isnan(cashflows.m).any():
             warnings.warn(CostModel.NAN_RETURN_WARN.replace("$var", "LCOE"))
             return Quant(np.nan, "%")

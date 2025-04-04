@@ -264,7 +264,7 @@ class MinimalisticCostModel(CostModel):
             "capex": Quant(CAPEX / 10**6, "MEUR"),
             "opex": Quant(OPEXtot / 10**6, "MEUR"),
             "aep": Quant(aep_Wh / 10**9, "GWh"),
-            "lcoe": self.lceo(cashflows, Quant(aep_Wh, "Wh") * self.lifetime),
+            "lcoe": self.lcoe(cashflows, Quant(aep_Wh, "Wh") * self.lifetime),
             "irr": self.irr(cashflows),
             "npv": self.npv(self.inflation, cashflows),
         }
