@@ -9,6 +9,10 @@ from py_wake.utils.gradients import autograd
 from costmodels.base import CostModel
 from costmodels.units import Quant
 
+jax.config.update("jax_compilation_cache_dir", "/tmp/jax_cache")
+jax.config.update("jax_persistent_cache_min_entry_size_bytes", -1)
+jax.config.update("jax_persistent_cache_min_compile_time_secs", 0)
+
 
 class EPriceAwareCostModel(CostModel):
 
@@ -108,7 +112,6 @@ if __name__ == "__main__":
     NWT = 20
     x, y = np.linspace(0, 2_000, NWT), np.zeros(NWT)
     wfm = py_wake.literature.Niayifar_PorteAgel_2016(site, windTurbines)
-
     WSS = np.random.weibull(2, NTS) * 5.0
     WDD = np.zeros(NTS) + 270
 
@@ -124,9 +127,9 @@ if __name__ == "__main__":
         power_ts = power_ilk.sum(axis=0).reshape(-1)
         return power_ts
 
-    dpowerdxdy_func = autograd(power, vector_interdependence=True, argnum=[0, 1])
-    dpowerdx_func = autograd(power, vector_interdependence=True, argnum=0)
-    dpowerdy_func = autograd(power, vector_interdependence=True, argnum=1)
+    # dpowerdxdy_func = autograd(power, vector_interdependence=True, argnum=[0, 1])
+    # dpowerdx_func = autograd(power, vector_interdependence=True, argnum=0)
+    # dpowerdy_func = autograd(power, vector_interdependence=True, argnum=1)
 
     from autograd.extend import defvjp, primitive
 
@@ -155,18 +158,67 @@ if __name__ == "__main__":
     )
     dirrdxdy_func = autograd(irr_from_xy, vector_interdependence=True, argnum=[0, 1])
 
-    def objective(x, y):
-        return irr_from_xy(x, y)
+    def objective(dv):
+        wtx = dv[: len(dv) // 2]
+        wty = dv[len(dv) // 2 :]
+        return irr_from_xy(wtx, wty)
 
-    def objective_jacobian(x, y):
-        jx, jy = dirrdxdy_func(x, y)
+    def objective_jacobian(dv):
+        wtx = dv[: len(dv) // 2]
+        wty = dv[len(dv) // 2 :]
+        jx, jy = dirrdxdy_func(wtx, wty)
         jac = np.array([np.atleast_2d(jx), np.atleast_2d(jy)])
         # normalize the jacobian
         jac /= np.linalg.norm(jac, axis=1, keepdims=True)
         return jac
 
-    print(f"Objective function value: {objective(x, y)}")
-    # exit()
+    # print(f"Objective function value: {objective(x, y)}")
+
+    @jax.jit
+    def spacing_constraint_between_turbines(dv):
+        wtx = dv[: len(dv) // 2]
+        wty = dv[len(dv) // 2 :]
+        min_distance = 3 * windTurbines.diameter()
+        n_turbines = len(wtx)
+        constraints = []
+        for i in range(n_turbines):
+            for j in range(i + 1, n_turbines):
+                dist = jnp.sqrt((wtx[i] - wtx[j]) ** 2 + (wty[i] - wty[j]) ** 2)
+                constraints.append(dist - min_distance)
+        return constraints
+
+    def convert2numpy(arr):
+        return np.array(arr).astype(np.float32)
+
+    from scipy.optimize import minimize
+
+    x0 = np.random.rand(NWT) * 1_000
+    y0 = np.random.rand(NWT) * 1_000
+    res = minimize(
+        objective,
+        np.array([x0, y0]).reshape(-1),
+        jac=objective_jacobian,
+        method="SLSQP",
+        options={"maxiter": 10, "disp": True, "ftol": 1e-8},
+        constraints={
+            "type": "ineq",
+            "fun": lambda dv: convert2numpy(spacing_constraint_between_turbines(dv)),
+        },
+        bounds=[(-100, 2_000)] * 2 * len(x0),
+    )
+    print(res)
+
+    opt_x = res.x[: len(res.x) // 2]
+    opt_y = res.x[len(res.x) // 2 :]
+    flow_map = (
+        wfm(opt_x, opt_y, time=True, ws=[WSS[100]], wd=[WDD[100]])
+        .flow_map()
+        .plot_wake_map()
+    )
+    import matplotlib.pyplot as plt  # fmt:skip
+    plt.show()
+
+    exit()
 
     import topfarm
     from topfarm import TopFarmProblem
@@ -177,7 +229,6 @@ if __name__ == "__main__":
     from topfarm.cost_models.cost_model_wrappers import CostModelComponent
     from topfarm.easy_drivers import (
         EasyScipyOptimizeDriver,
-        EasySGDDriver,
     )
     from topfarm.plotting import XYPlotComp
 
@@ -216,6 +267,8 @@ if __name__ == "__main__":
             plot_initial=False,
         ),
     )
+    cost_comp.check_partials()
+    exit()
     _, state, recorder = problem.optimize()
 
     exit()
