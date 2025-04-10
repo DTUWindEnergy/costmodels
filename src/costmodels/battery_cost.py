@@ -23,12 +23,15 @@ class BatteryCostModel(CostModel):
 
     def _run(self) -> dict:
         lifetime_dispatch_intervals = (
-            self.plant_lifetime * 365 * 24 * self.dispatch_intervals_per_hour
+            self.plant_lifetime
+            * Quant(365, "day/year")
+            * Quant(24, "hour/day")
+            * self.dispatch_intervals_per_hour
         )
         age = (
             np.arange(lifetime_dispatch_intervals.magnitude)
-            / (lifetime_dispatch_intervals / self.plant_lifetime).magnitude
-        )
+            / (lifetime_dispatch_intervals / self.plant_lifetime)
+        ).magnitude
 
         b_E = self.battery_energy
         b_P = self.battery_power

@@ -12,7 +12,7 @@ class SharedCostModel(CostModel):
             "grid_capacity": Quant(np.nan, "MW"),
             "hpp_BOS_soft_cost": Quant(119940, "EUR/MW"),
             "hpp_grid_connection_cost": Quant(50000, "EUR/MW"),
-            "land_cost": Quant(300000, "EUR/km/km"),
+            "land_cost": Quant(300000, "EUR/km**2"),
         }
 
     def _run(self) -> dict:
