@@ -1,3 +1,4 @@
+from costmodels.battery_cost import BatteryCostModel
 from costmodels.dtu_offshore import DTUOffshoreCostModel
 from costmodels.minimalistic import MinimalisticCostModel
 from costmodels.nrel import NRELCostModel
@@ -8,4 +9,5 @@ __all__ = [
     "MinimalisticCostModel",
     "NRELCostModel",
     "PVCostModel",
+    "BatteryCostModel",
 ]

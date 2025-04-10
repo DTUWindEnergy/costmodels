@@ -64,16 +64,17 @@ class NRELCostModel(CostModel):
         wtc = self.prob.model._outputs["turbine_cost"][0]
         capex = Quant(wtc, "EUR") * self.nwt
         opex_total = self.opex * self.machine_rating
-        cashflows = self.cashflows(
-            self.eprice, self.inflation, capex, opex_total, self.aep, self.lifetime
-        )
+        # cashflows = compute_cashflows(
+        #     self.eprice, self.inflation, capex, opex_total, self.aep, self.lifetime
+        # )
 
         return {
             "capex": capex.to("EUR"),
             "opex": opex_total.to_reduced_units(),
-            "lcoe": self.lcoe(cashflows, self.aep * self.lifetime),
-            "npv": self.npv(self.inflation, cashflows),
-            "irr": self.irr(cashflows),
+            # "lcoe": self.lcoe(cashflows, self.aep * self.lifetime.m),
+            # "npv": self.npv(self.inflation, cashflows),
+            # "irr": self.irr(cashflows),
+            # "cashflows": cashflows,
         }
 
     def _list_inputs(self):

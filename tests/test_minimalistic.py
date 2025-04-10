@@ -12,15 +12,15 @@ def test_minimalistic_cost_model():
         inflation=Quant(8, "%"),
         lifetime=20,
     )
-    assert cmo["npv"].magnitude > 0
+    assert cmo["capex"].magnitude > 0
 
     area /= 2
     assert area < 65 * 10**6
     cm_output_small_area = mcm.run(Area=area)
 
-    assert cm_output_small_area["npv"] < cmo["npv"]
+    assert cm_output_small_area["capex"] < cmo["capex"]
     print(f"CAPEX: {cmo}")
 
-    grad = mcm.grad("lcoe", ("depth", "Area"))
+    grad = mcm.grad("capex", ("depth", "Area"))
     assert "depth" in grad.keys()
     assert "Area" in grad.keys()

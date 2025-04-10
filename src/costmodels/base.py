@@ -1,3 +1,5 @@
+import hashlib
+import pickle
 import warnings
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -10,6 +12,9 @@ import pint
 from costmodels.units import Quant
 from costmodels.utils import np2scalar
 
+CAPEX_KEY = "capex"
+OPEX_KEY = "opex"
+
 
 class CostModel(ABC):
     """Base class for all the cost models."""
@@ -20,6 +25,9 @@ class CostModel(ABC):
             if isinstance(self._cm_input_def, dict)
             else self._cm_input_def()
         )
+
+        self._cache_hash = None
+        self._cache_res = None
         self._set_input(**kwargs)
 
     def __getattr__(self, name):
@@ -101,14 +109,35 @@ class CostModel(ABC):
                 )
 
     def run(self, **kwargs) -> dict:
+        """The output of model is cached for the same input parameters."""
+        if not kwargs and self._cache_res is not None:
+            return self._cache_res
+
         self._set_input(**kwargs)
-        return self._run()
+        input_hash = hashlib.md5(pickle.dumps(self._cm_input)).hexdigest()
+        if self._cache_hash == input_hash:
+            return self._cache_res
+
+        self._cache_hash = input_hash
+        self._cache_res = self._run()
+        return self._cache_res
 
     @abstractmethod
     def _run(self) -> dict:  # pragma: no cover
         """Abstract method to run the cost model."""
         pass
 
+    @property
+    def _capex(self) -> Quant:
+        """Get the CAPEX of the cost model."""
+        return self.run()[CAPEX_KEY]
+
+    @property
+    def _opex(self) -> Quant:
+        """Get the CAPEX of the cost model."""
+        return self.run()[OPEX_KEY]
+
+    # TODO: handle multidimensional inputs/outputs
     def grad(self, of: str, wrt: list[str] | tuple[str], delta: float = 1e-6) -> dict:
         """Compute the gradient of the cost model output with respect to the input parameters."""
         gradients = {}
@@ -148,53 +177,3 @@ class CostModel(ABC):
             gradients[pname] = gradient
 
         return gradients
-
-    @staticmethod
-    def cashflows(
-        epice: Quant,
-        inflation: Quant,
-        capex: Quant,
-        opex: Quant,
-        aep: Quant,
-        lifetime: int | Quant,
-    ) -> Quant:
-        annual_revenue = aep * epice
-        annual_cashflow = annual_revenue - opex
-        lifetime = lifetime.m if isinstance(lifetime, Quant) else lifetime
-        if not annual_cashflow.check(capex.units):
-            raise ValueError(
-                f"annual_cashflow units {annual_cashflow.units} do not match capex units {capex.units}"
-            )
-        cashflows = [-capex.to_base_units().m] + [
-            (annual_cashflow * ((1 + inflation) ** (year - 1))).to_base_units().m
-            for year in range(1, lifetime + 1)
-        ]
-        qcashflows = Quant(cashflows, "EUR")
-        qcashflows.ito_reduced_units()
-        return qcashflows
-
-    NAN_RETURN_WARN = (
-        "Cashflows contain NaN values. Returning NaN for $var. "
-        "The input data is likely missing values like AEP or OPEX."
-    )
-
-    @staticmethod
-    def lcoe(cashflows: Quant, aep_net: Quant) -> Quant:
-        if np.isnan(cashflows.m).any():
-            warnings.warn(CostModel.NAN_RETURN_WARN.replace("$var", "LCOE"))
-            return Quant(np.nan, "%")
-        return (np.sum(cashflows) / aep_net).to("EUR/MWh")
-
-    @staticmethod
-    def irr(cashflows: Quant) -> Quant:
-        if np.isnan(cashflows.m).any():
-            warnings.warn(CostModel.NAN_RETURN_WARN.replace("$var", "IRR"))
-            return Quant(np.nan, "%")
-        return Quant(npf.irr(cashflows.m) * 100, "%")
-
-    @staticmethod
-    def npv(discount: Quant, cashflows: Quant):
-        if np.isnan(cashflows.m).any():
-            warnings.warn(CostModel.NAN_RETURN_WARN.replace("$var", "NPV"))
-            return Quant(np.nan, "MEUR")
-        return Quant(npf.npv(discount.to_base_units().m, cashflows.m), cashflows.units)

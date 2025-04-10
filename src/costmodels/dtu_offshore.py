@@ -1,4 +1,5 @@
 from enum import Enum
+from functools import cache
 
 import numpy as np
 
@@ -65,6 +66,7 @@ class DTUOffshoreCostModel(CostModel):
             "eprice": Quant(np.nan, "EUR/kWh"),
         }
 
+    @cache
     def RotorTorque(self):
         """
         Calculate and return rotor torque in Mega Newton-meters (MNm).
@@ -74,6 +76,7 @@ class DTUOffshoreCostModel(CostModel):
         rotor_torque = 1.1 * 60 * self.rated_power / (2 * np.pi * self.rotor_speed)
         return rotor_torque
 
+    @cache
     def RotorArea(self):
         """
         Calculate and return rotor area in square meters (m²).
@@ -83,6 +86,7 @@ class DTUOffshoreCostModel(CostModel):
         rotor_area = np.pi * (self.rotor_diameter / 2) ** 2
         return rotor_area
 
+    @cache
     def SpecificPower(self):
         """
         Calculate and return specific power in W/m².
@@ -93,6 +97,7 @@ class DTUOffshoreCostModel(CostModel):
         specific_power = 1_000_000 * self.rated_power / rotor_area
         return specific_power
 
+    @cache
     def TipSpeed(self):
         """
         Calculate and return the tip speed in meters per second (m/s).
@@ -102,6 +107,7 @@ class DTUOffshoreCostModel(CostModel):
         tip_speed = (self.rotor_speed / 60) * 2 * np.pi * (self.rotor_diameter / 2)
         return tip_speed
 
+    @cache
     def TotalBladeMass(
         self, mass_coeff=1.65, mass_intercept=0.0, user_exp=2.5
     ) -> float:
@@ -111,6 +117,7 @@ class DTUOffshoreCostModel(CostModel):
         )
         return blade_mass
 
+    @cache
     def HubStructureMass(
         self, mass_coeff=0.5, mass_intercept=6000.0, user_exp=2.5
     ) -> float:
@@ -120,6 +127,7 @@ class DTUOffshoreCostModel(CostModel):
         )
         return hubstructure_mass
 
+    @cache
     def HubComputerMass(
         self, mass_coeff=0.0, mass_intercept=200.0, user_exp=1.0
     ) -> float:
@@ -127,6 +135,7 @@ class DTUOffshoreCostModel(CostModel):
         hubcomputer_mass = mass_coeff * (self.rotor_diameter**user_exp) + mass_intercept
         return hubcomputer_mass
 
+    @cache
     def PitchBearingsMass(
         self, mass_coeff=0.4, mass_intercept=500.0, user_exp=2.5
     ) -> float:
@@ -136,6 +145,7 @@ class DTUOffshoreCostModel(CostModel):
         )
         return pitchbearing_mass
 
+    @cache
     def PitchActuatorSystemMass(
         self, mass_coeff=0.15, mass_intercept=500.0, user_exp=2.5
     ) -> float:
@@ -145,6 +155,7 @@ class DTUOffshoreCostModel(CostModel):
         )
         return pitch_actuatorsystem_mass
 
+    @cache
     def HubSecondaryEquipmentMass(
         self, mass_coeff=5, mass_intercept=500.0, user_exp=1.0
     ) -> float:
@@ -154,16 +165,19 @@ class DTUOffshoreCostModel(CostModel):
         )
         return hub_secondary_equipment_mass
 
+    @cache
     def SpinnerMass(self, mass_coeff=10.0, mass_intercept=0.0, user_exp=1.0) -> float:
         """Calculate the mass of the spinner."""
         spinner_mass = mass_coeff * (self.rotor_diameter**user_exp) + mass_intercept
         return spinner_mass
 
+    @cache
     def MainShaftMass(self, mass_coeff=0.02, mass_intercept=0.0, user_exp=2.8) -> float:
         """Calculate the mass of the main shaft."""
         mainshaft_mass = mass_coeff * (self.rotor_diameter**user_exp) + mass_intercept
         return mainshaft_mass
 
+    @cache
     def MainBearingsMass(
         self, mass_coeff=0.02, mass_intercept=0.0, user_exp=2.5
     ) -> float:
@@ -173,6 +187,7 @@ class DTUOffshoreCostModel(CostModel):
         )
         return main_bearingsmass
 
+    @cache
     def MainBearingHousingMass(
         self, mass_coeff=0.03, mass_intercept=0.0, user_exp=2.5
     ) -> float:
@@ -182,6 +197,7 @@ class DTUOffshoreCostModel(CostModel):
         )
         return main_bearinghousing_mass
 
+    @cache
     def GearboxMass(
         self, mass_coeff=12500.0, mass_intercept=0.0, user_exp=1.0
     ) -> float:
@@ -189,6 +205,7 @@ class DTUOffshoreCostModel(CostModel):
         gearbox_mass = mass_coeff * (self.RotorTorque() ** user_exp) + mass_intercept
         return gearbox_mass
 
+    @cache
     def CouplingPlusBrakeSystemMass(
         self, mass_coeff=500.0, mass_intercept=0.0, user_exp=1.0
     ) -> float:
@@ -198,6 +215,7 @@ class DTUOffshoreCostModel(CostModel):
         )
         return coupling_brakesystem_mass
 
+    @cache
     def GeneratorMass(
         self, mass_coeff=1800.0, mass_intercept=0.0, user_exp=1.0
     ) -> float:
@@ -205,11 +223,13 @@ class DTUOffshoreCostModel(CostModel):
         generator_mass = mass_coeff * (self.rated_power**user_exp) + mass_intercept
         return generator_mass
 
+    @cache
     def CoolingMass(self, mass_coeff=500.0, mass_intercept=0.0, user_exp=1.0) -> float:
         """Calculate the mass of the cooling system."""
         cooling_mass = mass_coeff * (self.rated_power**user_exp) + mass_intercept
         return cooling_mass
 
+    @cache
     def PowerConverterMass(
         self, mass_coeff=1000.0, mass_intercept=0.0, user_exp=1.0
     ) -> float:
@@ -217,6 +237,7 @@ class DTUOffshoreCostModel(CostModel):
         powerconverter_mass = mass_coeff * (self.rated_power**user_exp) + mass_intercept
         return powerconverter_mass
 
+    @cache
     def ControllerMass(
         self, mass_coeff=100.0, mass_intercept=200.0, user_exp=1.0
     ) -> float:
@@ -224,16 +245,19 @@ class DTUOffshoreCostModel(CostModel):
         controller_mass = mass_coeff * (self.rated_power**user_exp) + mass_intercept
         return controller_mass
 
+    @cache
     def BedplateMass(self, mass_coeff=1.2, mass_intercept=0.0, user_exp=2.0) -> float:
         """Calculate the mass of the bedplate."""
         bedplate_mass = mass_coeff * (self.rotor_diameter**user_exp) + mass_intercept
         return bedplate_mass
 
+    @cache
     def YawSystemMass(self, mass_coeff=0.1, mass_intercept=0.0, user_exp=2.5) -> float:
         """Calculate the mass of the yaw system."""
         yawsystem_mass = mass_coeff * (self.rotor_diameter**user_exp) + mass_intercept
         return yawsystem_mass
 
+    @cache
     def CanopyMass(
         self, mass_coeff=1500.0, mass_intercept=1000.0, user_exp=1.0
     ) -> float:
@@ -241,6 +265,7 @@ class DTUOffshoreCostModel(CostModel):
         canopy_mass = mass_coeff * (self.rated_power**user_exp) + mass_intercept
         return canopy_mass
 
+    @cache
     def NacellSecondaryEquipmentMass(
         self, mass_coeff=1000.0, mass_intercept=1000.0, user_exp=1.0
     ) -> float:
@@ -250,6 +275,7 @@ class DTUOffshoreCostModel(CostModel):
         )
         return nacell_secondaryequipment_mass
 
+    @cache
     def TowerStructureMass(
         self, mass_coeff=0.25, mass_intercept=0.0, user_exp=1.0
     ) -> float:
@@ -260,6 +286,7 @@ class DTUOffshoreCostModel(CostModel):
         )
         return tower_structure_mass
 
+    @cache
     def TowerInternalsMass(
         self, mass_coeff=100.0, mass_intercept=1000.0, user_exp=1.0
     ) -> float:
@@ -267,6 +294,7 @@ class DTUOffshoreCostModel(CostModel):
         tower_internals_mass = mass_coeff * (self.hub_height**user_exp) + mass_intercept
         return tower_internals_mass
 
+    @cache
     def PowerCablesMass(
         self, mass_coeff=25.0, mass_intercept=0.0, user_exp=1.0
     ) -> float:
@@ -277,6 +305,7 @@ class DTUOffshoreCostModel(CostModel):
         )
         return power_cables_mass
 
+    @cache
     def MainTransformerMass(
         self, mass_coeff=2500.0, mass_intercept=0.0, user_exp=1.0
     ) -> float:
@@ -286,6 +315,7 @@ class DTUOffshoreCostModel(CostModel):
         )
         return main_transformer_mass
 
+    @cache
     def TowerSecondaryEquipmentMass(
         self, mass_coeff=500.0, mass_intercept=1000.0, user_exp=1.0
     ) -> float:
@@ -295,6 +325,7 @@ class DTUOffshoreCostModel(CostModel):
         )
         return tower_secondaryequipment_mass
 
+    @cache
     def HubTotalMass(self) -> float:
         """Calculate the total mass of the hub by summing its components."""
         return (
@@ -306,6 +337,7 @@ class DTUOffshoreCostModel(CostModel):
             + self.SpinnerMass()
         )
 
+    @cache
     def NacelleTotalMass(self) -> float:
         """Calculate the total mass of the nacelle by summing its components."""
         return (
@@ -324,6 +356,7 @@ class DTUOffshoreCostModel(CostModel):
             + self.NacellSecondaryEquipmentMass()
         )
 
+    @cache
     def TowerTotalMass(self) -> float:
         """Calculate the total mass of the tower by summing its components."""
         return (
@@ -334,6 +367,7 @@ class DTUOffshoreCostModel(CostModel):
             + self.TowerSecondaryEquipmentMass()
         )
 
+    @cache
     def BOMTotalMass(self) -> float:
         """Calculate the total Bill of Materials (BOM) mass by summing all component masses."""
         return (
@@ -343,131 +377,157 @@ class DTUOffshoreCostModel(CostModel):
             + self.TowerTotalMass()
         )
 
+    @cache
     def BladeTotalCost(self, rate=15.0) -> float:
         blade_cost = self.TotalBladeMass() * rate
 
         return blade_cost
 
+    @cache
     def HubStructureCost(self, rate=2.5) -> float:
         hubstructure_cost = self.HubStructureMass() * rate
 
         return hubstructure_cost
 
+    @cache
     def HubComputerCost(self, rate=50.0) -> float:
         hubcomputer_cost = self.HubComputerMass() * rate
 
         return hubcomputer_cost
 
+    @cache
     def PitchBearingsCost(self, rate=8.0) -> float:
         pitchbearing_cost = self.PitchBearingsMass() * rate
 
         return pitchbearing_cost
 
+    @cache
     def PitchActuatorSystemCost(self, rate=8.0) -> float:
         pitch_actuatorsystem_cost = self.PitchActuatorSystemMass() * rate
 
         return pitch_actuatorsystem_cost
 
+    @cache
     def HubSecondaryEquipmentCost(self, rate=8.0) -> float:
         hub_secondary_equipment_cost = self.HubSecondaryEquipmentMass() * rate
 
         return hub_secondary_equipment_cost
 
+    @cache
     def SpinnerCost(self, rate=10.0) -> float:
         spinner_cost = self.SpinnerMass() * rate
 
         return spinner_cost
 
+    @cache
     def MainShaftCost(self, rate=5.0) -> float:
         mainshaft_cost = self.MainShaftMass() * rate
 
         return mainshaft_cost
 
+    @cache
     def MainBearingsCost(self, rate=15.0) -> float:
         main_bearings_cost = self.MainBearingsMass() * rate
 
         return main_bearings_cost
 
+    @cache
     def MainBearingHousingCost(self, rate=2.5) -> float:
         main_bearinghousing_cost = self.MainBearingHousingMass() * rate
 
         return main_bearinghousing_cost
 
+    @cache
     def GearboxCost(self, rate=8.0) -> float:
         gearbox_cost = self.GearboxMass() * rate
 
         return gearbox_cost
 
+    @cache
     def CouplingPlusBrakeSystemCost(self, rate=8.0) -> float:
         coupling_brakesystem_cost = self.CouplingPlusBrakeSystemMass() * rate
 
         return coupling_brakesystem_cost
 
+    @cache
     def GeneratorCost(self, rate=8.0) -> float:
         generator_cost = self.GeneratorMass() * rate
 
         return generator_cost
 
+    @cache
     def CoolingCost(self, rate=8.0) -> float:
         cooling_cost = self.CoolingMass() * rate
 
         return cooling_cost
 
+    @cache
     def PowerConverterCost(self, rate=30.0) -> float:
         powerconverter_cost = self.PowerConverterMass() * rate
 
         return powerconverter_cost
 
+    @cache
     def ControllerCost(self, rate=50.0) -> float:
         controller_cost = self.ControllerMass() * rate
 
         return controller_cost
 
+    @cache
     def BedplateCost(self, rate=2.5) -> float:
         bedplate_cost = self.BedplateMass() * rate
 
         return bedplate_cost
 
+    @cache
     def YawSystemCost(self, rate=6.0) -> float:
         yawsystem_cost = self.YawSystemMass() * rate
 
         return yawsystem_cost
 
+    @cache
     def CanopyCost(self, rate=10.0) -> float:
         canopy_cost = self.CanopyMass() * rate
 
         return canopy_cost
 
+    @cache
     def NacellSecondaryEquipmentCost(self, rate=10.0) -> float:
         nacell_secondaryequipment_cost = self.NacellSecondaryEquipmentMass() * rate
 
         return nacell_secondaryequipment_cost
 
+    @cache
     def TowerStructureCost(self, rate=3.0) -> float:
         tower_structure_cost = self.TowerStructureMass() * rate
 
         return tower_structure_cost
 
+    @cache
     def TowerInternalsCost(self, rate=8.0) -> float:
         tower_internals_cost = self.TowerInternalsMass() * rate
 
         return tower_internals_cost
 
+    @cache
     def PowerCablesCost(self, rate=8.0) -> float:
         power_cables_cost = self.PowerCablesMass() * rate
 
         return power_cables_cost
 
+    @cache
     def MainTransformerCost(self, rate=8.0) -> float:
         main_transformer_cost = self.MainTransformerMass() * rate
 
         return main_transformer_cost
 
+    @cache
     def TowerSecondaryEquipmentCost(self, rate=10.0) -> float:
         tower_secondaryequipment_cost = self.TowerSecondaryEquipmentMass() * rate
 
         return tower_secondaryequipment_cost
 
+    @cache
     def HubTotalCost(self) -> float:
         return (
             self.HubStructureCost()
@@ -478,6 +538,7 @@ class DTUOffshoreCostModel(CostModel):
             + self.SpinnerCost()
         )
 
+    @cache
     def NacelleTotalCost(self) -> float:
         return (
             self.MainShaftCost()
@@ -495,6 +556,7 @@ class DTUOffshoreCostModel(CostModel):
             + self.NacellSecondaryEquipmentCost()
         )
 
+    @cache
     def TowerTotalCost(self) -> float:
         return (
             self.TowerStructureCost()
@@ -504,6 +566,7 @@ class DTUOffshoreCostModel(CostModel):
             + self.TowerSecondaryEquipmentCost()
         )
 
+    @cache
     def BOMTotalCost(self) -> float:
         return (
             self.BladeTotalCost()
@@ -512,36 +575,43 @@ class DTUOffshoreCostModel(CostModel):
             + self.TowerTotalCost()
         )
 
+    @cache
     def MaterialOverheadCost(self, cost_coeff=0.03) -> float:
         material_overhead_cost = self.BOMTotalCost() * cost_coeff
 
         return material_overhead_cost
 
+    @cache
     def DirectLaborCost(self, cost_coeff=0.10) -> float:
         direct_labor_cost = self.BOMTotalCost() * cost_coeff
 
         return direct_labor_cost
 
+    @cache
     def DirectProductionCost(self) -> float:
         return (
             self.BOMTotalCost() + self.MaterialOverheadCost() + self.DirectLaborCost()
         )
 
+    @cache
     def OverheadCost(self, cost_coeff=0.05) -> float:
         material_overhead_cost = self.DirectProductionCost() * cost_coeff
 
         return material_overhead_cost
 
+    @cache
     def R_and_D(self, cost_coeff=0.025) -> float:
         RD = self.DirectProductionCost() * cost_coeff
 
         return RD
 
+    @cache
     def SG_and_A(self, cost_coeff=0.05) -> float:
         SGA = self.DirectProductionCost() * cost_coeff
 
         return SGA
 
+    @cache
     def TotalProductionCost(self) -> float:
         return (
             self.DirectProductionCost()
@@ -550,27 +620,33 @@ class DTUOffshoreCostModel(CostModel):
             + self.SG_and_A()
         )
 
+    @cache
     def WarrantyAccrualsCost(self, cost_coeff=0.03) -> float:
         return self.TotalProductionCost() * cost_coeff
 
+    @cache
     def FinancingCost(self, cost_coeff=0.017778) -> float:
         return self.TotalProductionCost() * cost_coeff
 
+    @cache
     def TransportCost(
         self, cost_coeff=0.2, cost_intercept=10000.0, user_exp=1.0
     ) -> float:
         return cost_coeff * (self.BOMTotalMass() ** user_exp) + cost_intercept
 
+    @cache
     def HarborStorageAssyCost(
         self, cost_coeff=0.0, cost_intercept=0.0, user_exp=1.0
     ) -> float:
         return cost_coeff * (self.rated_power**user_exp) + cost_intercept
 
+    @cache
     def InstallationCommissCost(
         self, cost_coeff=0.0, cost_intercept=0.0, user_exp=1.0
     ) -> float:
         return cost_coeff * (self.rated_power**user_exp) + cost_intercept
 
+    @cache
     def TotalAdditionalCost(self) -> float:
         return (
             self.WarrantyAccrualsCost()
@@ -580,332 +656,441 @@ class DTUOffshoreCostModel(CostModel):
             + self.InstallationCommissCost()
         )
 
+    @cache
     def TotalCostCalculation(self) -> float:
         return self.TotalAdditionalCost() + self.TotalProductionCost()
 
+    @cache
     def ProfitCalculation(self) -> float:
         return -(1 - 1 / (1 - self.profit)) * self.TotalCostCalculation()
 
+    @cache
     def SalesPriceCalculation(self) -> float:
         return self.TotalCostCalculation() + self.ProfitCalculation()
 
+    @cache
     def TotalBladeShareofSale(self) -> float:
         return self.BladeTotalCost() / self.SalesPriceCalculation()
 
+    @cache
     def HubStructureShareofSale(self) -> float:
         return self.HubStructureCost() / self.SalesPriceCalculation()
 
+    @cache
     def HubComputerShareofSale(self) -> float:
         return self.HubComputerCost() / self.SalesPriceCalculation()
 
+    @cache
     def PitchBearingsShareofSale(self) -> float:
         return self.PitchBearingsCost() / self.SalesPriceCalculation()
 
+    @cache
     def PitchActuatorSystemShareofSale(self) -> float:
         return self.PitchActuatorSystemCost() / self.SalesPriceCalculation()
 
+    @cache
     def HubSecondaryEquipmentShareofSale(self) -> float:
         return self.HubSecondaryEquipmentCost() / self.SalesPriceCalculation()
 
+    @cache
     def SpinnerShareofSale(self) -> float:
         return self.SpinnerCost() / self.SalesPriceCalculation()
 
+    @cache
     def MainShaftShareofSale(self) -> float:
         return self.MainShaftCost() / self.SalesPriceCalculation()
 
+    @cache
     def MainBearingsShareofSale(self) -> float:
         return self.MainBearingsCost() / self.SalesPriceCalculation()
 
+    @cache
     def MainBearingHousingShareofSale(self) -> float:
         return self.MainBearingHousingCost() / self.SalesPriceCalculation()
 
+    @cache
     def GearboxShareofSale(self) -> float:
         return self.GearboxCost() / self.SalesPriceCalculation()
 
+    @cache
     def CouplingPlusBrakeSystemShareofSale(self) -> float:
         return self.CouplingPlusBrakeSystemCost() / self.SalesPriceCalculation()
 
+    @cache
     def GeneratorShareofSale(self) -> float:
         return self.GeneratorCost() / self.SalesPriceCalculation()
 
+    @cache
     def CoolingShareofSale(self) -> float:
         return self.CoolingCost() / self.SalesPriceCalculation()
 
+    @cache
     def PowerConverterShareofSale(self) -> float:
         return self.PowerConverterCost() / self.SalesPriceCalculation()
 
+    @cache
     def ControllerShareofSale(self) -> float:
         return self.ControllerCost() / self.SalesPriceCalculation()
 
+    @cache
     def BedplateShareofSale(self) -> float:
         return self.BedplateCost() / self.SalesPriceCalculation()
 
+    @cache
     def YawSystemShareofSale(self) -> float:
         return self.YawSystemCost() / self.SalesPriceCalculation()
 
+    @cache
     def CanopyShareofSale(self) -> float:
         return self.CanopyCost() / self.SalesPriceCalculation()
 
+    @cache
     def NacellSecondaryEquipmentShareofSale(self) -> float:
         return self.NacellSecondaryEquipmentCost() / self.SalesPriceCalculation()
 
+    @cache
     def TowerStructureShareofSale(self) -> float:
         return self.TowerStructureCost() / self.SalesPriceCalculation()
 
+    @cache
     def TowerInternalsShareofSale(self) -> float:
         return self.TowerInternalsCost() / self.SalesPriceCalculation()
 
+    @cache
     def PowerCablesShareofSale(self) -> float:
         return self.PowerCablesCost() / self.SalesPriceCalculation()
 
+    @cache
     def MainTransformerShareofSale(self) -> float:
         return self.MainTransformerCost() / self.SalesPriceCalculation()
 
+    @cache
     def TowerSecondaryEquipmentShareofSale(self) -> float:
         return self.TowerSecondaryEquipmentCost() / self.SalesPriceCalculation()
 
+    @cache
     def HubTotalShareofSale(self) -> float:
         return self.HubTotalCost() / self.SalesPriceCalculation()
 
+    @cache
     def NacelleTotalShareofSale(self) -> float:
         return self.NacelleTotalCost() / self.SalesPriceCalculation()
 
+    @cache
     def TowerTotalShareofSale(self) -> float:
         return self.TowerTotalCost() / self.SalesPriceCalculation()
 
+    @cache
     def BOMTotalShareofSale(self) -> float:
         return self.BOMTotalCost() / self.SalesPriceCalculation()
 
+    @cache
     def MaterialOverheadShareofSale(self) -> float:
         return self.MaterialOverheadCost() / self.SalesPriceCalculation()
 
+    @cache
     def DirectLaborShareofSale(self) -> float:
         return self.DirectLaborCost() / self.SalesPriceCalculation()
 
+    @cache
     def DirectProductionShareofSale(self) -> float:
         return self.DirectProductionCost() / self.SalesPriceCalculation()
 
+    @cache
     def OverheadShareofSale(self) -> float:
         return self.OverheadCost() / self.SalesPriceCalculation()
 
+    @cache
     def R_and_DShareofSale(self) -> float:
         return self.R_and_D() / self.SalesPriceCalculation()
 
+    @cache
     def SG_and_AShareofSale(self) -> float:
         return self.SG_and_A() / self.SalesPriceCalculation()
 
+    @cache
     def TotalProductionShareofSale(self) -> float:
         return self.TotalProductionCost() / self.SalesPriceCalculation()
 
+    @cache
     def WarrantyAccrualsShareofSale(self) -> float:
         return self.WarrantyAccrualsCost() / self.SalesPriceCalculation()
 
+    @cache
     def FinancingShareofSale(self) -> float:
         return self.FinancingCost() / self.SalesPriceCalculation()
 
+    @cache
     def TransportShareofSale(self) -> float:
         return self.TransportCost() / self.SalesPriceCalculation()
 
+    @cache
     def HarborStorageAssyShareofSale(self) -> float:
         return self.HarborStorageAssyCost() / self.SalesPriceCalculation()
 
+    @cache
     def InstallationCommissShareofSale(self) -> float:
         return self.InstallationCommissCost() / self.SalesPriceCalculation()
 
+    @cache
     def TotalShareofSale(self) -> float:
         return self.TotalCostCalculation() / self.SalesPriceCalculation()
 
+    @cache
     def ProfitShareofSale(self) -> float:
         return self.ProfitCalculation() / self.SalesPriceCalculation()
 
+    @cache
     def SalesShareofSale(self) -> float:
         return self.SalesPriceCalculation() / self.SalesPriceCalculation()
 
+    @cache
     def TotalBladeShareofTPC(self) -> float:
         return self.BladeTotalCost() / self.TotalProductionCost()
 
+    @cache
     def HubStructureShareofTPC(self) -> float:
         return self.HubStructureCost() / self.TotalProductionCost()
 
+    @cache
     def HubComputerShareofTPC(self) -> float:
         return self.HubComputerCost() / self.TotalProductionCost()
 
+    @cache
     def PitchBearingsShareofTPC(self) -> float:
         return self.PitchBearingsCost() / self.TotalProductionCost()
 
+    @cache
     def PitchActuatorSystemShareofTPC(self) -> float:
         return self.PitchActuatorSystemCost() / self.TotalProductionCost()
 
+    @cache
     def HubSecondaryEquipmentShareofTPC(self) -> float:
         return self.HubSecondaryEquipmentCost() / self.TotalProductionCost()
 
+    @cache
     def SpinnerShareofTPC(self) -> float:
         return self.SpinnerCost() / self.TotalProductionCost()
 
+    @cache
     def MainShaftShareofTPC(self) -> float:
         return self.MainShaftCost() / self.TotalProductionCost()
 
+    @cache
     def MainBearingsShareofTPC(self) -> float:
         return self.MainBearingsCost() / self.TotalProductionCost()
 
+    @cache
     def MainBearingHousingShareofTPC(self) -> float:
         return self.MainBearingHousingCost() / self.TotalProductionCost()
 
+    @cache
     def GearboxShareofTPC(self) -> float:
         return self.GearboxCost() / self.TotalProductionCost()
 
+    @cache
     def CouplingPlusBrakeSystemShareofTPC(self) -> float:
         return self.CouplingPlusBrakeSystemCost() / self.TotalProductionCost()
 
+    @cache
     def GeneratorShareofTPC(self) -> float:
         return self.GeneratorCost() / self.TotalProductionCost()
 
+    @cache
     def CoolingShareofTPC(self) -> float:
         return self.CoolingCost() / self.TotalProductionCost()
 
+    @cache
     def PowerConverterShareofTPC(self) -> float:
         return self.PowerConverterCost() / self.TotalProductionCost()
 
+    @cache
     def ControllerShareofTPC(self) -> float:
         return self.ControllerCost() / self.TotalProductionCost()
 
+    @cache
     def BedplateShareofTPC(self) -> float:
         return self.BedplateCost() / self.TotalProductionCost()
 
+    @cache
     def YawSystemShareofTPC(self) -> float:
         return self.YawSystemCost() / self.TotalProductionCost()
 
+    @cache
     def CanopyShareofTPC(self) -> float:
         return self.CanopyCost() / self.TotalProductionCost()
 
+    @cache
     def NacellSecondaryEquipmentShareofTPC(self) -> float:
         return self.NacellSecondaryEquipmentCost() / self.TotalProductionCost()
 
+    @cache
     def TowerStructureShareofTPC(self) -> float:
         return self.TowerStructureCost() / self.TotalProductionCost()
 
+    @cache
     def TowerInternalsShareofTPC(self) -> float:
         return self.TowerInternalsCost() / self.TotalProductionCost()
 
+    @cache
     def PowerCablesShareofTPC(self) -> float:
         return self.PowerCablesCost() / self.TotalProductionCost()
 
+    @cache
     def MainTransformerShareofTPC(self) -> float:
         return self.MainTransformerCost() / self.TotalProductionCost()
 
+    @cache
     def TowerSecondaryEquipmentShareofTPC(self) -> float:
         return self.TowerSecondaryEquipmentCost() / self.TotalProductionCost()
 
+    @cache
     def HubTotalShareofTPC(self) -> float:
         return self.HubTotalCost() / self.TotalProductionCost()
 
+    @cache
     def NacelleTotalShareofTPC(self) -> float:
         return self.NacelleTotalCost() / self.TotalProductionCost()
 
+    @cache
     def TowerTotalShareofTPC(self) -> float:
         return self.TowerTotalCost() / self.TotalProductionCost()
 
+    @cache
     def BOMTotalShareofTPC(self) -> float:
         return self.BOMTotalCost() / self.TotalProductionCost()
 
+    @cache
     def MaterialOverheadShareofTPC(self) -> float:
         return self.MaterialOverheadCost() / self.TotalProductionCost()
 
+    @cache
     def DirectLaborShareofTPC(self) -> float:
         return self.DirectLaborCost() / self.TotalProductionCost()
 
+    @cache
     def DirectProductionShareofTPC(self) -> float:
         return self.DirectProductionCost() / self.TotalProductionCost()
 
+    @cache
     def OverheadShareofTPC(self) -> float:
         return self.OverheadCost() / self.TotalProductionCost()
 
+    @cache
     def R_and_DShareofTPC(self) -> float:
         return self.R_and_D() / self.TotalProductionCost()
 
+    @cache
     def SG_and_AShareofTPC(self) -> float:
         return self.SG_and_A() / self.TotalProductionCost()
 
+    @cache
     def TotalProductionShareofTPC(self) -> float:
         return self.TotalProductionCost() / self.TotalProductionCost()
 
+    @cache
     def BladeCo2Emission(
         self, emissionfactor=4.00
     ) -> float:  # emissionFactor  is in kg CO2/kg
         return emissionfactor * self.TotalBladeMass()
 
+    @cache
     def HubStructureCo2Emission(self, emissionfactor=1.83) -> float:
         return emissionfactor * self.HubStructureMass()
 
+    @cache
     def HubComputerCo2Emission(self, emissionfactor=3.00) -> float:
         return emissionfactor * self.HubComputerMass()
 
+    @cache
     def PitchBearingsCo2Emission(self, emissionfactor=1.83) -> float:
         return emissionfactor * self.PitchBearingsMass()
 
+    @cache
     def PitchActuatorSystemCo2Emission(self, emissionfactor=1.83) -> float:
         return emissionfactor * self.PitchActuatorSystemMass()
 
+    @cache
     def HubSecondaryEquipmentCo2Emission(self, emissionfactor=1.83) -> float:
         return emissionfactor * self.HubSecondaryEquipmentMass()
 
+    @cache
     def SpinnerCo2Emission(self, emissionfactor=4.00) -> float:
         return emissionfactor * self.SpinnerMass()
 
+    @cache
     def MainShaftCo2Emission(self, emissionfactor=1.83) -> float:
         return emissionfactor * self.MainShaftMass()
 
+    @cache
     def MainBearingsCo2Emission(self, emissionfactor=1.83) -> float:
         return emissionfactor * self.MainBearingsMass()
 
+    @cache
     def MainBearingHousingCo2Emission(self, emissionfactor=1.83) -> float:
         return emissionfactor * self.MainBearingHousingMass()
 
+    @cache
     def GearboxCo2Emission(self, emissionfactor=1.83) -> float:
         return emissionfactor * self.GearboxMass()
 
+    @cache
     def CouplingPlusBrakeSystemCo2Emission(self, emissionfactor=1.83) -> float:
         return emissionfactor * self.CouplingPlusBrakeSystemMass()
 
+    @cache
     def GeneratorCo2Emission(self, emissionfactor=6.00) -> float:
         return emissionfactor * self.GeneratorMass()
 
+    @cache
     def CoolingCo2Emission(self, emissionfactor=2.00) -> float:
         return emissionfactor * self.CoolingMass()
 
+    @cache
     def PowerConverterCo2Emission(self, emissionfactor=4.00) -> float:
         return emissionfactor * self.PowerConverterMass()
 
+    @cache
     def ControllerCo2Emission(self, emissionfactor=1.83) -> float:
         return emissionfactor * self.ControllerMass()
 
+    @cache
     def BedplateCo2Emission(self, emissionfactor=1.83) -> float:
         return emissionfactor * self.BedplateMass()
 
+    @cache
     def YawSystemCo2Emission(self, emissionfactor=1.83) -> float:
         return emissionfactor * self.YawSystemMass()
 
+    @cache
     def CanopyCo2Emission(self, emissionfactor=4.00) -> float:
         return emissionfactor * self.CanopyMass()
 
+    @cache
     def NacellSecondaryEquipmentCo2Emission(self, emissionfactor=1.83) -> float:
         return emissionfactor * self.NacellSecondaryEquipmentMass()
 
+    @cache
     def TowerStructureCo2Emission(self, emissionfactor=1.83) -> float:
         return emissionfactor * self.TowerStructureMass()
 
+    @cache
     def TowerInternalsCo2Emission(self, emissionfactor=2.00) -> float:
         return emissionfactor * self.TowerInternalsMass()
 
+    @cache
     def PowerCablesCo2Emission(self, emissionfactor=4.00) -> float:
         return emissionfactor * self.PowerCablesMass()
 
+    @cache
     def MainTransformerCo2Emission(self, emissionfactor=4.00) -> float:
         return emissionfactor * self.MainTransformerMass()
 
+    @cache
     def TowerSecondaryEquipmentCo2Emission(self, emissionfactor=2.00) -> float:
         return emissionfactor * self.TowerSecondaryEquipmentMass()
 
+    @cache
     def Total_Co2Emission(self) -> float:
         return (
             self.BladeCo2Emission()
@@ -935,81 +1120,107 @@ class DTUOffshoreCostModel(CostModel):
             + self.TowerSecondaryEquipmentCo2Emission()
         )
 
+    @cache
     def BladeCo2EmissionShare(self) -> float:  # emissionFactor  is in kg CO2/kg
         return self.BladeCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def HubStructureCo2EmissionShare(self) -> float:
         return self.HubStructureCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def HubComputerCo2EmissionShare(self) -> float:
         return self.HubComputerCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def PitchBearingsCo2EmissionShare(self) -> float:
         return self.PitchBearingsCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def PitchActuatorSystemCo2EmissionShare(self) -> float:
         return self.PitchActuatorSystemCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def HubSecondaryEquipmentCo2EmissionShare(self) -> float:
         return self.HubSecondaryEquipmentCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def SpinnerCo2EmissionShare(self) -> float:
         return self.SpinnerCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def MainShaftCo2EmissionShare(self) -> float:
         return self.MainShaftCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def MainBearingsCo2EmissionShare(self) -> float:
         return self.MainBearingsCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def MainBearingHousingCo2EmissionShare(self) -> float:
         return self.MainBearingHousingCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def GearboxCo2EmissionShare(self) -> float:
         return self.GearboxCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def CouplingPlusBrakeSystemCo2EmissionShare(self) -> float:
         return self.CouplingPlusBrakeSystemCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def GeneratorCo2EmissionShare(self) -> float:
         return self.GeneratorCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def CoolingCo2EmissionShare(self) -> float:
         return self.CoolingCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def PowerConverterCo2EmissionShare(self) -> float:
         return self.PowerConverterCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def ControllerCo2EmissionShare(self) -> float:
         return self.ControllerCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def BedplateCo2EmissionShare(self) -> float:
         return self.BedplateCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def YawSystemCo2EmissionShare(self) -> float:
         return self.YawSystemCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def CanopyCo2EmissionShare(self) -> float:
         return self.CanopyCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def NacellSecondaryEquipmentCo2EmissionShare(self) -> float:
         return self.NacellSecondaryEquipmentCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def TowerStructureCo2EmissionShare(self) -> float:
         return self.TowerStructureCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def TowerInternalsCo2EmissionShare(self) -> float:
         return self.TowerInternalsCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def PowerCablesCo2EmissionShare(self) -> float:
         return self.PowerCablesCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def MainTransformerCo2EmissionShare(self) -> float:
         return self.MainTransformerCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def TowerSecondaryEquipmentCo2EmissionShare(self) -> float:
         return self.TowerSecondaryEquipmentCo2Emission() / self.Total_Co2Emission()
 
+    @cache
     def Total_Co2EmissionShare(self) -> float:
         return self.Total_Co2Emission() / self.Total_Co2Emission()
 
@@ -1046,6 +1257,7 @@ class DTUOffshoreCostModel(CostModel):
         )
         return self.convert_currency(foundation_cost)
 
+    @cache
     def BOPCost(self):
         """
         Calculate the foundation cost for each water depth and convert to the selected currency.
@@ -1053,30 +1265,39 @@ class DTUOffshoreCostModel(CostModel):
         """
         return self.CalculateFoundationCost() + 1000 * self.electrical_cost
 
+    @cache
     def RealWACC(self) -> float:
         return (1 + self.wacc) / (1 + self.inflation) - 1
 
+    @cache
     def devexTotal(self) -> float:
         return np.sum(self.devex * self.rated_power * 1000)
 
+    @cache
     def CAPEXTurbineTower(self) -> float:
         return self.SalesPriceCalculation() / self.rated_power / 1000
 
+    @cache
     def CAPEXBOP(self) -> float:
         return self.BOPCost()
 
+    @cache
     def CAPEXWT(self) -> float:
         return (self.CAPEXBOP() + self.CAPEXTurbineTower()) * self.rated_power * 1000
 
+    @cache
     def CAPEXTotal(self) -> float:
         return np.sum(self.CAPEXWT())
 
+    @cache
     def opexTotal(self) -> float:
         return np.sum(self.opex * self.rated_power * 1000)
 
+    @cache
     def abexTotal(self) -> float:
         return np.sum(self.abex * self.rated_power * 1000)
 
+    @cache
     def AEP_WindFarm(self) -> float:
         # Ensure either AEP or capacity_factor is provided and AEP is not NaN
         if np.isnan(self.aep).any() and np.isnan(self.capacity_factor).any():
@@ -1091,6 +1312,7 @@ class DTUOffshoreCostModel(CostModel):
 
         return AEP_farm
 
+    @cache
     def DiscountFactor_WACC_r(self) -> list:
 
         discount_factor = []
@@ -1100,6 +1322,7 @@ class DTUOffshoreCostModel(CostModel):
 
         return discount_factor
 
+    @cache
     def DiscountFactor_WACC_n(self) -> list:
 
         discount_factor = []
@@ -1109,6 +1332,7 @@ class DTUOffshoreCostModel(CostModel):
 
         return discount_factor
 
+    @cache
     def AEPNet(self) -> float:
         AEP_net = []
         for year in range(self.lifetime):
@@ -1118,6 +1342,7 @@ class DTUOffshoreCostModel(CostModel):
         self.aep_net = np.sum(np.array(AEP_net))
         return self.aep_net
 
+    @cache
     def AEPDiscount(self) -> float:
         AEP_discount = []
         for year in range(self.lifetime):
@@ -1129,6 +1354,7 @@ class DTUOffshoreCostModel(CostModel):
         self.aep_discount = np.sum((np.array(AEP_discount)))
         return self.aep_discount
 
+    @cache
     def devexNet(self) -> float:
 
         project_start = 0
@@ -1140,6 +1366,7 @@ class DTUOffshoreCostModel(CostModel):
         self.devex = np.sum(np.array(devex))
         return self.devex
 
+    @cache
     def devexDiscount(self) -> float:
 
         project_start = 0
@@ -1154,9 +1381,11 @@ class DTUOffshoreCostModel(CostModel):
 
         return self.devex_discount
 
+    @cache
     def CAPEXNet(self) -> float:
         return self.CAPEXTotal()
 
+    @cache
     def CAPEXDiscount(
         self,
     ) -> float:  # in the excel sheet this is also called Total CAPEX
@@ -1166,9 +1395,11 @@ class DTUOffshoreCostModel(CostModel):
 
         return self.CAPEXTotal() * discount_factors[base_yaer_indx]
 
+    @cache
     def TotalCAPEX(self) -> float:  # in the excel sheet this is also called CAPEX total
         return self.CAPEXDiscount()
 
+    @cache
     def opexNET(self) -> float:
 
         opex_net = []
@@ -1179,6 +1410,7 @@ class DTUOffshoreCostModel(CostModel):
         self.opex_net = np.sum(np.array(opex_net))
         return self.opex_net
 
+    @cache
     def opexDiscount(self) -> float:
 
         base_yaer_indx = 2  # year = 0
@@ -1194,12 +1426,15 @@ class DTUOffshoreCostModel(CostModel):
         self.opex_d = np.sum(np.array(opex_d))
         return self.opex_d
 
+    @cache
     def abexNET(self) -> float:
         return 0.0
 
+    @cache
     def abexDiscount(self) -> float:
         return 0.0
 
+    @cache
     def LCOENumerator(self):
         return (
             self.devexDiscount()
@@ -1208,15 +1443,19 @@ class DTUOffshoreCostModel(CostModel):
             + self.abexDiscount()
         )
 
+    @cache
     def LCOEDenominator(self):
         return self.AEPDiscount()
 
+    @cache
     def LCOE(self):
         return self.LCOENumerator() / self.AEPDiscount()
 
+    @cache
     def NVP_devex(self):
         return self.devexDiscount() / self.LCOENumerator()
 
+    @cache
     def NVP_WT_CAPEX(self):
         Turbine_incl_tower = (
             self.SalesPriceCalculation() / np.array(self.rated_power) / 1000
@@ -1228,6 +1467,7 @@ class DTUOffshoreCostModel(CostModel):
             / self.LCOENumerator()
         )
 
+    @cache
     def NVP_BOP_CAPEX(self):
         Turbine_incl_tower = (
             self.SalesPriceCalculation() / np.array(self.rated_power) / 1000
@@ -1238,9 +1478,11 @@ class DTUOffshoreCostModel(CostModel):
             / self.LCOENumerator()
         )
 
+    @cache
     def NVP_opex(self):
         return self.opexDiscount() / self.LCOENumerator()
 
+    @cache
     def NVP_abex(self):
         return self.abexDiscount() / self.LCOENumerator()
 
@@ -1290,14 +1532,22 @@ class DTUOffshoreCostModel(CostModel):
         co2_emmisions = self.Total_Co2Emission()
         wt_cost = self.TotalCostCalculation()
 
-        cashflows = self.cashflows(
-            self._cm_input["eprice"],
-            self._cm_input["inflation"],
-            Quant(CAPEXNet, "EUR"),
-            Quant(opexNet, "EUR"),
-            Quant(AEPNet / self.lifetime, "MWh"),
-            self.lifetime,
-        )
+        # cashflows = self.cashflows(
+        #     self._cm_input["eprice"],
+        #     self._cm_input["inflation"],
+        #     Quant(CAPEXNet, "EUR"),
+        #     Quant(opexNet, "EUR"),
+        #     Quant(AEPNet / self.lifetime, "MWh"),
+        #     self.lifetime,
+        # )
+
+        # clear cache for the next call; workaround to reuse
+        # the many calls made to the same functions during
+        # the evaluation of the model : ) ~20x faster with caching;
+        # if not cleared the input for next call will be disregarded
+        for f in self.__class__.__dict__.values():
+            if hasattr(f, "cache_clear"):
+                f.cache_clear()
 
         return {
             "production_net": Quant(AEPNet, "MWh"),
@@ -1313,6 +1563,6 @@ class DTUOffshoreCostModel(CostModel):
             "lcoe": Quant(LCOE, "EUR/MWh"),
             "capex": Quant(CAPEXNet, "EUR").to("MEUR"),
             "opex": Quant(opexNet, "EUR").to("MEUR"),
-            "npv": self.npv(Quant(self.RealWACC() * 100, "%"), cashflows),
-            "irr": self.irr(cashflows),
+            # "npv": self.npv(Quant(self.RealWACC() * 100, "%"), cashflows),
+            # "irr": self.irr(cashflows),
         }
