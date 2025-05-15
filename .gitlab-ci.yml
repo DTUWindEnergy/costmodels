@@ -22,18 +22,16 @@ test_linux:
     - linux
 
 test_windows:
+  image: registry.windenergy.dtu.dk/topfarm/costmodels:latest
   variables:
     GIT_SUBMODULE_STRATEGY: normal
     GIT_CLEAN_FLAGS: -ffdx -e .pixi/
   stage: test
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   script:
-    - setx PIXI_CACHE_DIR D:\.pixi_cache
-    - $env:PIXI_CACHE_DIR = [System.Environment]::GetEnvironmentVariable("PIXI_CACHE_DIR","User")
-    - C:\Users\ernim\.pixi\bin\pixi.exe clean
-    - C:\Users\ernim\.pixi\bin\pixi.exe run -e test pytest
+    - pixi run -e test pytest
   tags:
-    - ANMH_old
+    - docker-windows
 
 test_pip_install:
   image: ghcr.io/prefix-dev/pixi:latest
