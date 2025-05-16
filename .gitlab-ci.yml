@@ -22,7 +22,7 @@ test_linux:
     - linux
 
 test_windows:
-  image: registry.windenergy.dtu.dk/topfarm/costmodels:latest
+  image: registry.windenergy.dtu.dk/dockerimages/windows-pixi:ltsc2019
   variables:
     GIT_SUBMODULE_STRATEGY: normal
     GIT_CLEAN_FLAGS: -ffdx -e .pixi/
