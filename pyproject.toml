@@ -7,8 +7,6 @@ version = "0.1.0"
 dependencies = [
     "numpy>=2.2.2,<3",
     "scipy>=1.15.1,<2",
-    "openmdao>=3.36.0,<4",
-    "numpy-financial>=1.0.0,<2",
     "pint>=0.24.4,<0.25",
     "matplotlib>=3.10.0,<4",
 ]
@@ -19,8 +17,11 @@ test = [
     "pytest-cov>=6.0.0,<7",
     "pytest-xdist>=3.6.1,<4",
     "pre-commit>=4.1.0,<5",
-    "xlwings>=0.33.9,<0.34",
-    # mypy = ">=1.15.0,<2"
+    "jax>=0.5.3,<0.7",
+    "pandas>=2.2.3,<3",
+    "openmdao>=3.36.0,<4",    # optional; only used with NREL cm
+    # "xlwings>=0.33.9,<0.34",
+    # "mypy>=1.15.0,<2"
 ]
 
 [build-system]
@@ -57,7 +58,6 @@ jupyterlab = ">=4.3.6,<5"
 topfarm = ">=2.5.1,<3"
 
 [tool.pixi.feature.examples.pypi-dependencies]
-jax = ">=0.5.3,<0.7"
 chex = ">=0.1.89,<0.2"
 
 [tool.pixi.environments]

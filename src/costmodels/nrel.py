@@ -13,7 +13,6 @@ class TurbineClass(Enum):
 
 
 class NRELCostModel(CostModel):
-
     @property
     def _cm_input_def(self):
         return {
@@ -36,6 +35,13 @@ class NRELCostModel(CostModel):
         }
 
     def __init__(self, **kwargs):
+        # check if openmdao is installed
+        try:
+            import openmdao  # noqa: F401
+        except ImportError:  # pragma: no cover
+            raise ImportError(
+                "openmdao is not installed. Please install it to use the NREL cost model."
+            )
         from openmdao.api import Problem  # fmt:skip isort:skip
         from costmodels.external.nrel_csm_mass_2015 import (  # fmt:skip isort:skip
             nrel_csm_2015,

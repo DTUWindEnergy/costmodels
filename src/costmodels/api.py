@@ -1,11 +1,9 @@
-import tempfile
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 
 # from functools import partial
 from numbers import Number
-from pathlib import Path
 
 import jax
 import jax.numpy as jnp
@@ -15,11 +13,6 @@ import jax.tree_util as tree_util
 import pint
 
 from costmodels.units import Quant
-
-jax_cache_dir = Path(tempfile.gettempdir()) / "jax_cache"
-jax.config.update("jax_compilation_cache_dir", str(jax_cache_dir))
-jax.config.update("jax_persistent_cache_min_entry_size_bytes", -1)
-jax.config.update("jax_persistent_cache_min_compile_time_secs", 0)
 
 
 @tree_util.register_pytree_node_class

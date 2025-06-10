@@ -65,7 +65,7 @@ class PowerToHydrogenCostModel(CostModel):
             * (water_cost + water_treatment_cost)
         )  # annual mean water consumption to produce hydrogen over an year
         OPEX = (
-            electrolyzer_capacity * (electrolyzer_opex_cost)
+            electrolyzer_capacity * electrolyzer_opex_cost
             + storage_opex_cost * hydrogen_storage_capacity
             + water_consumption_cost
         )
