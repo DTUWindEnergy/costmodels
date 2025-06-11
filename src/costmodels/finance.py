@@ -8,8 +8,6 @@ import jax.numpy as np
 from jax import tree_util
 from jax.scipy.optimize import minimize
 
-jax.config.update("jax_enable_x64", True)
-
 
 def _irr(cashflows):
     res = np.roots(cashflows[::-1], strip_zeros=False)
@@ -662,7 +660,7 @@ if __name__ == "__main__":
                 depreciation,
                 DEVEX,
             ),
-            number=100,
+            number=1,
         ),
         "s",
     )

@@ -254,7 +254,7 @@ def test_finances_run_against_reference_from_hydesign():
         "LCOE": np.float64(32.88913551461165),
         "LCOH": np.float64(5.196622705493022),
     }
-    # Unrolled loop for clarity
+
     np.testing.assert_allclose(res["cashflow"], ref["cashflow"])
     np.testing.assert_allclose(res["NPV"], ref["NPV"])
     np.testing.assert_allclose(res["IRR"], ref["IRR"])
@@ -264,3 +264,5 @@ def test_finances_run_against_reference_from_hydesign():
     np.testing.assert_allclose(res["LCOH"], ref["LCOH"])
 
     # TODO: test break even prices once it's implemented
+    # np.testing.assert_allclose(res["break_even_prices"]["spot_electricity"], ref["break_even_prices"]["spot_electricity"], rtol=1e-5)
+    # np.testing.assert_allclose(res["break_even_prices"]["hydrogen"], ref["break_even_prices"]["hydrogen"], rtol=1e-5)

@@ -46,3 +46,20 @@ To set up pre-commit hooks:
     ```
 
 Once installed, the hooks will run automatically before each commit. However it's preffered to run `pre-commit run --all-files` before commiting anything.
+
+## New API Guidelines
+
+Cost models implemented with `src/costmodels/api.py` must define a static
+``_run`` function. ``_run`` receives all inputs as ``jnp.ndarray`` values and
+**must** behave as a pure function, i.e. no side effects or mutation of global
+state. This is required so that JAX can trace the function and compute
+gradients correctly.
+
+The public :meth:`run` method handles conversion of input values (including
+``pint.Quantity`` objects) to JAX arrays before invoking ``_run``. The return
+value of ``_run`` must be an instance of ``CostModelOutput`` so that it can
+participate in JAX transformations.
+
+At the time of writing all shipped models still follow the old interface. They
+will be gradually ported to the new API. Check ``examples/icostmodel.py`` for a
+reference implementation of the new design.

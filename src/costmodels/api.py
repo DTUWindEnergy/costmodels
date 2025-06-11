@@ -1,3 +1,11 @@
+"""Base classes for the new cost model API.
+
+The upcoming API requires cost models to subclass :class:`CostModel` and
+implement a static, side-effect free :meth:`CostModel._run` method that
+operates solely on ``jnp.ndarray`` inputs. Existing models still follow the old
+interface but will be migrated over time.
+"""
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -30,8 +38,21 @@ class CostModelOutput:
         return cls(*children)
 
 
-def _input_dict_to_magnitudes(idict):
-    """Convert all Quant values in the input dictionary to their magnitudes."""
+def _input_dict_to_magnitudes(idict: dict) -> dict[str, jnp.ndarray]:
+    """Convert all :class:`~costmodels.units.Quant` values to ``jnp.ndarray``.
+
+    Parameters
+    ----------
+    idict:
+        Input dictionary where values may be ``pint.Quantity`` objects.
+
+    Returns
+    -------
+    dict[str, jnp.ndarray]
+        Dictionary with the same keys but with all numeric values converted to
+        ``jnp.ndarray`` of ``dtype=jnp.float32``.
+    """
+
     return {
         key: (
             jnp.array(value.magnitude, dtype=jnp.float32)
@@ -53,8 +74,13 @@ class CostModel(ABC):
 
     @staticmethod
     @abstractmethod
-    def _run(x: dict):  # pragma: no cover
-        """Internal function to run the cost model."""
+    def _run(x: dict[str, jnp.ndarray]) -> CostModelOutput:  # pragma: no cover
+        """Internal pure function executed by :meth:`run`.
+
+        The ``x`` argument contains all model inputs as ``jnp.ndarray`` values.
+        Implementations **must** avoid side effects and operate solely on JAX
+        arrays to ensure correct automatic differentiation.
+        """
         ...
 
     def __init__(self, **kwargs):
@@ -113,7 +139,22 @@ class CostModel(ABC):
                 f"pint.Quantity or Enum are allowed."
             )
 
-    def run(self, **kwargs):
+    def run(self, **kwargs) -> CostModelOutput:
+        """Run the cost model and return :class:`CostModelOutput`.
+
+        Parameters
+        ----------
+        **kwargs:
+            Values to update in the model input before execution. Each value can
+            be a plain ``float`` or a :class:`~costmodels.units.Quant`.
+
+        Returns
+        -------
+        CostModelOutput
+            Output object containing ``capex`` and ``opex`` as ``jnp.ndarray``
+            values.
+        """
+
         self._set_input(**kwargs)
         cmo = self._run(_input_dict_to_magnitudes(self._cm_input))
 
