@@ -49,3 +49,11 @@ def test_grad_through_model():
     grad_fn = jax.grad(lambda x: cm.run(dv=x).capex)
     val = grad_fn(1.0)
     assert jnp.isfinite(val)
+
+
+def test_jit_value_and_grad():
+    cm = ExampleCostModel()
+    jit_fn = jax.jit(jax.value_and_grad(lambda x: cm.run(dv=x).capex))
+    val, grad = jit_fn(1.0)
+    assert jnp.isfinite(val)
+    assert jnp.isfinite(grad)

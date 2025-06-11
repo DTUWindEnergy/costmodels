@@ -190,7 +190,7 @@ def _break_even_price(
         )
         revenues = _annual_revenue(technologies, generations, product_prices_temp, ny)
         cashflow = _cashflow(
-            Net_revenue_t=revenues,
+            net_revenue_t=revenues,
             investment_cost=CAPEX,
             maintenance_cost_per_year=OPEX,
             tax_rate=tax_rate,
@@ -208,7 +208,7 @@ def _break_even_price(
 
 
 def _cashflow(
-    Net_revenue_t,
+    net_revenue_t,
     investment_cost,
     maintenance_cost_per_year,
     tax_rate,
@@ -238,14 +238,14 @@ def _cashflow(
     """
 
     yr = np.arange(
-        len(Net_revenue_t) + 1
+        len(net_revenue_t) + 1
     )  # extra year to start at 0 and end at end of lifetime.
     depre = np.interp(
         np.asarray(yr), np.asarray(depreciation.year), np.asarray(depreciation.rate)
     )
 
     # EBITDA: earnings before interest and taxes in nominal prices
-    EBITDA = (Net_revenue_t - maintenance_cost_per_year) * inflation_index[1:]
+    EBITDA = (net_revenue_t - maintenance_cost_per_year) * inflation_index[1:]
 
     # EBIT taxable income
     depreciation_on_each_year = np.diff(investment_cost * depre)
@@ -479,7 +479,7 @@ def finances(
     )
     annual_revenue = _annual_revenue(technologies, product_prices, ny)
     cashflow = _cashflow(
-        Net_revenue_t=annual_revenue,
+        net_revenue_t=annual_revenue,
         investment_cost=CAPEX_eq,
         maintenance_cost_per_year=annual_operational_cost,
         tax_rate=tax_rate,
@@ -487,10 +487,8 @@ def finances(
         development_cost=devex,
         inflation_index=inflation_index,
     )
-    IRR = _irr(cashflow)  # Quant(calculate_irr_jax(cashflow) * 100, "%")
-    NPV = _npv(
-        hpp_discount_factor, cashflow
-    )  # Quant(calculate_npv_jax(hpp_discount_factor, cashflow), cashflows.units)
+    IRR = _irr(cashflow)
+    NPV = _npv(hpp_discount_factor, cashflow)
 
     # break_even_prices = {} TODO: !!!
     # for product, _ in product_prices.items():

@@ -14,6 +14,7 @@ from numbers import Number
 import jax
 import jax.numpy as jnp
 import jax.tree_util as tree_util
+import numpy as np
 import pint
 
 from costmodels.units import Quant
@@ -50,14 +51,14 @@ def _input_dict_to_magnitudes(idict: dict) -> dict[str, jnp.ndarray]:
     -------
     dict[str, jnp.ndarray]
         Dictionary with the same keys but with all numeric values converted to
-        ``jnp.ndarray`` of ``dtype=jnp.float32``.
+        ``jnp.ndarray`` of ``dtype=jnp.floatX``.
     """
 
     return {
         key: (
-            jnp.array(value.magnitude, dtype=jnp.float32)
+            jnp.array(value.magnitude, dtype=jnp.float64)
             if isinstance(value, Quant)
-            else value
+            else jnp.array(value, dtype=jnp.float64)
         )
         for key, value in idict.items()
     }
@@ -111,7 +112,7 @@ class CostModel(ABC):
             if not isinstance(value, Enum):
                 value = self._cm_input[key].__class__(value)
             self._cm_input[key] = value
-        elif isinstance(self._cm_input[key], (Quant, Number, jnp.number)):
+        elif isinstance(self._cm_input[key], (Quant, Number, jnp.number, np.number)):
             is_quant_expected = isinstance(self._cm_input[key], Quant)
             if is_quant_expected:
                 # the default value is a Quantity and
@@ -165,7 +166,7 @@ class CostModel(ABC):
 
             if np.any(np.isnan(capex_val)) or np.any(np.isnan(opex_val)):
                 warnings.warn(
-                    f"NaNs detected in CostModelOutput (capex or opex). "
+                    f"NaNs detected in CostModelOutput (capex = {capex_val} or opex = {opex_val}). "
                     f"Effective inputs (magnitudes) to _run method: {str(inputs_val)}",
                     RuntimeWarning,
                     stacklevel=2,
