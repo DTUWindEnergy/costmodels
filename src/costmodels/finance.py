@@ -422,7 +422,7 @@ class LCO:
 #         "DEVEX",
 #         "lcos",
 #     ],
-# )  # TODO: remote the JIT; should be on top level function
+# )  # TODO: remove the JIT; should be on top level function
 def finances(
     technologies: list[Technology],
     product_prices: dict,

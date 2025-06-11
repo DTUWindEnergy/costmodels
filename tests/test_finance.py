@@ -48,8 +48,8 @@ def test_finances_run_against_reference_from_hydesign():
         / (ts_inputs.wind_t_ext + ts_inputs.solar_t_ext)
         * ts_inputs.solar_t_ext
     )
-    np.nan_to_num(p_wind)
-    np.nan_to_num(p_solar)
+    p_wind = np.nan_to_num(p_wind)
+    p_solar = np.nan_to_num(p_solar)
     p_bess = ts_inputs.hpp_t - p_wind - p_solar
 
     p_wind_non = (
@@ -62,11 +62,10 @@ def test_finances_run_against_reference_from_hydesign():
         / (ts_inputs.wind_t_ext + ts_inputs.solar_t_ext)
         * ts_inputs.solar_t_ext
     )
-    np.nan_to_num(p_wind_non)
-    np.nan_to_num(p_solar_non)
+    p_wind_non = np.nan_to_num(p_wind_non)
+    p_solar_non = np.nan_to_num(p_solar_non)
     p_bess_non = ts_inputs.P_ptg_t - p_wind_non - p_solar_non
 
-    # technologies:
     technologies = {
         "wind": {
             "CAPEX": CAPEX_wind,
@@ -255,8 +254,13 @@ def test_finances_run_against_reference_from_hydesign():
         "LCOE": np.float64(32.88913551461165),
         "LCOH": np.float64(5.196622705493022),
     }
-    for ref_key, ref_value in ref.items():
-        if isinstance(ref_value, dict):
-            continue  # skip break_even_prices
-            # rsv, rfv = rsv["spot_electricity"], rfv["spot_electricity"]
-        np.testing.assert_allclose(res[ref_key], ref_value)
+    # Unrolled loop for clarity
+    np.testing.assert_allclose(res["cashflow"], ref["cashflow"])
+    np.testing.assert_allclose(res["NPV"], ref["NPV"])
+    np.testing.assert_allclose(res["IRR"], ref["IRR"])
+    np.testing.assert_allclose(res["CAPEX"], ref["CAPEX"])
+    np.testing.assert_allclose(res["OPEX"], ref["OPEX"])
+    np.testing.assert_allclose(res["LCOE"], ref["LCOE"])
+    np.testing.assert_allclose(res["LCOH"], ref["LCOH"])
+
+    # TODO: test break even prices once it's implemented
