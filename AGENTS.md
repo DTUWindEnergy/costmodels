@@ -63,3 +63,60 @@ participate in JAX transformations.
 At the time of writing all shipped models still follow the old interface. They
 will be gradually ported to the new API. Check ``examples/icostmodel.py`` for a
 reference implementation of the new design.
+
+## Project Helper
+
+``Project`` is a convenience wrapper around the financial utilities in
+``finance.py``.  It bundles one or more :class:`~costmodels.finance.Technology`
+objects with prices and economic parameters and exposes helper methods to
+compute project metrics and their gradients via JAX.
+
+Below is a minimal example that instantiates a cost model, builds a ``Project``
+and obtains the Net Present Value (NPV) together with the derivative of NPV with
+respect to the yearly production of a technology.
+
+```python
+import jax.numpy as jnp
+from costmodels.api import CostModel, CostModelOutput
+from costmodels.finance import Technology, Product, Inflation, Depreciation
+from costmodels.project import Project
+from costmodels.units import Quant
+
+
+class DummyCM(CostModel):
+    @property
+    def _cm_input_def(self):
+        return {"dv": Quant(jnp.nan, "m")}
+
+    @staticmethod
+    def _run(x):
+        return CostModelOutput(capex=jnp.abs(x["dv"]) * 1e6, opex=0.0)
+
+
+cm = DummyCM()
+tech = Technology(
+    name="demo",
+    CAPEX=cm.run(dv=1.0).capex,
+    OPEX=0.0,
+    lifetime=1,
+    t0=0,
+    WACC=0.05,
+    phasing_yr=[0],
+    phasing_capex=[1],
+    production=jnp.array([100.0]),
+    non_revenue_production=jnp.array([0.0]),
+    product=Product.SPOT_ELECTRICITY,
+)
+
+proj = Project(
+    technologies=[tech],
+    product_prices={Product.SPOT_ELECTRICITY: jnp.array([50.0])},
+    inflation=Inflation(rate=[0.0], year=[0], year_ref=0),
+    depreciation=Depreciation(year=[0, 1], rate=[0, 1]),
+)
+
+npv, grad = proj.npv_and_grad_production("demo")
+```
+
+``npv`` is the Net Present Value while ``grad`` holds ``dNPV/dproduction`` for
+the selected technology.

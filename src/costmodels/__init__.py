@@ -7,6 +7,7 @@ from costmodels.battery_cost import BatteryCostModel
 from costmodels.dtu_offshore import DTUOffshoreCostModel
 from costmodels.minimalistic import MinimalisticCostModel
 from costmodels.nrel import NRELCostModel
+from costmodels.project import Project
 from costmodels.pv import PVCostModel
 
 __all__ = [
@@ -15,6 +16,7 @@ __all__ = [
     "NRELCostModel",
     "PVCostModel",
     "BatteryCostModel",
+    "Project",
 ]
 
 jax_cache_dir = Path(tempfile.gettempdir()) / "jax_cache"
