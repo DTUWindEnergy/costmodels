@@ -12,10 +12,10 @@ class Project:
 
     technologies: list[Technology]
     product_prices: dict
+    inflation: Inflation
+    depreciation: Depreciation
     shared_capex: float = 0.0
-    inflation: Inflation | None = None
     tax_rate: float = 0.0
-    depreciation: Depreciation | None = None
     devex: float = 0.0
     lcos: tuple[LCO] | None = None
 
@@ -32,15 +32,21 @@ class Project:
             lcos=self.lcos,
         )["NPV"]
 
-    def npv_and_grad_production(self, tech_name: str):
-        """Return NPV and its gradient w.r.t. production of ``tech_name``."""
-        idx = next(i for i, t in enumerate(self.technologies) if t.name == tech_name)
-        production = self.technologies[idx].production
+    def npv_and_grad_production(self, productions: dict[str, jnp.ndarray]):
+        """Return NPV and its gradient with respect to technology production.
 
-        def objective(prod):
+        Parameters
+        ----------
+        productions:
+            A mapping from technology names to production values. Gradients are
+            returned for all productions in the mapping as a dictionary with the
+            same keys.
+        """
+
+        def objective(prod_dict):
             techs = [
-                replace(t, production=prod) if j == idx else t
-                for j, t in enumerate(self.technologies)
+                replace(t, production=prod_dict[t.name]) if t.name in prod_dict else t
+                for t in self.technologies
             ]
             return finances(
                 technologies=techs,
@@ -53,5 +59,5 @@ class Project:
                 lcos=self.lcos,
             )["NPV"]
 
-        value, grad = jax.value_and_grad(objective)(jnp.asarray(production))
+        value, grad = jax.value_and_grad(objective)(productions)
         return value, grad

@@ -108,6 +108,7 @@ tech = Technology(
     product=Product.SPOT_ELECTRICITY,
 )
 
+
 proj = Project(
     technologies=[tech],
     product_prices={Product.SPOT_ELECTRICITY: jnp.array([50.0])},
@@ -115,8 +116,9 @@ proj = Project(
     depreciation=Depreciation(year=[0, 1], rate=[0, 1]),
 )
 
-npv, grad = proj.npv_and_grad_production("demo")
+# Compute NPV and its gradient with respect to the production of ``demo``
+npv, grad = proj.npv_and_grad_production({"demo": jnp.array([100.0])})
 ```
 
 ``npv`` is the Net Present Value while ``grad`` holds ``dNPV/dproduction`` for
-the selected technology.
+the provided production values.

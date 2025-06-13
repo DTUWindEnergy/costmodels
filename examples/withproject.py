@@ -38,6 +38,7 @@ proj = Project(
     depreciation=Depreciation(year=[0, 1], rate=[0, 1]),
 )
 
-npv, grad = proj.npv_and_grad_production("demo")
+# Compute NPV and its gradient with respect to production
+npv, grad = proj.npv_and_grad_production({"demo": jnp.array([100.0])})
 print(f"Net Present Value: {npv}")
 print(f"dNPV/dproduction: {grad}")
