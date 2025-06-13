@@ -274,7 +274,7 @@ def _product_specific_finance(
     waccs = [t.WACC for t in technologies]
     opexs = [t.OPEX for t in technologies]
     consumptions = [t.consumption for t in technologies]
-    phasing_capex = np.zeros_like(phasing_yr)
+    phasing_capex = np.zeros_like(phasing_yr, dtype=float)
     for t in technologies:
         for y, c in zip(t.phasing_yr, t.phasing_capex):
             phasing_capex = phasing_capex.at[y + t.t0 - global_t_neg].add(c * t.CAPEX)
