@@ -1,5 +1,4 @@
 from enum import Enum
-from functools import cache
 
 import numpy as np
 
@@ -66,1163 +65,7 @@ class DTUOffshoreCostModel(CostModel):
             "eprice": Quant(np.nan, "EUR/kWh"),
         }
 
-    @cache
-    def RotorTorque(self):
-        """
-        Calculate and return rotor torque in Mega Newton-meters (MNm).
-        Returns:
-            np.ndarray or float: Rotor torque in MNm.
-        """
-        rotor_torque = 1.1 * 60 * self.rated_power / (2 * np.pi * self.rotor_speed)
-        return rotor_torque
-
-    @cache
-    def RotorArea(self):
-        """
-        Calculate and return rotor area in square meters (m²).
-        Returns:
-            np.ndarray or float: Rotor area in m².
-        """
-        rotor_area = np.pi * (self.rotor_diameter / 2) ** 2
-        return rotor_area
-
-    @cache
-    def SpecificPower(self):
-        """
-        Calculate and return specific power in W/m².
-        Returns:
-            np.ndarray or float: Specific power in W/m².
-        """
-        rotor_area = self.RotorArea()
-        specific_power = 1_000_000 * self.rated_power / rotor_area
-        return specific_power
-
-    @cache
-    def TipSpeed(self):
-        """
-        Calculate and return the tip speed in meters per second (m/s).
-        Returns:
-            np.ndarray or float: Tip speed in m/s.
-        """
-        tip_speed = (self.rotor_speed / 60) * 2 * np.pi * (self.rotor_diameter / 2)
-        return tip_speed
-
-    @cache
-    def TotalBladeMass(
-        self, mass_coeff=1.65, mass_intercept=0.0, user_exp=2.5
-    ) -> float:
-        """Calculate the total blade mass."""
-        blade_mass = (
-            mass_coeff * ((self.rotor_diameter / 2) ** user_exp) + mass_intercept
-        )
-        return blade_mass
-
-    @cache
-    def HubStructureMass(
-        self, mass_coeff=0.5, mass_intercept=6000.0, user_exp=2.5
-    ) -> float:
-        """Calculate the mass of the hub structure."""
-        hubstructure_mass = (
-            mass_coeff * ((self.rotor_diameter / 2) ** user_exp) + mass_intercept
-        )
-        return hubstructure_mass
-
-    @cache
-    def HubComputerMass(
-        self, mass_coeff=0.0, mass_intercept=200.0, user_exp=1.0
-    ) -> float:
-        """Calculate the mass of the hub computer."""
-        hubcomputer_mass = mass_coeff * (self.rotor_diameter**user_exp) + mass_intercept
-        return hubcomputer_mass
-
-    @cache
-    def PitchBearingsMass(
-        self, mass_coeff=0.4, mass_intercept=500.0, user_exp=2.5
-    ) -> float:
-        """Calculate the mass of the pitch bearings."""
-        pitchbearing_mass = (
-            mass_coeff * ((self.rotor_diameter / 2) ** user_exp) + mass_intercept
-        )
-        return pitchbearing_mass
-
-    @cache
-    def PitchActuatorSystemMass(
-        self, mass_coeff=0.15, mass_intercept=500.0, user_exp=2.5
-    ) -> float:
-        """Calculate the mass of the pitch actuator system."""
-        pitch_actuatorsystem_mass = (
-            mass_coeff * ((self.rotor_diameter / 2) ** user_exp) + mass_intercept
-        )
-        return pitch_actuatorsystem_mass
-
-    @cache
-    def HubSecondaryEquipmentMass(
-        self, mass_coeff=5, mass_intercept=500.0, user_exp=1.0
-    ) -> float:
-        """Calculate the mass of secondary equipment in the hub."""
-        hub_secondary_equipment_mass = (
-            mass_coeff * (self.rotor_diameter**user_exp) + mass_intercept
-        )
-        return hub_secondary_equipment_mass
-
-    @cache
-    def SpinnerMass(self, mass_coeff=10.0, mass_intercept=0.0, user_exp=1.0) -> float:
-        """Calculate the mass of the spinner."""
-        spinner_mass = mass_coeff * (self.rotor_diameter**user_exp) + mass_intercept
-        return spinner_mass
-
-    @cache
-    def MainShaftMass(self, mass_coeff=0.02, mass_intercept=0.0, user_exp=2.8) -> float:
-        """Calculate the mass of the main shaft."""
-        mainshaft_mass = mass_coeff * (self.rotor_diameter**user_exp) + mass_intercept
-        return mainshaft_mass
-
-    @cache
-    def MainBearingsMass(
-        self, mass_coeff=0.02, mass_intercept=0.0, user_exp=2.5
-    ) -> float:
-        """Calculate the mass of the main bearings."""
-        main_bearingsmass = (
-            mass_coeff * (self.rotor_diameter**user_exp) + mass_intercept
-        )
-        return main_bearingsmass
-
-    @cache
-    def MainBearingHousingMass(
-        self, mass_coeff=0.03, mass_intercept=0.0, user_exp=2.5
-    ) -> float:
-        """Calculate the mass of the main bearing housing."""
-        main_bearinghousing_mass = (
-            mass_coeff * (self.rotor_diameter**user_exp) + mass_intercept
-        )
-        return main_bearinghousing_mass
-
-    @cache
-    def GearboxMass(
-        self, mass_coeff=12500.0, mass_intercept=0.0, user_exp=1.0
-    ) -> float:
-        """Calculate the mass of the gearbox based on torque."""
-        gearbox_mass = mass_coeff * (self.RotorTorque() ** user_exp) + mass_intercept
-        return gearbox_mass
-
-    @cache
-    def CouplingPlusBrakeSystemMass(
-        self, mass_coeff=500.0, mass_intercept=0.0, user_exp=1.0
-    ) -> float:
-        """Calculate the mass of the coupling plus brake system."""
-        coupling_brakesystem_mass = (
-            mass_coeff * (self.rated_power**user_exp) + mass_intercept
-        )
-        return coupling_brakesystem_mass
-
-    @cache
-    def GeneratorMass(
-        self, mass_coeff=1800.0, mass_intercept=0.0, user_exp=1.0
-    ) -> float:
-        """Calculate the mass of the generator."""
-        generator_mass = mass_coeff * (self.rated_power**user_exp) + mass_intercept
-        return generator_mass
-
-    @cache
-    def CoolingMass(self, mass_coeff=500.0, mass_intercept=0.0, user_exp=1.0) -> float:
-        """Calculate the mass of the cooling system."""
-        cooling_mass = mass_coeff * (self.rated_power**user_exp) + mass_intercept
-        return cooling_mass
-
-    @cache
-    def PowerConverterMass(
-        self, mass_coeff=1000.0, mass_intercept=0.0, user_exp=1.0
-    ) -> float:
-        """Calculate the mass of the power converter."""
-        powerconverter_mass = mass_coeff * (self.rated_power**user_exp) + mass_intercept
-        return powerconverter_mass
-
-    @cache
-    def ControllerMass(
-        self, mass_coeff=100.0, mass_intercept=200.0, user_exp=1.0
-    ) -> float:
-        """Calculate the mass of the controller."""
-        controller_mass = mass_coeff * (self.rated_power**user_exp) + mass_intercept
-        return controller_mass
-
-    @cache
-    def BedplateMass(self, mass_coeff=1.2, mass_intercept=0.0, user_exp=2.0) -> float:
-        """Calculate the mass of the bedplate."""
-        bedplate_mass = mass_coeff * (self.rotor_diameter**user_exp) + mass_intercept
-        return bedplate_mass
-
-    @cache
-    def YawSystemMass(self, mass_coeff=0.1, mass_intercept=0.0, user_exp=2.5) -> float:
-        """Calculate the mass of the yaw system."""
-        yawsystem_mass = mass_coeff * (self.rotor_diameter**user_exp) + mass_intercept
-        return yawsystem_mass
-
-    @cache
-    def CanopyMass(
-        self, mass_coeff=1500.0, mass_intercept=1000.0, user_exp=1.0
-    ) -> float:
-        """Calculate the mass of the canopy."""
-        canopy_mass = mass_coeff * (self.rated_power**user_exp) + mass_intercept
-        return canopy_mass
-
-    @cache
-    def NacellSecondaryEquipmentMass(
-        self, mass_coeff=1000.0, mass_intercept=1000.0, user_exp=1.0
-    ) -> float:
-        """Calculate the mass of nacelle secondary equipment."""
-        nacell_secondaryequipment_mass = (
-            mass_coeff * (self.rated_power**user_exp) + mass_intercept
-        )
-        return nacell_secondaryequipment_mass
-
-    @cache
-    def TowerStructureMass(
-        self, mass_coeff=0.25, mass_intercept=0.0, user_exp=1.0
-    ) -> float:
-        """Calculate the mass of the tower structure."""
-        tower_structure_mass = (
-            mass_coeff * (self.hub_height * self.RotorArea()) ** user_exp
-            + mass_intercept
-        )
-        return tower_structure_mass
-
-    @cache
-    def TowerInternalsMass(
-        self, mass_coeff=100.0, mass_intercept=1000.0, user_exp=1.0
-    ) -> float:
-        """Calculate the mass of tower internals."""
-        tower_internals_mass = mass_coeff * (self.hub_height**user_exp) + mass_intercept
-        return tower_internals_mass
-
-    @cache
-    def PowerCablesMass(
-        self, mass_coeff=25.0, mass_intercept=0.0, user_exp=1.0
-    ) -> float:
-        """Calculate the mass of the power cables."""
-        power_cables_mass = (
-            mass_coeff * ((self.rated_power * self.hub_height) ** user_exp)
-            + mass_intercept
-        )
-        return power_cables_mass
-
-    @cache
-    def MainTransformerMass(
-        self, mass_coeff=2500.0, mass_intercept=0.0, user_exp=1.0
-    ) -> float:
-        """Calculate the mass of the main transformer."""
-        main_transformer_mass = (
-            mass_coeff * (self.rated_power**user_exp) + mass_intercept
-        )
-        return main_transformer_mass
-
-    @cache
-    def TowerSecondaryEquipmentMass(
-        self, mass_coeff=500.0, mass_intercept=1000.0, user_exp=1.0
-    ) -> float:
-        """Calculate the mass of secondary equipment in the tower."""
-        tower_secondaryequipment_mass = (
-            mass_coeff * (self.rated_power**user_exp) + mass_intercept
-        )
-        return tower_secondaryequipment_mass
-
-    @cache
-    def HubTotalMass(self) -> float:
-        """Calculate the total mass of the hub by summing its components."""
-        return (
-            self.HubStructureMass()
-            + self.PitchBearingsMass()
-            + self.PitchActuatorSystemMass()
-            + self.HubComputerMass()
-            + self.HubSecondaryEquipmentMass()
-            + self.SpinnerMass()
-        )
-
-    @cache
-    def NacelleTotalMass(self) -> float:
-        """Calculate the total mass of the nacelle by summing its components."""
-        return (
-            self.MainShaftMass()
-            + self.MainBearingsMass()
-            + self.MainBearingHousingMass()
-            + self.GearboxMass()
-            + self.CouplingPlusBrakeSystemMass()
-            + self.GeneratorMass()
-            + self.CoolingMass()
-            + self.PowerConverterMass()
-            + self.ControllerMass()
-            + self.BedplateMass()
-            + self.YawSystemMass()
-            + self.CanopyMass()
-            + self.NacellSecondaryEquipmentMass()
-        )
-
-    @cache
-    def TowerTotalMass(self) -> float:
-        """Calculate the total mass of the tower by summing its components."""
-        return (
-            self.TowerStructureMass()
-            + self.TowerInternalsMass()
-            + self.PowerCablesMass()
-            + self.MainTransformerMass()
-            + self.TowerSecondaryEquipmentMass()
-        )
-
-    @cache
-    def BOMTotalMass(self) -> float:
-        """Calculate the total Bill of Materials (BOM) mass by summing all component masses."""
-        return (
-            self.TotalBladeMass()
-            + self.HubTotalMass()
-            + self.NacelleTotalMass()
-            + self.TowerTotalMass()
-        )
-
-    @cache
-    def BladeTotalCost(self, rate=15.0) -> float:
-        blade_cost = self.TotalBladeMass() * rate
-
-        return blade_cost
-
-    @cache
-    def HubStructureCost(self, rate=2.5) -> float:
-        hubstructure_cost = self.HubStructureMass() * rate
-
-        return hubstructure_cost
-
-    @cache
-    def HubComputerCost(self, rate=50.0) -> float:
-        hubcomputer_cost = self.HubComputerMass() * rate
-
-        return hubcomputer_cost
-
-    @cache
-    def PitchBearingsCost(self, rate=8.0) -> float:
-        pitchbearing_cost = self.PitchBearingsMass() * rate
-
-        return pitchbearing_cost
-
-    @cache
-    def PitchActuatorSystemCost(self, rate=8.0) -> float:
-        pitch_actuatorsystem_cost = self.PitchActuatorSystemMass() * rate
-
-        return pitch_actuatorsystem_cost
-
-    @cache
-    def HubSecondaryEquipmentCost(self, rate=8.0) -> float:
-        hub_secondary_equipment_cost = self.HubSecondaryEquipmentMass() * rate
-
-        return hub_secondary_equipment_cost
-
-    @cache
-    def SpinnerCost(self, rate=10.0) -> float:
-        spinner_cost = self.SpinnerMass() * rate
-
-        return spinner_cost
-
-    @cache
-    def MainShaftCost(self, rate=5.0) -> float:
-        mainshaft_cost = self.MainShaftMass() * rate
-
-        return mainshaft_cost
-
-    @cache
-    def MainBearingsCost(self, rate=15.0) -> float:
-        main_bearings_cost = self.MainBearingsMass() * rate
-
-        return main_bearings_cost
-
-    @cache
-    def MainBearingHousingCost(self, rate=2.5) -> float:
-        main_bearinghousing_cost = self.MainBearingHousingMass() * rate
-
-        return main_bearinghousing_cost
-
-    @cache
-    def GearboxCost(self, rate=8.0) -> float:
-        gearbox_cost = self.GearboxMass() * rate
-
-        return gearbox_cost
-
-    @cache
-    def CouplingPlusBrakeSystemCost(self, rate=8.0) -> float:
-        coupling_brakesystem_cost = self.CouplingPlusBrakeSystemMass() * rate
-
-        return coupling_brakesystem_cost
-
-    @cache
-    def GeneratorCost(self, rate=8.0) -> float:
-        generator_cost = self.GeneratorMass() * rate
-
-        return generator_cost
-
-    @cache
-    def CoolingCost(self, rate=8.0) -> float:
-        cooling_cost = self.CoolingMass() * rate
-
-        return cooling_cost
-
-    @cache
-    def PowerConverterCost(self, rate=30.0) -> float:
-        powerconverter_cost = self.PowerConverterMass() * rate
-
-        return powerconverter_cost
-
-    @cache
-    def ControllerCost(self, rate=50.0) -> float:
-        controller_cost = self.ControllerMass() * rate
-
-        return controller_cost
-
-    @cache
-    def BedplateCost(self, rate=2.5) -> float:
-        bedplate_cost = self.BedplateMass() * rate
-
-        return bedplate_cost
-
-    @cache
-    def YawSystemCost(self, rate=6.0) -> float:
-        yawsystem_cost = self.YawSystemMass() * rate
-
-        return yawsystem_cost
-
-    @cache
-    def CanopyCost(self, rate=10.0) -> float:
-        canopy_cost = self.CanopyMass() * rate
-
-        return canopy_cost
-
-    @cache
-    def NacellSecondaryEquipmentCost(self, rate=10.0) -> float:
-        nacell_secondaryequipment_cost = self.NacellSecondaryEquipmentMass() * rate
-
-        return nacell_secondaryequipment_cost
-
-    @cache
-    def TowerStructureCost(self, rate=3.0) -> float:
-        tower_structure_cost = self.TowerStructureMass() * rate
-
-        return tower_structure_cost
-
-    @cache
-    def TowerInternalsCost(self, rate=8.0) -> float:
-        tower_internals_cost = self.TowerInternalsMass() * rate
-
-        return tower_internals_cost
-
-    @cache
-    def PowerCablesCost(self, rate=8.0) -> float:
-        power_cables_cost = self.PowerCablesMass() * rate
-
-        return power_cables_cost
-
-    @cache
-    def MainTransformerCost(self, rate=8.0) -> float:
-        main_transformer_cost = self.MainTransformerMass() * rate
-
-        return main_transformer_cost
-
-    @cache
-    def TowerSecondaryEquipmentCost(self, rate=10.0) -> float:
-        tower_secondaryequipment_cost = self.TowerSecondaryEquipmentMass() * rate
-
-        return tower_secondaryequipment_cost
-
-    @cache
-    def HubTotalCost(self) -> float:
-        return (
-            self.HubStructureCost()
-            + self.PitchBearingsCost()
-            + self.PitchActuatorSystemCost()
-            + self.HubComputerCost()
-            + self.HubSecondaryEquipmentCost()
-            + self.SpinnerCost()
-        )
-
-    @cache
-    def NacelleTotalCost(self) -> float:
-        return (
-            self.MainShaftCost()
-            + self.MainBearingsCost()
-            + self.MainBearingHousingCost()
-            + self.GearboxCost()
-            + self.CouplingPlusBrakeSystemCost()
-            + self.GeneratorCost()
-            + self.CoolingCost()
-            + self.PowerConverterCost()
-            + self.ControllerCost()
-            + self.BedplateCost()
-            + self.YawSystemCost()
-            + self.CanopyCost()
-            + self.NacellSecondaryEquipmentCost()
-        )
-
-    @cache
-    def TowerTotalCost(self) -> float:
-        return (
-            self.TowerStructureCost()
-            + self.TowerInternalsCost()
-            + self.PowerCablesCost()
-            + self.MainTransformerCost()
-            + self.TowerSecondaryEquipmentCost()
-        )
-
-    @cache
-    def BOMTotalCost(self) -> float:
-        return (
-            self.BladeTotalCost()
-            + self.HubTotalCost()
-            + self.NacelleTotalCost()
-            + self.TowerTotalCost()
-        )
-
-    @cache
-    def MaterialOverheadCost(self, cost_coeff=0.03) -> float:
-        material_overhead_cost = self.BOMTotalCost() * cost_coeff
-
-        return material_overhead_cost
-
-    @cache
-    def DirectLaborCost(self, cost_coeff=0.10) -> float:
-        direct_labor_cost = self.BOMTotalCost() * cost_coeff
-
-        return direct_labor_cost
-
-    @cache
-    def DirectProductionCost(self) -> float:
-        return (
-            self.BOMTotalCost() + self.MaterialOverheadCost() + self.DirectLaborCost()
-        )
-
-    @cache
-    def OverheadCost(self, cost_coeff=0.05) -> float:
-        material_overhead_cost = self.DirectProductionCost() * cost_coeff
-
-        return material_overhead_cost
-
-    @cache
-    def R_and_D(self, cost_coeff=0.025) -> float:
-        RD = self.DirectProductionCost() * cost_coeff
-
-        return RD
-
-    @cache
-    def SG_and_A(self, cost_coeff=0.05) -> float:
-        SGA = self.DirectProductionCost() * cost_coeff
-
-        return SGA
-
-    @cache
-    def TotalProductionCost(self) -> float:
-        return (
-            self.DirectProductionCost()
-            + self.OverheadCost()
-            + self.R_and_D()
-            + self.SG_and_A()
-        )
-
-    @cache
-    def WarrantyAccrualsCost(self, cost_coeff=0.03) -> float:
-        return self.TotalProductionCost() * cost_coeff
-
-    @cache
-    def FinancingCost(self, cost_coeff=0.017778) -> float:
-        return self.TotalProductionCost() * cost_coeff
-
-    @cache
-    def TransportCost(
-        self, cost_coeff=0.2, cost_intercept=10000.0, user_exp=1.0
-    ) -> float:
-        return cost_coeff * (self.BOMTotalMass() ** user_exp) + cost_intercept
-
-    @cache
-    def HarborStorageAssyCost(
-        self, cost_coeff=0.0, cost_intercept=0.0, user_exp=1.0
-    ) -> float:
-        return cost_coeff * (self.rated_power**user_exp) + cost_intercept
-
-    @cache
-    def InstallationCommissCost(
-        self, cost_coeff=0.0, cost_intercept=0.0, user_exp=1.0
-    ) -> float:
-        return cost_coeff * (self.rated_power**user_exp) + cost_intercept
-
-    @cache
-    def TotalAdditionalCost(self) -> float:
-        return (
-            self.WarrantyAccrualsCost()
-            + self.FinancingCost()
-            + self.TransportCost()
-            + self.HarborStorageAssyCost()
-            + self.InstallationCommissCost()
-        )
-
-    @cache
-    def TotalCostCalculation(self) -> float:
-        return self.TotalAdditionalCost() + self.TotalProductionCost()
-
-    @cache
-    def ProfitCalculation(self) -> float:
-        return -(1 - 1 / (1 - self.profit)) * self.TotalCostCalculation()
-
-    @cache
-    def SalesPriceCalculation(self) -> float:
-        return self.TotalCostCalculation() + self.ProfitCalculation()
-
-    @cache
-    def TotalBladeShareofSale(self) -> float:
-        return self.BladeTotalCost() / self.SalesPriceCalculation()
-
-    @cache
-    def HubStructureShareofSale(self) -> float:
-        return self.HubStructureCost() / self.SalesPriceCalculation()
-
-    @cache
-    def HubComputerShareofSale(self) -> float:
-        return self.HubComputerCost() / self.SalesPriceCalculation()
-
-    @cache
-    def PitchBearingsShareofSale(self) -> float:
-        return self.PitchBearingsCost() / self.SalesPriceCalculation()
-
-    @cache
-    def PitchActuatorSystemShareofSale(self) -> float:
-        return self.PitchActuatorSystemCost() / self.SalesPriceCalculation()
-
-    @cache
-    def HubSecondaryEquipmentShareofSale(self) -> float:
-        return self.HubSecondaryEquipmentCost() / self.SalesPriceCalculation()
-
-    @cache
-    def SpinnerShareofSale(self) -> float:
-        return self.SpinnerCost() / self.SalesPriceCalculation()
-
-    @cache
-    def MainShaftShareofSale(self) -> float:
-        return self.MainShaftCost() / self.SalesPriceCalculation()
-
-    @cache
-    def MainBearingsShareofSale(self) -> float:
-        return self.MainBearingsCost() / self.SalesPriceCalculation()
-
-    @cache
-    def MainBearingHousingShareofSale(self) -> float:
-        return self.MainBearingHousingCost() / self.SalesPriceCalculation()
-
-    @cache
-    def GearboxShareofSale(self) -> float:
-        return self.GearboxCost() / self.SalesPriceCalculation()
-
-    @cache
-    def CouplingPlusBrakeSystemShareofSale(self) -> float:
-        return self.CouplingPlusBrakeSystemCost() / self.SalesPriceCalculation()
-
-    @cache
-    def GeneratorShareofSale(self) -> float:
-        return self.GeneratorCost() / self.SalesPriceCalculation()
-
-    @cache
-    def CoolingShareofSale(self) -> float:
-        return self.CoolingCost() / self.SalesPriceCalculation()
-
-    @cache
-    def PowerConverterShareofSale(self) -> float:
-        return self.PowerConverterCost() / self.SalesPriceCalculation()
-
-    @cache
-    def ControllerShareofSale(self) -> float:
-        return self.ControllerCost() / self.SalesPriceCalculation()
-
-    @cache
-    def BedplateShareofSale(self) -> float:
-        return self.BedplateCost() / self.SalesPriceCalculation()
-
-    @cache
-    def YawSystemShareofSale(self) -> float:
-        return self.YawSystemCost() / self.SalesPriceCalculation()
-
-    @cache
-    def CanopyShareofSale(self) -> float:
-        return self.CanopyCost() / self.SalesPriceCalculation()
-
-    @cache
-    def NacellSecondaryEquipmentShareofSale(self) -> float:
-        return self.NacellSecondaryEquipmentCost() / self.SalesPriceCalculation()
-
-    @cache
-    def TowerStructureShareofSale(self) -> float:
-        return self.TowerStructureCost() / self.SalesPriceCalculation()
-
-    @cache
-    def TowerInternalsShareofSale(self) -> float:
-        return self.TowerInternalsCost() / self.SalesPriceCalculation()
-
-    @cache
-    def PowerCablesShareofSale(self) -> float:
-        return self.PowerCablesCost() / self.SalesPriceCalculation()
-
-    @cache
-    def MainTransformerShareofSale(self) -> float:
-        return self.MainTransformerCost() / self.SalesPriceCalculation()
-
-    @cache
-    def TowerSecondaryEquipmentShareofSale(self) -> float:
-        return self.TowerSecondaryEquipmentCost() / self.SalesPriceCalculation()
-
-    @cache
-    def HubTotalShareofSale(self) -> float:
-        return self.HubTotalCost() / self.SalesPriceCalculation()
-
-    @cache
-    def NacelleTotalShareofSale(self) -> float:
-        return self.NacelleTotalCost() / self.SalesPriceCalculation()
-
-    @cache
-    def TowerTotalShareofSale(self) -> float:
-        return self.TowerTotalCost() / self.SalesPriceCalculation()
-
-    @cache
-    def BOMTotalShareofSale(self) -> float:
-        return self.BOMTotalCost() / self.SalesPriceCalculation()
-
-    @cache
-    def MaterialOverheadShareofSale(self) -> float:
-        return self.MaterialOverheadCost() / self.SalesPriceCalculation()
-
-    @cache
-    def DirectLaborShareofSale(self) -> float:
-        return self.DirectLaborCost() / self.SalesPriceCalculation()
-
-    @cache
-    def DirectProductionShareofSale(self) -> float:
-        return self.DirectProductionCost() / self.SalesPriceCalculation()
-
-    @cache
-    def OverheadShareofSale(self) -> float:
-        return self.OverheadCost() / self.SalesPriceCalculation()
-
-    @cache
-    def R_and_DShareofSale(self) -> float:
-        return self.R_and_D() / self.SalesPriceCalculation()
-
-    @cache
-    def SG_and_AShareofSale(self) -> float:
-        return self.SG_and_A() / self.SalesPriceCalculation()
-
-    @cache
-    def TotalProductionShareofSale(self) -> float:
-        return self.TotalProductionCost() / self.SalesPriceCalculation()
-
-    @cache
-    def WarrantyAccrualsShareofSale(self) -> float:
-        return self.WarrantyAccrualsCost() / self.SalesPriceCalculation()
-
-    @cache
-    def FinancingShareofSale(self) -> float:
-        return self.FinancingCost() / self.SalesPriceCalculation()
-
-    @cache
-    def TransportShareofSale(self) -> float:
-        return self.TransportCost() / self.SalesPriceCalculation()
-
-    @cache
-    def HarborStorageAssyShareofSale(self) -> float:
-        return self.HarborStorageAssyCost() / self.SalesPriceCalculation()
-
-    @cache
-    def InstallationCommissShareofSale(self) -> float:
-        return self.InstallationCommissCost() / self.SalesPriceCalculation()
-
-    @cache
-    def TotalShareofSale(self) -> float:
-        return self.TotalCostCalculation() / self.SalesPriceCalculation()
-
-    @cache
-    def ProfitShareofSale(self) -> float:
-        return self.ProfitCalculation() / self.SalesPriceCalculation()
-
-    @cache
-    def SalesShareofSale(self) -> float:
-        return self.SalesPriceCalculation() / self.SalesPriceCalculation()
-
-    @cache
-    def TotalBladeShareofTPC(self) -> float:
-        return self.BladeTotalCost() / self.TotalProductionCost()
-
-    @cache
-    def HubStructureShareofTPC(self) -> float:
-        return self.HubStructureCost() / self.TotalProductionCost()
-
-    @cache
-    def HubComputerShareofTPC(self) -> float:
-        return self.HubComputerCost() / self.TotalProductionCost()
-
-    @cache
-    def PitchBearingsShareofTPC(self) -> float:
-        return self.PitchBearingsCost() / self.TotalProductionCost()
-
-    @cache
-    def PitchActuatorSystemShareofTPC(self) -> float:
-        return self.PitchActuatorSystemCost() / self.TotalProductionCost()
-
-    @cache
-    def HubSecondaryEquipmentShareofTPC(self) -> float:
-        return self.HubSecondaryEquipmentCost() / self.TotalProductionCost()
-
-    @cache
-    def SpinnerShareofTPC(self) -> float:
-        return self.SpinnerCost() / self.TotalProductionCost()
-
-    @cache
-    def MainShaftShareofTPC(self) -> float:
-        return self.MainShaftCost() / self.TotalProductionCost()
-
-    @cache
-    def MainBearingsShareofTPC(self) -> float:
-        return self.MainBearingsCost() / self.TotalProductionCost()
-
-    @cache
-    def MainBearingHousingShareofTPC(self) -> float:
-        return self.MainBearingHousingCost() / self.TotalProductionCost()
-
-    @cache
-    def GearboxShareofTPC(self) -> float:
-        return self.GearboxCost() / self.TotalProductionCost()
-
-    @cache
-    def CouplingPlusBrakeSystemShareofTPC(self) -> float:
-        return self.CouplingPlusBrakeSystemCost() / self.TotalProductionCost()
-
-    @cache
-    def GeneratorShareofTPC(self) -> float:
-        return self.GeneratorCost() / self.TotalProductionCost()
-
-    @cache
-    def CoolingShareofTPC(self) -> float:
-        return self.CoolingCost() / self.TotalProductionCost()
-
-    @cache
-    def PowerConverterShareofTPC(self) -> float:
-        return self.PowerConverterCost() / self.TotalProductionCost()
-
-    @cache
-    def ControllerShareofTPC(self) -> float:
-        return self.ControllerCost() / self.TotalProductionCost()
-
-    @cache
-    def BedplateShareofTPC(self) -> float:
-        return self.BedplateCost() / self.TotalProductionCost()
-
-    @cache
-    def YawSystemShareofTPC(self) -> float:
-        return self.YawSystemCost() / self.TotalProductionCost()
-
-    @cache
-    def CanopyShareofTPC(self) -> float:
-        return self.CanopyCost() / self.TotalProductionCost()
-
-    @cache
-    def NacellSecondaryEquipmentShareofTPC(self) -> float:
-        return self.NacellSecondaryEquipmentCost() / self.TotalProductionCost()
-
-    @cache
-    def TowerStructureShareofTPC(self) -> float:
-        return self.TowerStructureCost() / self.TotalProductionCost()
-
-    @cache
-    def TowerInternalsShareofTPC(self) -> float:
-        return self.TowerInternalsCost() / self.TotalProductionCost()
-
-    @cache
-    def PowerCablesShareofTPC(self) -> float:
-        return self.PowerCablesCost() / self.TotalProductionCost()
-
-    @cache
-    def MainTransformerShareofTPC(self) -> float:
-        return self.MainTransformerCost() / self.TotalProductionCost()
-
-    @cache
-    def TowerSecondaryEquipmentShareofTPC(self) -> float:
-        return self.TowerSecondaryEquipmentCost() / self.TotalProductionCost()
-
-    @cache
-    def HubTotalShareofTPC(self) -> float:
-        return self.HubTotalCost() / self.TotalProductionCost()
-
-    @cache
-    def NacelleTotalShareofTPC(self) -> float:
-        return self.NacelleTotalCost() / self.TotalProductionCost()
-
-    @cache
-    def TowerTotalShareofTPC(self) -> float:
-        return self.TowerTotalCost() / self.TotalProductionCost()
-
-    @cache
-    def BOMTotalShareofTPC(self) -> float:
-        return self.BOMTotalCost() / self.TotalProductionCost()
-
-    @cache
-    def MaterialOverheadShareofTPC(self) -> float:
-        return self.MaterialOverheadCost() / self.TotalProductionCost()
-
-    @cache
-    def DirectLaborShareofTPC(self) -> float:
-        return self.DirectLaborCost() / self.TotalProductionCost()
-
-    @cache
-    def DirectProductionShareofTPC(self) -> float:
-        return self.DirectProductionCost() / self.TotalProductionCost()
-
-    @cache
-    def OverheadShareofTPC(self) -> float:
-        return self.OverheadCost() / self.TotalProductionCost()
-
-    @cache
-    def R_and_DShareofTPC(self) -> float:
-        return self.R_and_D() / self.TotalProductionCost()
-
-    @cache
-    def SG_and_AShareofTPC(self) -> float:
-        return self.SG_and_A() / self.TotalProductionCost()
-
-    @cache
-    def TotalProductionShareofTPC(self) -> float:
-        return self.TotalProductionCost() / self.TotalProductionCost()
-
-    @cache
-    def BladeCo2Emission(
-        self, emissionfactor=4.00
-    ) -> float:  # emissionFactor  is in kg CO2/kg
-        return emissionfactor * self.TotalBladeMass()
-
-    @cache
-    def HubStructureCo2Emission(self, emissionfactor=1.83) -> float:
-        return emissionfactor * self.HubStructureMass()
-
-    @cache
-    def HubComputerCo2Emission(self, emissionfactor=3.00) -> float:
-        return emissionfactor * self.HubComputerMass()
-
-    @cache
-    def PitchBearingsCo2Emission(self, emissionfactor=1.83) -> float:
-        return emissionfactor * self.PitchBearingsMass()
-
-    @cache
-    def PitchActuatorSystemCo2Emission(self, emissionfactor=1.83) -> float:
-        return emissionfactor * self.PitchActuatorSystemMass()
-
-    @cache
-    def HubSecondaryEquipmentCo2Emission(self, emissionfactor=1.83) -> float:
-        return emissionfactor * self.HubSecondaryEquipmentMass()
-
-    @cache
-    def SpinnerCo2Emission(self, emissionfactor=4.00) -> float:
-        return emissionfactor * self.SpinnerMass()
-
-    @cache
-    def MainShaftCo2Emission(self, emissionfactor=1.83) -> float:
-        return emissionfactor * self.MainShaftMass()
-
-    @cache
-    def MainBearingsCo2Emission(self, emissionfactor=1.83) -> float:
-        return emissionfactor * self.MainBearingsMass()
-
-    @cache
-    def MainBearingHousingCo2Emission(self, emissionfactor=1.83) -> float:
-        return emissionfactor * self.MainBearingHousingMass()
-
-    @cache
-    def GearboxCo2Emission(self, emissionfactor=1.83) -> float:
-        return emissionfactor * self.GearboxMass()
-
-    @cache
-    def CouplingPlusBrakeSystemCo2Emission(self, emissionfactor=1.83) -> float:
-        return emissionfactor * self.CouplingPlusBrakeSystemMass()
-
-    @cache
-    def GeneratorCo2Emission(self, emissionfactor=6.00) -> float:
-        return emissionfactor * self.GeneratorMass()
-
-    @cache
-    def CoolingCo2Emission(self, emissionfactor=2.00) -> float:
-        return emissionfactor * self.CoolingMass()
-
-    @cache
-    def PowerConverterCo2Emission(self, emissionfactor=4.00) -> float:
-        return emissionfactor * self.PowerConverterMass()
-
-    @cache
-    def ControllerCo2Emission(self, emissionfactor=1.83) -> float:
-        return emissionfactor * self.ControllerMass()
-
-    @cache
-    def BedplateCo2Emission(self, emissionfactor=1.83) -> float:
-        return emissionfactor * self.BedplateMass()
-
-    @cache
-    def YawSystemCo2Emission(self, emissionfactor=1.83) -> float:
-        return emissionfactor * self.YawSystemMass()
-
-    @cache
-    def CanopyCo2Emission(self, emissionfactor=4.00) -> float:
-        return emissionfactor * self.CanopyMass()
-
-    @cache
-    def NacellSecondaryEquipmentCo2Emission(self, emissionfactor=1.83) -> float:
-        return emissionfactor * self.NacellSecondaryEquipmentMass()
-
-    @cache
-    def TowerStructureCo2Emission(self, emissionfactor=1.83) -> float:
-        return emissionfactor * self.TowerStructureMass()
-
-    @cache
-    def TowerInternalsCo2Emission(self, emissionfactor=2.00) -> float:
-        return emissionfactor * self.TowerInternalsMass()
-
-    @cache
-    def PowerCablesCo2Emission(self, emissionfactor=4.00) -> float:
-        return emissionfactor * self.PowerCablesMass()
-
-    @cache
-    def MainTransformerCo2Emission(self, emissionfactor=4.00) -> float:
-        return emissionfactor * self.MainTransformerMass()
-
-    @cache
-    def TowerSecondaryEquipmentCo2Emission(self, emissionfactor=2.00) -> float:
-        return emissionfactor * self.TowerSecondaryEquipmentMass()
-
-    @cache
-    def Total_Co2Emission(self) -> float:
-        return (
-            self.BladeCo2Emission()
-            + self.HubStructureCo2Emission()
-            + self.HubComputerCo2Emission()
-            + self.PitchBearingsCo2Emission()
-            + self.PitchActuatorSystemCo2Emission()
-            + self.HubSecondaryEquipmentCo2Emission()
-            + self.SpinnerCo2Emission()
-            + self.MainShaftCo2Emission()
-            + self.MainBearingsCo2Emission()
-            + self.MainBearingHousingCo2Emission()
-            + self.GearboxCo2Emission()
-            + self.CouplingPlusBrakeSystemCo2Emission()
-            + self.GeneratorCo2Emission()
-            + self.CoolingCo2Emission()
-            + self.PowerConverterCo2Emission()
-            + self.ControllerCo2Emission()
-            + self.BedplateCo2Emission()
-            + self.YawSystemCo2Emission()
-            + self.CanopyCo2Emission()
-            + self.NacellSecondaryEquipmentCo2Emission()
-            + self.TowerStructureCo2Emission()
-            + self.TowerInternalsCo2Emission()
-            + self.PowerCablesCo2Emission()
-            + self.MainTransformerCo2Emission()
-            + self.TowerSecondaryEquipmentCo2Emission()
-        )
-
-    @cache
-    def BladeCo2EmissionShare(self) -> float:  # emissionFactor  is in kg CO2/kg
-        return self.BladeCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def HubStructureCo2EmissionShare(self) -> float:
-        return self.HubStructureCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def HubComputerCo2EmissionShare(self) -> float:
-        return self.HubComputerCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def PitchBearingsCo2EmissionShare(self) -> float:
-        return self.PitchBearingsCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def PitchActuatorSystemCo2EmissionShare(self) -> float:
-        return self.PitchActuatorSystemCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def HubSecondaryEquipmentCo2EmissionShare(self) -> float:
-        return self.HubSecondaryEquipmentCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def SpinnerCo2EmissionShare(self) -> float:
-        return self.SpinnerCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def MainShaftCo2EmissionShare(self) -> float:
-        return self.MainShaftCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def MainBearingsCo2EmissionShare(self) -> float:
-        return self.MainBearingsCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def MainBearingHousingCo2EmissionShare(self) -> float:
-        return self.MainBearingHousingCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def GearboxCo2EmissionShare(self) -> float:
-        return self.GearboxCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def CouplingPlusBrakeSystemCo2EmissionShare(self) -> float:
-        return self.CouplingPlusBrakeSystemCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def GeneratorCo2EmissionShare(self) -> float:
-        return self.GeneratorCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def CoolingCo2EmissionShare(self) -> float:
-        return self.CoolingCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def PowerConverterCo2EmissionShare(self) -> float:
-        return self.PowerConverterCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def ControllerCo2EmissionShare(self) -> float:
-        return self.ControllerCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def BedplateCo2EmissionShare(self) -> float:
-        return self.BedplateCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def YawSystemCo2EmissionShare(self) -> float:
-        return self.YawSystemCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def CanopyCo2EmissionShare(self) -> float:
-        return self.CanopyCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def NacellSecondaryEquipmentCo2EmissionShare(self) -> float:
-        return self.NacellSecondaryEquipmentCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def TowerStructureCo2EmissionShare(self) -> float:
-        return self.TowerStructureCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def TowerInternalsCo2EmissionShare(self) -> float:
-        return self.TowerInternalsCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def PowerCablesCo2EmissionShare(self) -> float:
-        return self.PowerCablesCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def MainTransformerCo2EmissionShare(self) -> float:
-        return self.MainTransformerCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def TowerSecondaryEquipmentCo2EmissionShare(self) -> float:
-        return self.TowerSecondaryEquipmentCo2Emission() / self.Total_Co2Emission()
-
-    @cache
-    def Total_Co2EmissionShare(self) -> float:
-        return self.Total_Co2Emission() / self.Total_Co2Emission()
+    # --- Helper Methods (Not Cached) ---
 
     def convert_currency(self, foundation_cost):
         """
@@ -1234,257 +77,50 @@ class DTUOffshoreCostModel(CostModel):
             "DKK/KW": 1 / 1000,  # Convert to DKK per KW
             "EURO/KW": 1 / (self.eur_to_dkk * 1000),  # Convert to EURO per KW
         }
-
         # Ensure that a valid currency is provided; if not, assume no conversion (1)
-        return foundation_cost * rates.get(self.currency)
+        return foundation_cost * rates.get(self.currency, 1)  # Added default rate 1
 
     def CalculateFoundationCost(self):
         """
         Calculate the foundation cost based on the water depth and foundation option,
         and convert it to the specified currency.
         """
+        # Define foundation cost coefficients and intercepts
+        monopile_coeff_sq = 1000
+        monopile_coeff_lin = 100000
+        monopile_intercept = 1500000
+        gravity_coeff_sq = 6000
+        gravity_coeff_lin = -100000
+        gravity_intercept = 1500000
+        jacket_coeff_sq = 4000
+        jacket_coeff_lin = -25000
+        jacket_intercept = 3000000
+        floating_mockup_cost_per_kw_eur = 1250
+
         # Calculate the foundation cost based on foundation option and water depth
         costs = {
-            0: 0.0,
-            1: 1000 * (self.water_depth**2) + 100000 * self.water_depth + 1500000,
-            2: 6000 * (self.water_depth**2) - 100000 * self.water_depth + 1500000,
-            3: 4000 * (self.water_depth**2) - 25000 * self.water_depth + 3000000,
-            4: 1250 * self.eur_to_dkk * 1000,
+            Foundation.NONE.value: 0.0,
+            Foundation.MONOPILE.value: monopile_coeff_sq * (self.water_depth**2)
+            + monopile_coeff_lin * self.water_depth
+            + monopile_intercept,
+            Foundation.GRAVITY.value: gravity_coeff_sq * (self.water_depth**2)
+            + gravity_coeff_lin * self.water_depth
+            + gravity_intercept,
+            Foundation.JACKET.value: jacket_coeff_sq * (self.water_depth**2)
+            + jacket_coeff_lin * self.water_depth
+            + jacket_intercept,
+            Foundation.FLOATING_MOCKUP.value: floating_mockup_cost_per_kw_eur
+            * self.eur_to_dkk
+            * 1000,
         }
-        foundation_cost = costs.get(
+        # Default to monopile if option not found
+        foundation_cost_dkk = costs.get(
             self.foundation_option.value,
-            1000 * (self.water_depth**2) + 100000 * self.water_depth + 1500000,
+            monopile_coeff_sq * (self.water_depth**2)
+            + monopile_coeff_lin * self.water_depth
+            + monopile_intercept,
         )
-        return self.convert_currency(foundation_cost)
-
-    @cache
-    def BOPCost(self):
-        """
-        Calculate the foundation cost for each water depth and convert to the selected currency.
-        If a single water depth is passed, return a single value, otherwise return a list of costs.
-        """
-        return self.CalculateFoundationCost() + 1000 * self.electrical_cost
-
-    @cache
-    def RealWACC(self) -> float:
-        return (1 + self.wacc) / (1 + self.inflation) - 1
-
-    @cache
-    def devexTotal(self) -> float:
-        return np.sum(self.devex * self.rated_power * 1000)
-
-    @cache
-    def CAPEXTurbineTower(self) -> float:
-        return self.SalesPriceCalculation() / self.rated_power / 1000
-
-    @cache
-    def CAPEXBOP(self) -> float:
-        return self.BOPCost()
-
-    @cache
-    def CAPEXWT(self) -> float:
-        return (self.CAPEXBOP() + self.CAPEXTurbineTower()) * self.rated_power * 1000
-
-    @cache
-    def CAPEXTotal(self) -> float:
-        return np.sum(self.CAPEXWT())
-
-    @cache
-    def opexTotal(self) -> float:
-        return np.sum(self.opex * self.rated_power * 1000)
-
-    @cache
-    def abexTotal(self) -> float:
-        return np.sum(self.abex * self.rated_power * 1000)
-
-    @cache
-    def AEP_WindFarm(self) -> float:
-        # Ensure either AEP or capacity_factor is provided and AEP is not NaN
-        if np.isnan(self.aep).any() and np.isnan(self.capacity_factor).any():
-            raise ValueError(
-                "Either Capacity Factor (capacity_factor) or AEP must be provided."
-            )
-
-        if not np.isnan(self.aep).any():
-            AEP_farm = np.sum(self.aep)
-        elif not np.isnan(self.capacity_factor).any():
-            AEP_farm = np.sum(self.capacity_factor * self.rated_power * (365 * 24))
-
-        return AEP_farm
-
-    @cache
-    def DiscountFactor_WACC_r(self) -> list:
-
-        discount_factor = []
-        # Calculate the discount factors based on project lifetime and WACC
-        for year in range(-2, self.lifetime):
-            discount_factor.append(1 / (1 + self.RealWACC()) ** year)
-
-        return discount_factor
-
-    @cache
-    def DiscountFactor_WACC_n(self) -> list:
-
-        discount_factor = []
-        # Calculate the discount factors based on project lifetime and WACC
-        for year in range(-2, self.lifetime):
-            discount_factor.append(1 / (1 + self.wacc) ** year)
-
-        return discount_factor
-
-    @cache
-    def AEPNet(self) -> float:
-        AEP_net = []
-        for year in range(self.lifetime):
-            AEP_ = self.AEP_WindFarm() * ((1 + self.decline_factor) ** year)
-            AEP_net.append(AEP_)
-
-        self.aep_net = np.sum(np.array(AEP_net))
-        return self.aep_net
-
-    @cache
-    def AEPDiscount(self) -> float:
-        AEP_discount = []
-        for year in range(self.lifetime):
-            AEP_d = (self.AEP_WindFarm() * (1 + self.decline_factor) ** year) * (
-                1 / (1 + self.RealWACC()) ** year
-            )
-            AEP_discount.append(AEP_d)
-
-        self.aep_discount = np.sum((np.array(AEP_discount)))
-        return self.aep_discount
-
-    @cache
-    def devexNet(self) -> float:
-
-        project_start = 0
-        devex = []
-        for year in range(-2, project_start):
-            devex_ = self.devexTotal() / 2
-            devex.append(devex_)
-
-        self.devex = np.sum(np.array(devex))
-        return self.devex
-
-    @cache
-    def devexDiscount(self) -> float:
-
-        project_start = 0
-        devex_discount = []
-        discount_factors = self.DiscountFactor_WACC_n()
-
-        for indx, year in enumerate(range(-2, project_start)):
-            devex_d = (self.devexTotal() / 2) * discount_factors[indx]
-            devex_discount.append(devex_d)
-
-        self.devex_discount = np.sum((np.array(devex_discount)))
-
-        return self.devex_discount
-
-    @cache
-    def CAPEXNet(self) -> float:
-        return self.CAPEXTotal()
-
-    @cache
-    def CAPEXDiscount(
-        self,
-    ) -> float:  # in the excel sheet this is also called Total CAPEX
-        base_yaer_indx = 1  # year = -1
-        discount_factors = self.DiscountFactor_WACC_n()
-        # self.CAPEX_discount = self.CAPEXTotal()*discount_factors[base_yaer_indx]
-
-        return self.CAPEXTotal() * discount_factors[base_yaer_indx]
-
-    @cache
-    def TotalCAPEX(self) -> float:  # in the excel sheet this is also called CAPEX total
-        return self.CAPEXDiscount()
-
-    @cache
-    def opexNET(self) -> float:
-
-        opex_net = []
-        for year in range(self.lifetime):
-            opex_ = self.opexTotal() * ((1 + self.inflation) ** year)
-            opex_net.append(opex_)
-
-        self.opex_net = np.sum(np.array(opex_net))
-        return self.opex_net
-
-    @cache
-    def opexDiscount(self) -> float:
-
-        base_yaer_indx = 2  # year = 0
-        discount_factors = self.DiscountFactor_WACC_n()
-        opex_d = []
-        for indx, year in enumerate(range(self.lifetime)):
-
-            opex_ = (
-                self.opexTotal() * (1 + self.inflation) ** year
-            ) * discount_factors[indx + base_yaer_indx]
-            opex_d.append(opex_)
-
-        self.opex_d = np.sum(np.array(opex_d))
-        return self.opex_d
-
-    @cache
-    def abexNET(self) -> float:
-        return 0.0
-
-    @cache
-    def abexDiscount(self) -> float:
-        return 0.0
-
-    @cache
-    def LCOENumerator(self):
-        return (
-            self.devexDiscount()
-            + self.CAPEXDiscount()
-            + self.opexDiscount()
-            + self.abexDiscount()
-        )
-
-    @cache
-    def LCOEDenominator(self):
-        return self.AEPDiscount()
-
-    @cache
-    def LCOE(self):
-        return self.LCOENumerator() / self.AEPDiscount()
-
-    @cache
-    def NVP_devex(self):
-        return self.devexDiscount() / self.LCOENumerator()
-
-    @cache
-    def NVP_WT_CAPEX(self):
-        Turbine_incl_tower = (
-            self.SalesPriceCalculation() / np.array(self.rated_power) / 1000
-        )
-        return (
-            self.CAPEXDiscount()
-            * Turbine_incl_tower
-            / (self.BOPCost() + Turbine_incl_tower)
-            / self.LCOENumerator()
-        )
-
-    @cache
-    def NVP_BOP_CAPEX(self):
-        Turbine_incl_tower = (
-            self.SalesPriceCalculation() / np.array(self.rated_power) / 1000
-        )
-        return (
-            (self.CAPEXDiscount() * self.BOPCost())
-            / (self.BOPCost() + Turbine_incl_tower)
-            / self.LCOENumerator()
-        )
-
-    @cache
-    def NVP_opex(self):
-        return self.opexDiscount() / self.LCOENumerator()
-
-    @cache
-    def NVP_abex(self):
-        return self.abexDiscount() / self.LCOENumerator()
+        return self.convert_currency(foundation_cost_dkk)
 
     def reformat_input(self, **kwargs):
         nwt = kwargs["nwt"]
@@ -1510,8 +146,12 @@ class DTUOffshoreCostModel(CostModel):
                 setattr(self, k, int(vmag))
                 continue
             if k == "decline_factor":
-                vmag *= -1
+                vmag *= (
+                    -1
+                )  # Keep internal representation as negative for calculation convenience
             setattr(self, k, vmag)
+
+    # --- Main Calculation Method ---
 
     def _run(self):
         self.reformat_input(**self._cm_input)
@@ -1520,49 +160,610 @@ class DTUOffshoreCostModel(CostModel):
                 "Number of turbines (nwt) must be provided for this calculation."
             )
 
-        LCOE = self.LCOE()
-        devexDiscount = self.devexDiscount()
-        CAPEXDiscount = self.CAPEXDiscount()
-        opexDiscount = self.opexDiscount()
-        AEPDiscount = self.AEPDiscount()
-        devexNet = self.devexNet()
-        CAPEXNet = self.CAPEXNet()
-        opexNet = self.opexNET()
-        AEPNet = self.AEPNet()
-        co2_emmisions = self.Total_Co2Emission()
-        wt_cost = self.TotalCostCalculation()
+        # --- Base Calculations ---
+        rotor_torque_factor = 1.1
+        rotor_torque = (
+            rotor_torque_factor * 60 * self.rated_power / (2 * np.pi * self.rotor_speed)
+        )
+        rotor_area = np.pi * (self.rotor_diameter / 2) ** 2
 
-        # cashflows = self.cashflows(
-        #     self._cm_input["eprice"],
-        #     self._cm_input["inflation"],
-        #     Quant(CAPEXNet, "EUR"),
-        #     Quant(opexNet, "EUR"),
-        #     Quant(AEPNet / self.lifetime, "MWh"),
-        #     self.lifetime,
-        # )
+        # --- Mass Calculation Parameters ---
+        # Coefficients
+        blade_mass_coeff = 1.65
+        hub_structure_mass_coeff = 0.5
+        hub_computer_mass_coeff = 0.0
+        pitch_bearings_mass_coeff = 0.4
+        pitch_actuator_mass_coeff = 0.15
+        hub_secondary_mass_coeff = 5.0
+        spinner_mass_coeff = 10.0
+        main_shaft_mass_coeff = 0.02
+        main_bearings_mass_coeff = 0.02
+        main_bearing_housing_mass_coeff = 0.03
+        gearbox_mass_coeff = 12500.0
+        coupling_brake_mass_coeff = 500.0
+        generator_mass_coeff = 1800.0
+        cooling_mass_coeff = 500.0
+        power_converter_mass_coeff = 1000.0
+        controller_mass_coeff = 100.0
+        bedplate_mass_coeff = 1.2
+        yaw_system_mass_coeff = 0.1
+        canopy_mass_coeff = 1500.0
+        nacelle_secondary_mass_coeff = 1000.0
+        tower_structure_mass_coeff = 0.25
+        tower_internals_mass_coeff = 100.0
+        power_cables_mass_coeff = 25.0
+        main_transformer_mass_coeff = 2500.0
+        tower_secondary_mass_coeff = 500.0
+        # Intercepts
+        blade_mass_intercept = 0.0
+        hub_structure_mass_intercept = 6000.0
+        hub_computer_mass_intercept = 200.0
+        pitch_bearings_mass_intercept = 500.0
+        pitch_actuator_mass_intercept = 500.0
+        hub_secondary_mass_intercept = 500.0
+        spinner_mass_intercept = 0.0
+        main_shaft_mass_intercept = 0.0
+        main_bearings_mass_intercept = 0.0
+        main_bearing_housing_mass_intercept = 0.0
+        gearbox_mass_intercept = 0.0
+        coupling_brake_mass_intercept = 0.0
+        generator_mass_intercept = 0.0
+        cooling_mass_intercept = 0.0
+        power_converter_mass_intercept = 0.0
+        controller_mass_intercept = 200.0
+        bedplate_mass_intercept = 0.0
+        yaw_system_mass_intercept = 0.0
+        canopy_mass_intercept = 1000.0
+        nacelle_secondary_mass_intercept = 1000.0
+        tower_structure_mass_intercept = 0.0
+        tower_internals_mass_intercept = 1000.0
+        power_cables_mass_intercept = 0.0
+        main_transformer_mass_intercept = 0.0
+        tower_secondary_mass_intercept = 1000.0
+        # Exponents
+        blade_mass_exp = 2.5
+        hub_structure_mass_exp = 2.5
+        hub_computer_mass_exp = 1.0
+        pitch_bearings_mass_exp = 2.5
+        pitch_actuator_mass_exp = 2.5
+        hub_secondary_mass_exp = 1.0
+        spinner_mass_exp = 1.0
+        main_shaft_mass_exp = 2.8
+        main_bearings_mass_exp = 2.5
+        main_bearing_housing_mass_exp = 2.5
+        gearbox_mass_exp = 1.0
+        coupling_brake_mass_exp = 1.0
+        generator_mass_exp = 1.0
+        cooling_mass_exp = 1.0
+        power_converter_mass_exp = 1.0
+        controller_mass_exp = 1.0
+        bedplate_mass_exp = 2.0
+        yaw_system_mass_exp = 2.5
+        canopy_mass_exp = 1.0
+        nacelle_secondary_mass_exp = 1.0
+        tower_structure_mass_exp = 1.0
+        tower_internals_mass_exp = 1.0
+        power_cables_mass_exp = 1.0
+        main_transformer_mass_exp = 1.0
+        tower_secondary_mass_exp = 1.0
 
-        # clear cache for the next call; workaround to reuse
-        # the many calls made to the same functions during
-        # the evaluation of the model : ) ~20x faster with caching;
-        # if not cleared the input for next call will be disregarded
-        for f in self.__class__.__dict__.values():
-            if hasattr(f, "cache_clear"):
-                f.cache_clear()
+        # --- Mass Calculations ---
+        rotor_radius = self.rotor_diameter / 2
+        total_blade_mass = (
+            blade_mass_coeff * (rotor_radius**blade_mass_exp) + blade_mass_intercept
+        )
+        hub_structure_mass = (
+            hub_structure_mass_coeff * (rotor_radius**hub_structure_mass_exp)
+            + hub_structure_mass_intercept
+        )
+        hub_computer_mass = (
+            hub_computer_mass_coeff * (self.rotor_diameter**hub_computer_mass_exp)
+            + hub_computer_mass_intercept
+        )
+        pitch_bearings_mass = (
+            pitch_bearings_mass_coeff * (rotor_radius**pitch_bearings_mass_exp)
+            + pitch_bearings_mass_intercept
+        )
+        pitch_actuator_system_mass = (
+            pitch_actuator_mass_coeff * (rotor_radius**pitch_actuator_mass_exp)
+            + pitch_actuator_mass_intercept
+        )
+        hub_secondary_equipment_mass = (
+            hub_secondary_mass_coeff * (self.rotor_diameter**hub_secondary_mass_exp)
+            + hub_secondary_mass_intercept
+        )
+        spinner_mass = (
+            spinner_mass_coeff * (self.rotor_diameter**spinner_mass_exp)
+            + spinner_mass_intercept
+        )
+        main_shaft_mass = (
+            main_shaft_mass_coeff * (self.rotor_diameter**main_shaft_mass_exp)
+            + main_shaft_mass_intercept
+        )
+        main_bearings_mass = (
+            main_bearings_mass_coeff * (self.rotor_diameter**main_bearings_mass_exp)
+            + main_bearings_mass_intercept
+        )
+        main_bearing_housing_mass = (
+            main_bearing_housing_mass_coeff
+            * (self.rotor_diameter**main_bearing_housing_mass_exp)
+            + main_bearing_housing_mass_intercept
+        )
+        gearbox_mass = (
+            gearbox_mass_coeff * (rotor_torque**gearbox_mass_exp)
+            + gearbox_mass_intercept
+        )
+        coupling_plus_brake_system_mass = (
+            coupling_brake_mass_coeff * (self.rated_power**coupling_brake_mass_exp)
+            + coupling_brake_mass_intercept
+        )
+        generator_mass = (
+            generator_mass_coeff * (self.rated_power**generator_mass_exp)
+            + generator_mass_intercept
+        )
+        cooling_mass = (
+            cooling_mass_coeff * (self.rated_power**cooling_mass_exp)
+            + cooling_mass_intercept
+        )
+        power_converter_mass = (
+            power_converter_mass_coeff * (self.rated_power**power_converter_mass_exp)
+            + power_converter_mass_intercept
+        )
+        controller_mass = (
+            controller_mass_coeff * (self.rated_power**controller_mass_exp)
+            + controller_mass_intercept
+        )
+        bedplate_mass = (
+            bedplate_mass_coeff * (self.rotor_diameter**bedplate_mass_exp)
+            + bedplate_mass_intercept
+        )
+        yaw_system_mass = (
+            yaw_system_mass_coeff * (self.rotor_diameter**yaw_system_mass_exp)
+            + yaw_system_mass_intercept
+        )
+        canopy_mass = (
+            canopy_mass_coeff * (self.rated_power**canopy_mass_exp)
+            + canopy_mass_intercept
+        )
+        nacell_secondary_equipment_mass = (
+            nacelle_secondary_mass_coeff
+            * (self.rated_power**nacelle_secondary_mass_exp)
+            + nacelle_secondary_mass_intercept
+        )
+        tower_structure_mass = (
+            tower_structure_mass_coeff
+            * (self.hub_height * rotor_area) ** tower_structure_mass_exp
+            + tower_structure_mass_intercept
+        )
+        tower_internals_mass = (
+            tower_internals_mass_coeff * (self.hub_height**tower_internals_mass_exp)
+            + tower_internals_mass_intercept
+        )
+        power_cables_mass = (
+            power_cables_mass_coeff
+            * ((self.rated_power * self.hub_height) ** power_cables_mass_exp)
+            + power_cables_mass_intercept
+        )
+        main_transformer_mass = (
+            main_transformer_mass_coeff * (self.rated_power**main_transformer_mass_exp)
+            + main_transformer_mass_intercept
+        )
+        tower_secondary_equipment_mass = (
+            tower_secondary_mass_coeff * (self.rated_power**tower_secondary_mass_exp)
+            + tower_secondary_mass_intercept
+        )
+
+        # --- Total Mass Calculations ---
+        hub_total_mass = (
+            hub_structure_mass
+            + pitch_bearings_mass
+            + pitch_actuator_system_mass
+            + hub_computer_mass
+            + hub_secondary_equipment_mass
+            + spinner_mass
+        )
+        nacelle_total_mass = (
+            main_shaft_mass
+            + main_bearings_mass
+            + main_bearing_housing_mass
+            + gearbox_mass
+            + coupling_plus_brake_system_mass
+            + generator_mass
+            + cooling_mass
+            + power_converter_mass
+            + controller_mass
+            + bedplate_mass
+            + yaw_system_mass
+            + canopy_mass
+            + nacell_secondary_equipment_mass
+        )
+        tower_total_mass = (
+            tower_structure_mass
+            + tower_internals_mass
+            + power_cables_mass
+            + main_transformer_mass
+            + tower_secondary_equipment_mass
+        )
+        bom_total_mass = (
+            total_blade_mass + hub_total_mass + nacelle_total_mass + tower_total_mass
+        )
+
+        # --- Cost Calculation Parameters ---
+        # Rates (Cost per unit mass)
+        blade_cost_rate = 15.0
+        hub_structure_cost_rate = 2.5
+        hub_computer_cost_rate = 50.0
+        pitch_bearings_cost_rate = 8.0
+        pitch_actuator_cost_rate = 8.0
+        hub_secondary_cost_rate = 8.0
+        spinner_cost_rate = 10.0
+        main_shaft_cost_rate = 5.0
+        main_bearings_cost_rate = 15.0
+        main_bearing_housing_cost_rate = 2.5
+        gearbox_cost_rate = 8.0
+        coupling_brake_cost_rate = 8.0
+        generator_cost_rate = 8.0
+        cooling_cost_rate = 8.0
+        power_converter_cost_rate = 30.0
+        controller_cost_rate = 50.0
+        bedplate_cost_rate = 2.5
+        yaw_system_cost_rate = 6.0
+        canopy_cost_rate = 10.0
+        nacelle_secondary_cost_rate = 10.0
+        tower_structure_cost_rate = 3.0
+        tower_internals_cost_rate = 8.0
+        power_cables_cost_rate = 8.0
+        main_transformer_cost_rate = 8.0
+        tower_secondary_cost_rate = 10.0
+        # Coefficients for non-mass-based costs
+        material_overhead_cost_coeff = 0.03
+        direct_labor_cost_coeff = 0.10
+        overhead_cost_coeff = 0.05
+        r_and_d_cost_coeff = 0.025
+        sg_and_a_cost_coeff = 0.05
+        warranty_accruals_cost_coeff = 0.03
+        financing_cost_coeff = 0.017778
+        transport_cost_coeff = 0.2
+        transport_cost_intercept = 10000.0
+        transport_cost_exp = 1.0
+        harbor_storage_assy_cost_coeff = 0.0  # Simplified from original
+        harbor_storage_assy_cost_intercept = 0.0
+        harbor_storage_assy_cost_exp = 1.0
+        installation_commiss_cost_coeff = 0.0  # Simplified from original
+        installation_commiss_cost_intercept = 0.0
+        installation_commiss_cost_exp = 1.0
+
+        # --- Cost Calculations ---
+        blade_total_cost = total_blade_mass * blade_cost_rate
+        hub_structure_cost = hub_structure_mass * hub_structure_cost_rate
+        hub_computer_cost = hub_computer_mass * hub_computer_cost_rate
+        pitch_bearings_cost = pitch_bearings_mass * pitch_bearings_cost_rate
+        pitch_actuator_system_cost = (
+            pitch_actuator_system_mass * pitch_actuator_cost_rate
+        )
+        hub_secondary_equipment_cost = (
+            hub_secondary_equipment_mass * hub_secondary_cost_rate
+        )
+        spinner_cost = spinner_mass * spinner_cost_rate
+        main_shaft_cost = main_shaft_mass * main_shaft_cost_rate
+        main_bearings_cost = main_bearings_mass * main_bearings_cost_rate
+        main_bearing_housing_cost = (
+            main_bearing_housing_mass * main_bearing_housing_cost_rate
+        )
+        gearbox_cost = gearbox_mass * gearbox_cost_rate
+        coupling_plus_brake_system_cost = (
+            coupling_plus_brake_system_mass * coupling_brake_cost_rate
+        )
+        generator_cost = generator_mass * generator_cost_rate
+        cooling_cost = cooling_mass * cooling_cost_rate
+        power_converter_cost = power_converter_mass * power_converter_cost_rate
+        controller_cost = controller_mass * controller_cost_rate
+        bedplate_cost = bedplate_mass * bedplate_cost_rate
+        yaw_system_cost = yaw_system_mass * yaw_system_cost_rate
+        canopy_cost = canopy_mass * canopy_cost_rate
+        nacell_secondary_equipment_cost = (
+            nacell_secondary_equipment_mass * nacelle_secondary_cost_rate
+        )
+        tower_structure_cost = tower_structure_mass * tower_structure_cost_rate
+        tower_internals_cost = tower_internals_mass * tower_internals_cost_rate
+        power_cables_cost = power_cables_mass * power_cables_cost_rate
+        main_transformer_cost = main_transformer_mass * main_transformer_cost_rate
+        tower_secondary_equipment_cost = (
+            tower_secondary_equipment_mass * tower_secondary_cost_rate
+        )
+
+        # --- Total Cost Calculations ---
+        hub_total_cost = (
+            hub_structure_cost
+            + pitch_bearings_cost
+            + pitch_actuator_system_cost
+            + hub_computer_cost
+            + hub_secondary_equipment_cost
+            + spinner_cost
+        )
+        nacelle_total_cost = (
+            main_shaft_cost
+            + main_bearings_cost
+            + main_bearing_housing_cost
+            + gearbox_cost
+            + coupling_plus_brake_system_cost
+            + generator_cost
+            + cooling_cost
+            + power_converter_cost
+            + controller_cost
+            + bedplate_cost
+            + yaw_system_cost
+            + canopy_cost
+            + nacell_secondary_equipment_cost
+        )
+        tower_total_cost = (
+            tower_structure_cost
+            + tower_internals_cost
+            + power_cables_cost
+            + main_transformer_cost
+            + tower_secondary_equipment_cost
+        )
+        bom_total_cost = (
+            blade_total_cost + hub_total_cost + nacelle_total_cost + tower_total_cost
+        )
+        material_overhead_cost = bom_total_cost * material_overhead_cost_coeff
+        direct_labor_cost = bom_total_cost * direct_labor_cost_coeff
+        direct_production_cost = (
+            bom_total_cost + material_overhead_cost + direct_labor_cost
+        )
+        overhead_cost = direct_production_cost * overhead_cost_coeff
+        r_and_d_cost = direct_production_cost * r_and_d_cost_coeff
+        sg_and_a_cost = direct_production_cost * sg_and_a_cost_coeff
+        total_production_cost = (
+            direct_production_cost + overhead_cost + r_and_d_cost + sg_and_a_cost
+        )
+        warranty_accruals_cost = total_production_cost * warranty_accruals_cost_coeff
+        financing_cost = total_production_cost * financing_cost_coeff
+        transport_cost = (
+            transport_cost_coeff * (bom_total_mass**transport_cost_exp)
+            + transport_cost_intercept
+        )
+        harbor_storage_assy_cost = (
+            harbor_storage_assy_cost_coeff
+            * (self.rated_power**harbor_storage_assy_cost_exp)
+            + harbor_storage_assy_cost_intercept
+        )
+        installation_commiss_cost = (
+            installation_commiss_cost_coeff
+            * (self.rated_power**installation_commiss_cost_exp)
+            + installation_commiss_cost_intercept
+        )
+        total_additional_cost = (
+            warranty_accruals_cost
+            + financing_cost
+            + transport_cost
+            + harbor_storage_assy_cost
+            + installation_commiss_cost
+        )
+        total_cost_calculation = total_additional_cost + total_production_cost
+        profit_calculation = -(1 - 1 / (1 - self.profit)) * total_cost_calculation
+        sales_price_calculation = total_cost_calculation + profit_calculation
+
+        # --- CO2 Emission Calculation Parameters ---
+        # Emission Factors (kg CO2 / kg mass)
+        blade_co2_factor = 4.00
+        hub_structure_co2_factor = 1.83
+        hub_computer_co2_factor = 3.00
+        pitch_bearings_co2_factor = 1.83
+        pitch_actuator_co2_factor = 1.83
+        hub_secondary_co2_factor = 1.83
+        spinner_co2_factor = 4.00
+        main_shaft_co2_factor = 1.83
+        main_bearings_co2_factor = 1.83
+        main_bearing_housing_co2_factor = 1.83
+        gearbox_co2_factor = 1.83
+        coupling_brake_co2_factor = 1.83
+        generator_co2_factor = 6.00
+        cooling_co2_factor = 2.00
+        power_converter_co2_factor = 4.00
+        controller_co2_factor = 1.83
+        bedplate_co2_factor = 1.83
+        yaw_system_co2_factor = 1.83
+        canopy_co2_factor = 4.00
+        nacelle_secondary_co2_factor = 1.83
+        tower_structure_co2_factor = 1.83
+        tower_internals_co2_factor = 2.00
+        power_cables_co2_factor = 4.00
+        main_transformer_co2_factor = 4.00
+        tower_secondary_co2_factor = 2.00
+
+        # --- CO2 Emission Calculations ---
+        blade_co2_emission = blade_co2_factor * total_blade_mass
+        hub_structure_co2_emission = hub_structure_co2_factor * hub_structure_mass
+        hub_computer_co2_emission = hub_computer_co2_factor * hub_computer_mass
+        pitch_bearings_co2_emission = pitch_bearings_co2_factor * pitch_bearings_mass
+        pitch_actuator_system_co2_emission = (
+            pitch_actuator_co2_factor * pitch_actuator_system_mass
+        )
+        hub_secondary_equipment_co2_emission = (
+            hub_secondary_co2_factor * hub_secondary_equipment_mass
+        )
+        spinner_co2_emission = spinner_co2_factor * spinner_mass
+        main_shaft_co2_emission = main_shaft_co2_factor * main_shaft_mass
+        main_bearings_co2_emission = main_bearings_co2_factor * main_bearings_mass
+        main_bearing_housing_co2_emission = (
+            main_bearing_housing_co2_factor * main_bearing_housing_mass
+        )
+        gearbox_co2_emission = gearbox_co2_factor * gearbox_mass
+        coupling_plus_brake_system_co2_emission = (
+            coupling_brake_co2_factor * coupling_plus_brake_system_mass
+        )
+        generator_co2_emission = generator_co2_factor * generator_mass
+        cooling_co2_emission = cooling_co2_factor * cooling_mass
+        power_converter_co2_emission = power_converter_co2_factor * power_converter_mass
+        controller_co2_emission = controller_co2_factor * controller_mass
+        bedplate_co2_emission = bedplate_co2_factor * bedplate_mass
+        yaw_system_co2_emission = yaw_system_co2_factor * yaw_system_mass
+        canopy_co2_emission = canopy_co2_factor * canopy_mass
+        nacell_secondary_equipment_co2_emission = (
+            nacelle_secondary_co2_factor * nacell_secondary_equipment_mass
+        )
+        tower_structure_co2_emission = tower_structure_co2_factor * tower_structure_mass
+        tower_internals_co2_emission = tower_internals_co2_factor * tower_internals_mass
+        power_cables_co2_emission = power_cables_co2_factor * power_cables_mass
+        main_transformer_co2_emission = (
+            main_transformer_co2_factor * main_transformer_mass
+        )
+        tower_secondary_equipment_co2_emission = (
+            tower_secondary_co2_factor * tower_secondary_equipment_mass
+        )
+
+        total_co2_emission = (
+            blade_co2_emission
+            + hub_structure_co2_emission
+            + hub_computer_co2_emission
+            + pitch_bearings_co2_emission
+            + pitch_actuator_system_co2_emission
+            + hub_secondary_equipment_co2_emission
+            + spinner_co2_emission
+            + main_shaft_co2_emission
+            + main_bearings_co2_emission
+            + main_bearing_housing_co2_emission
+            + gearbox_co2_emission
+            + coupling_plus_brake_system_co2_emission
+            + generator_co2_emission
+            + cooling_co2_emission
+            + power_converter_co2_emission
+            + controller_co2_emission
+            + bedplate_co2_emission
+            + yaw_system_co2_emission
+            + canopy_co2_emission
+            + nacell_secondary_equipment_co2_emission
+            + tower_structure_co2_emission
+            + tower_internals_co2_emission
+            + power_cables_co2_emission
+            + main_transformer_co2_emission
+            + tower_secondary_equipment_co2_emission
+        )
+
+        # --- Foundation/BOP Cost ---
+        foundation_cost = (
+            self.CalculateFoundationCost()
+        )  # Per kW based on currency conversion
+        # Assuming electrical_cost is MEUR/MW -> EUR/kW
+        electrical_cost_per_kw = self.electrical_cost * 1_000_000 / 1_000
+        bop_cost = foundation_cost + electrical_cost_per_kw  # Cost per kW
+
+        # --- LCOE Calculations ---
+        real_wacc = (1 + self.wacc) / (1 + self.inflation) - 1
+        devex_total = np.sum(self.devex * self.rated_power * 1000)  # Total farm DEVEX
+        capex_turbine_tower_per_kw = sales_price_calculation / (
+            self.rated_power * 1000
+        )  # Cost per kW
+        capex_bop_per_kw = bop_cost  # Already per kW
+        capex_wt_total = (
+            (capex_bop_per_kw + capex_turbine_tower_per_kw) * self.rated_power * 1000
+        )  # Total cost per WT
+        capex_total_net = np.sum(capex_wt_total)  # Total farm CAPEX (Net)
+        opex_total_annual = np.sum(
+            self.opex * self.rated_power * 1000
+        )  # Total annual OPEX for farm
+        # abex_total = np.sum(self.abex * self.rated_power * 1000) # Not used in LCOE as abexDiscount is 0
+
+        # AEP Calculation
+        if np.isnan(self.aep).any() and np.isnan(self.capacity_factor).any():
+            raise ValueError(
+                "Either Capacity Factor (capacity_factor) or AEP must be provided."
+            )
+        if not np.isnan(self.aep).any():
+            aep_wind_farm_annual = np.sum(
+                self.aep
+            )  # Assumes self.aep is total annual AEP per turbine
+        else:  # Use capacity factor
+            # Ensure capacity_factor is broadcast correctly if single value provided
+            cf = (
+                self.capacity_factor
+                if np.size(self.capacity_factor) == self.nwt
+                else np.tile(self.capacity_factor, self.nwt)
+            )
+            aep_wind_farm_annual = np.sum(
+                cf * self.rated_power * (365 * 24)
+            )  # AEP in MWh
+
+        # Discount Factors
+        discount_factor_wacc_r = [
+            1 / (1 + real_wacc) ** year for year in range(-2, self.lifetime)
+        ]
+        discount_factor_wacc_n = [
+            1 / (1 + self.wacc) ** year for year in range(-2, self.lifetime)
+        ]
+
+        # Net and Discounted AEP
+        aep_net_list = [
+            aep_wind_farm_annual * ((1 + self.decline_factor) ** year)
+            for year in range(self.lifetime)
+        ]
+        aep_net_total = np.sum(aep_net_list)  # Total net AEP over lifetime
+        # Discount AEP relative to year 0 (start of operation)
+        aep_discount_list = [
+            aep_net_list[year] * (1 / (1 + real_wacc) ** year)
+            for year in range(self.lifetime)
+        ]
+        aep_discount_total = np.sum(
+            aep_discount_list
+        )  # Total discounted AEP over lifetime
+
+        # Net and Discounted DEVEX
+        devex_years = range(-2, 0)  # Years -2 and -1
+        devex_net_list = [devex_total / len(devex_years) for _ in devex_years]
+        devex_net = np.sum(devex_net_list)
+        devex_discount_list = [
+            (devex_total / len(devex_years)) * discount_factor_wacc_n[indx]
+            for indx, _ in enumerate(devex_years)
+        ]
+        devex_discount = np.sum(devex_discount_list)
+
+        # Net and Discounted CAPEX
+        capex_net = capex_total_net
+        capex_base_year_index = 1  # Year -1 index in discount_factor_wacc_n
+        capex_discount = capex_net * discount_factor_wacc_n[capex_base_year_index]
+
+        # Net and Discounted OPEX
+        opex_years = range(self.lifetime)  # Years 0 to lifetime-1
+        opex_net_list = [
+            opex_total_annual * ((1 + self.inflation) ** year) for year in opex_years
+        ]
+        opex_net = np.sum(opex_net_list)
+        opex_base_year_index = 2  # Year 0 index in discount_factor_wacc_n
+        opex_discount_list = [
+            opex_net_list[year] * discount_factor_wacc_n[year + opex_base_year_index]
+            for year in opex_years
+        ]
+        opex_discount = np.sum(opex_discount_list)
+
+        # Net and Discounted ABEX (currently zero based on original logic)
+        abex_net = 0.0
+        abex_discount = 0.0
+
+        # LCOE Calculation
+        lcoe_numerator = devex_discount + capex_discount + opex_discount + abex_discount
+        lcoe_denominator = aep_discount_total  # Use total discounted AEP
+        if lcoe_denominator == 0:
+            # Handle division by zero if discounted AEP is zero
+            lcoe = np.inf
+        else:
+            # LCOE is Discounted Costs / Discounted AEP
+            lcoe = lcoe_numerator / lcoe_denominator
+
+        # --- Final Output ---
 
         return {
-            "production_net": Quant(AEPNet, "MWh"),
-            "production_discount": Quant(AEPDiscount, "MWh"),
-            "aep_net": Quant(AEPNet / self.lifetime, "MWh"),
-            "aep_discount": Quant(AEPDiscount / self.lifetime, "MWh"),
-            "devex_net": Quant(devexNet, "EUR").to("MEUR"),
-            "devex_discount": Quant(devexDiscount, "EUR").to("MEUR"),
-            "capex_discount": Quant(CAPEXDiscount, "EUR").to("MEUR"),
-            "opex_discount": Quant(opexDiscount, "EUR").to("MEUR"),
-            "co2_emission_per_wt": co2_emmisions,
-            "cost_per_wt": Quant(wt_cost, "EUR").to("MEUR"),
-            "lcoe": Quant(LCOE, "EUR/MWh"),
-            "capex": Quant(CAPEXNet, "EUR").to("MEUR"),
-            "opex": Quant(opexNet, "EUR").to("MEUR"),
-            # "npv": self.npv(Quant(self.RealWACC() * 100, "%"), cashflows),
-            # "irr": self.irr(cashflows),
+            "production_net": Quant(aep_net_total, "MWh"),
+            "production_discount": Quant(aep_discount_total, "MWh"),
+            "aep_net": Quant(aep_net_total / self.lifetime, "MWh"),
+            "aep_discount": Quant(aep_discount_total / self.lifetime, "MWh"),
+            "devex_net": Quant(devex_net, "EUR").to("MEUR"),
+            "devex_discount": Quant(devex_discount, "EUR").to("MEUR"),
+            "capex_discount": Quant(capex_discount, "EUR").to("MEUR"),
+            "opex_discount": Quant(opex_discount, "EUR").to("MEUR"),
+            "co2_emission_per_wt": total_co2_emission,
+            "cost_per_wt": Quant(total_cost_calculation, "EUR").to("MEUR"),
+            "lcoe": Quant(lcoe, "EUR/MWh"),
+            "capex": Quant(capex_net, "EUR").to("MEUR"),
+            "opex": Quant(opex_net, "EUR").to("MEUR"),
         }
