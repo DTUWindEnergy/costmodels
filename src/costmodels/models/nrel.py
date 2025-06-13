@@ -6,7 +6,7 @@ from costmodels.base import CostModel
 from costmodels.units import Quant
 
 
-class TurbineClass(Enum):
+class NRELTurbineClass(Enum):
     O = 0
     I = 1
     II = 2
@@ -19,7 +19,7 @@ class NRELCostModel(CostModel):
             "nwt": Quant(np.nan, "count"),
             "machine_rating": Quant(np.nan, "W"),
             "rotor_diameter": Quant(np.nan, "m"),
-            "turbine_class": TurbineClass.II,
+            "turbine_class": NRELTurbineClass.II,
             "tower_length": Quant(np.nan, "m"),
             "blade_number": Quant(np.nan, "count"),
             "blade_has_carbon": False,
@@ -43,7 +43,7 @@ class NRELCostModel(CostModel):
                 "openmdao is not installed. Please install it to use the NREL cost model."
             )
         from openmdao.api import Problem  # fmt:skip isort:skip
-        from costmodels.external.nrel_csm_mass_2015 import (  # fmt:skip isort:skip
+        from .external.nrel_csm_mass_2015 import (  # fmt:skip isort:skip
             nrel_csm_2015,
         )
 

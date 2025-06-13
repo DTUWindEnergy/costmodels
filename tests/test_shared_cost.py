@@ -1,6 +1,6 @@
 import numpy as np
 
-from costmodels.shared_cost import SharedCostModel
+from costmodels.models import SharedCostModel
 from costmodels.units import Quant
 
 

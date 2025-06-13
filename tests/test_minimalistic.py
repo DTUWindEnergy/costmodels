@@ -1,4 +1,4 @@
-from costmodels import MinimalisticCostModel
+from costmodels.models import MinimalisticCostModel
 from costmodels.units import Quant
 
 

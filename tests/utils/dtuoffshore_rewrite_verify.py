@@ -18,16 +18,18 @@ if str(src_dir) not in sys.path:
 
 # --- Import Models ---
 try:
-    from costmodels.dtu_offshore import (
+    from costmodels.models.dtu_offshore import (
         DTUOffshoreCostModel as OriginalDTUOffshoreCostModel,
     )
-    from costmodels.dtu_offshore import Foundation as OriginalFoundation
-    from costmodels.dtu_offshore import Quant as OriginalQuant
+    from costmodels.models.dtu_offshore import Foundation as OriginalFoundation
+    from costmodels.models.dtu_offshore import Quant as OriginalQuant
 
     print("Successfully imported Original DTUOffshoreCostModel.")
 except ImportError as e:
     print(f"ERROR: Could not import original DTUOffshoreCostModel: {e}")
-    print("Make sure dtu_offshore.py exists in src/costmodels/ and is importable.")
+    print(
+        "Make sure dtu_offshore.py exists in src/costmodels/models/ and is importable."
+    )
     sys.exit(1)
 
 try:

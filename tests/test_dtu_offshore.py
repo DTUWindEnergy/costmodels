@@ -1,9 +1,8 @@
-# from costmodels import DTUOffshoreCostModel
 import warnings
 
 import numpy as np
 
-from costmodels.dtu_offshore import DTUOffshoreCostModel
+from costmodels.models import DTUOffshoreCostModel
 from costmodels.units import Quant
 
 from .utils.DTU_CostModel_org import DTUOffshoreCostModel as FafasDTUOffshoreCostModel

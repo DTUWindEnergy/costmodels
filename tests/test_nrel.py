@@ -1,7 +1,7 @@
 import openmdao.api as om
 
-from costmodels.external.nrel_csm_mass_2015 import nrel_csm_2015
-from costmodels.nrel import NRELCostModel, TurbineClass
+from costmodels.models import NRELCostModel, NRELTurbineClass
+from costmodels.models.external.nrel_csm_mass_2015 import nrel_csm_2015
 from costmodels.units import Quant
 
 
@@ -27,7 +27,7 @@ def test_nrel():
     nrel_cm = NRELCostModel(
         machine_rating=Quant(5.0, "MW"),
         rotor_diameter=126.0,
-        turbine_class=TurbineClass.II,
+        turbine_class=NRELTurbineClass.II,
         tower_length=90.0,
         blade_number=3,
         blade_has_carbon=False,

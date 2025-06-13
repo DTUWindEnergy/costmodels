@@ -1,6 +1,6 @@
 import numpy as np
 
-from costmodels.battery_cost import BatteryCostModel
+from costmodels.models import BatteryCostModel
 from costmodels.units import Quant
 
 

@@ -1,6 +1,6 @@
 import pytest
 
-from costmodels.pv import PVCostModel
+from costmodels.models.pv import PVCostModel
 from costmodels.units import Quant
 
 

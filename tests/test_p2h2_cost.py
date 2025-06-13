@@ -1,6 +1,6 @@
 import numpy as np
 
-from costmodels.p2h2_cost import PowerToHydrogenCostModel
+from costmodels.models.p2h2_cost import PowerToHydrogenCostModel
 from costmodels.units import Quant
 
 
