@@ -1,28 +1,72 @@
-from dataclasses import dataclass, field, replace
-from enum import Enum as enum
+from dataclasses import MISSING, dataclass, field, make_dataclass, replace
 from typing import Any, Dict
 
+import jax.numpy as jnp
+import numpy as np
 
-class Mutability(enum):
-    STATIC = "static"  # never changes once model is constructed
-    DESIGN = "design_var"  # tuned by optimiser but fixed during each solve
+
+def _cost_input_dataclass(cls):
+    # Collect fields and their types
+    annotations = getattr(cls, "__annotations__", {})
+    new_fields = []
+    for name, annot_type in annotations.items():
+        # Check if the field already has a default value
+        value = getattr(cls, name, MISSING)
+        if value is not MISSING:
+            new_fields.append((name, annot_type, field(default=value)))
+            continue
+
+        # If no default value, set based on type
+        if annot_type is float:
+            new_fields.append(
+                (
+                    name,
+                    annot_type,
+                    field(default_factory=lambda: jnp.nan),
+                )
+            )
+        elif annot_type in (jnp.ndarray, np.ndarray):
+            new_fields.append(
+                (
+                    name,
+                    annot_type,
+                    field(default_factory=lambda: jnp.array([jnp.nan])),
+                )
+            )
+
+    # Create a new dataclass with updated defaults
+    new_cls = make_dataclass(
+        cls.__name__,
+        new_fields,
+        bases=cls.__bases__,
+        namespace=dict(cls.__dict__),
+    )
+    return dataclass(new_cls)
 
 
 @dataclass
-class CostInputs:
-    a: int = field(metadata={"tag": Mutability.DESIGN})
-    b: float = field(default=0.07, metadata={"tag": Mutability.STATIC})
+class CostOutput:
+    capex: float
+    opex: float
 
-    def __init__(self, **_):
+
+@_cost_input_dataclass
+class _CostInput:
+    """This is not a base class, but simply a filler for _inputs_cls in CostModel.
+    It is used to ensure that subclasses of CostModel have a concrete dataclass
+    with specific fields. It should not be used anywhere else.
+    """
+
+    def __init__(self, **_):  # pragma: no cover
         raise NotImplementedError(
-            "CostInputs is an abstract base class. "
+            f"{self.__class__.__name__} is an abstract base class. "
             "Please implement a concrete subclass with specific fields."
         )
 
 
-class BaseCostModel:
+class CostModel:
     # subclass must set this to a concrete dataclass
-    _inputs_cls = CostInputs
+    _inputs_cls = _CostInput
 
     # Initialize base (static) inputs with a dataclass of inputs
     def __init__(self, **kwargs):
@@ -33,55 +77,12 @@ class BaseCostModel:
     # Convenience: mutate only run time variables between calls
     def run(self, **runtime_overrides) -> Dict[str, Any]:
         inputs = replace(self.base_inputs, **runtime_overrides)
-        return self._run(inputs)
+        output = self._run(inputs)
+        if isinstance(output, dict):
+            return CostOutput(**output)
+        return output
 
     # Subclasses implement their internals here
-    def _run(self, inputs: CostInputs) -> Dict[str, Any]:
+    def _run(self, inputs: _CostInput) -> Dict[str, Any]:  # pragma: no cover
+        _ = inputs
         raise NotImplementedError
-
-
-@dataclass
-class ExampleCostModelInputs:
-    a: float = 2.1
-    b: int = 2
-    flag: bool = True
-    dv: float = 0.0
-
-
-import jax
-import jax.numpy as jnp
-
-
-class ExampleCostModel(BaseCostModel):
-    _inputs_cls = ExampleCostModelInputs
-
-    def _run(self, inputs: ExampleCostModelInputs) -> Dict[str, Any]:
-        if inputs.flag:
-            capex = abs(
-                jnp.sin(inputs.dv**2 / inputs.b + inputs.a * jnp.cos(inputs.dv))
-            )
-        else:
-            capex = 0.0
-        opex = abs(jnp.cos(inputs.dv**2 / inputs.a + inputs.b * jnp.sin(inputs.dv)))
-        return {"capex": capex, "opex": opex}
-
-
-def test_example_cost_model():
-    cm = ExampleCostModel(a=2.1, b=2, flag=True, dv=0.0)
-    out = cm.run(dv=1.0)
-    assert isinstance(out, dict)
-    assert "capex" in out
-    assert "opex" in out
-    assert out["capex"] >= 0
-    assert out["opex"] >= 0
-
-    val, grad = jax.value_and_grad(lambda x: cm.run(dv=x)["capex"])(1.0)
-    print(f"Value: {val}, Gradient: {grad}")
-
-    val, grad = jax.value_and_grad(lambda x: cm.run(dv=x, flag=False)["capex"])(1.0)
-    print(f"Value: {val}, Gradient: {grad}")
-
-
-if __name__ == "__main__":
-    test_example_cost_model()
-    print("Example cost model test passed.")

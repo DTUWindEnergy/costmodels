@@ -1,87 +1,61 @@
+import jax.numpy as jnp
 import numpy as np
 
-from costmodels.base import CostModel
-from costmodels.units import Quant
+from costmodels.interface import CostModel, CostOutput, _cost_input_dataclass
+
+
+@_cost_input_dataclass
+class BatteryCostInput:
+    """Input parameters for :class:`BatteryCostModel`. All values are numeric and
+    unitless. Costs are expressed in EUR.
+    """
+
+    battery_power: float  # MW
+    battery_energy: float  # MWh
+    state_of_health: jnp.ndarray  # %
+    battery_energy_cost: float = 62000.0  # EUR/MWh
+    battery_power_cost: float = 16000.0  # EUR/MW
+    battery_BOP_installation_commissioning_cost: float = 80000.0  # EUR/MW
+    battery_control_system_cost: float = 2250.0  # EUR/MW
+    battery_energy_onm_cost: float = 0.0  # EUR/MWh
+    plant_lifetime: float = 25.0  # years
+    dispatch_intervals_per_hour: float = 1.0  # 1/h
+    battery_price_reduction_per_year: float = 0.1
 
 
 class BatteryCostModel(CostModel):
-    @property
-    def _cm_input_def(self):
-        return {
-            "battery_power": Quant(np.nan, "MW"),
-            "battery_energy": Quant(np.nan, "MWh"),
-            "state_of_health": Quant(np.nan, ""),
-            "battery_energy_cost": Quant(62000, "EUR/MWh"),
-            "battery_power_cost": Quant(16000, "EUR/MW"),
-            "battery_BOP_installation_commissioning_cost": Quant(80000, "EUR/MW"),
-            "battery_control_system_cost": Quant(2250, "EUR/MW"),
-            "battery_energy_onm_cost": Quant(0, "EUR/MWh"),
-            "plant_lifetime": Quant(25, "year"),
-            "dispatch_intervals_per_hour": Quant(1, "1/h"),
-            "battery_price_reduction_per_year": Quant(0.1, ""),
-        }
+    """Simple battery cost model."""
 
-    def _run(self) -> dict:
+    _inputs_cls = BatteryCostInput
+
+    def _run(self, inputs: BatteryCostInput) -> dict[str, float]:
+        # total number of dispatch intervals over the plant lifetime
         lifetime_dispatch_intervals = (
-            self.plant_lifetime
-            * Quant(365, "day/year")
-            * Quant(24, "hour/day")
-            * self.dispatch_intervals_per_hour
+            inputs.plant_lifetime * 365 * 24 * inputs.dispatch_intervals_per_hour
         )
-        age = (
-            np.arange(lifetime_dispatch_intervals.magnitude)
-            / (lifetime_dispatch_intervals / self.plant_lifetime)
-        ).magnitude
-
-        b_E = self.battery_energy
-        b_P = self.battery_power
-        state_of_health = self.state_of_health
-        battery_price_reduction_per_year = self.battery_price_reduction_per_year
-
-        battery_energy_cost = self.battery_energy_cost
-        battery_power_cost = self.battery_power_cost
-        battery_BOP_installation_commissioning_cost = (
-            self.battery_BOP_installation_commissioning_cost
+        age = np.arange(int(lifetime_dispatch_intervals)) / (
+            lifetime_dispatch_intervals / inputs.plant_lifetime
         )
-        battery_control_system_cost = self.battery_control_system_cost
-        battery_energy_onm_cost = self.battery_energy_onm_cost
 
+        state_of_health = np.asarray(inputs.state_of_health, dtype=float)
         ii_battery_change = np.where(
             (state_of_health > 0.99) & (np.append(1, np.diff(state_of_health)) > 0)
         )[0]
         year_new_battery = np.unique(np.floor(age[ii_battery_change]))
 
-        factor = 1.0 - battery_price_reduction_per_year
+        factor = 1.0 - inputs.battery_price_reduction_per_year
         N_beq = np.sum([factor**iy for iy in year_new_battery])
 
-        CAPEX = (
-            N_beq * (battery_energy_cost * b_E)
+        capex = (
+            N_beq * (inputs.battery_energy_cost * inputs.battery_energy)
             + (
-                battery_power_cost
-                + battery_BOP_installation_commissioning_cost
-                + battery_control_system_cost
+                inputs.battery_power_cost
+                + inputs.battery_BOP_installation_commissioning_cost
+                + inputs.battery_control_system_cost
             )
-            * b_P
+            * inputs.battery_power
         )
 
-        OPEX = battery_energy_onm_cost * b_E
+        opex = inputs.battery_energy_onm_cost * inputs.battery_energy
 
-        return {
-            "capex": CAPEX.to("MEUR"),
-            "opex": OPEX.to("MEUR"),
-        }
-
-
-if __name__ == "__main__":
-    battery_power = Quant(27, "MW")
-    battery_energy = Quant(108, "MWh")
-    state_of_health = np.hstack(
-        [-1.7e-6 * np.arange(1.8e5) + 1, -2.5e-6 * np.arange(25 * 365 * 24 - 1.8e5) + 1]
-    ).ravel()
-    BCM = BatteryCostModel()
-    res = BCM.run(
-        battery_power=battery_power,
-        battery_energy=battery_energy,
-        state_of_health=state_of_health,
-    )
-    print(res)
+        return CostOutput(capex=capex / 1e6, opex=opex / 1e6)  # MEUR
