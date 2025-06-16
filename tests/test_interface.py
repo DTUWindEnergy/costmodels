@@ -5,10 +5,10 @@ import jax.numpy as jnp
 import numpy as np
 import pytest
 
-from costmodels.interface import CostModel, CostOutput, _cost_input_dataclass
+from costmodels._interface import CostModel, CostOutput, cost_input_dataclass
 
 
-@_cost_input_dataclass
+@cost_input_dataclass
 class ExampleCostModelInputs:
     a: float = 2.1
     b: int = 2

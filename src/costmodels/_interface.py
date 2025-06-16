@@ -7,7 +7,7 @@ import numpy as np
 from jax.core import Tracer
 
 
-def _cost_input_dataclass(cls):
+def cost_input_dataclass(cls):
     # Collect fields and their types
     annotations = getattr(cls, "__annotations__", {})
     new_fields = []
@@ -52,7 +52,7 @@ class CostOutput:
     opex: float
 
 
-@_cost_input_dataclass
+@cost_input_dataclass
 class _CostInput:
     """This is not a base class, but simply a filler for _inputs_cls in CostModel.
     It is used to ensure that subclasses of CostModel have a concrete dataclass
