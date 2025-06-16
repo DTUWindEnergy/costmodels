@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+import jax
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -15,7 +16,7 @@ from costmodels.finance import (
 )
 
 
-def test_finances_run_against_reference_from_hydesign():
+def test_finances_run_against_reference_from_hydesign_0():
     CAPEX_wind = 4.17179442e08
     CAPEX_solar = 67000000
     CAPEX_bess = 13850000
@@ -266,3 +267,204 @@ def test_finances_run_against_reference_from_hydesign():
     # TODO: test break even prices once it's implemented
     # np.testing.assert_allclose(res["break_even_prices"]["spot_electricity"], ref["break_even_prices"]["spot_electricity"], rtol=1e-5)
     # np.testing.assert_allclose(res["break_even_prices"]["hydrogen"], ref["break_even_prices"]["hydrogen"], rtol=1e-5)
+
+
+def test_finances_against_reference_from_hydesign_1():
+    # import os
+    # import timeit
+    # from pathlib import Path
+    # import numpy
+    # import pandas as pd
+
+    CAPEX_wind = 2.41170504e08
+    CAPEX_solar = 66125000
+    CAPEX_bess = 9882866.10284274
+    CAPEX_shared = 61122845.07042254
+    OPEX_wind = 4262488.80495959
+    OPEX_solar = 1331250
+    OPEX_bess = 0
+    ts_inputs = pd.read_csv(
+        Path(os.path.dirname(__file__)) / Path("./data/finance_inputs.csv"),
+        index_col=0,
+        sep=";",
+    )
+    technologies = {
+        "wind": {
+            "CAPEX": CAPEX_wind,
+            "OPEX": OPEX_wind,
+            "lifetime": 25,
+            "t0": 0,
+            "WACC": 0.06,
+            "phasing_yr": [-1, 0],
+            "phasing_capex": [
+                1,
+                1,
+            ],
+        },
+        "solar": {
+            "CAPEX": CAPEX_solar,
+            "OPEX": OPEX_solar,
+            "lifetime": 25,
+            "t0": 0,
+            "WACC": 0.06,
+            "phasing_yr": [-1, 0],
+            "phasing_capex": [
+                1,
+                1,
+            ],
+        },
+        "batt": {
+            "CAPEX": CAPEX_bess,
+            "OPEX": OPEX_bess,
+            "lifetime": 25,
+            "t0": 0,
+            "WACC": 0.06,
+            "phasing_yr": [-1, 0],
+            "phasing_capex": [
+                1,
+                1,
+            ],
+        },
+    }
+    product_prices = {Product.SPOT_ELECTRICITY: np.asarray(ts_inputs["price_t"])}
+
+    production_sample = ts_inputs.get("p_wind", None)
+    zeros = np.zeros_like(production_sample)
+
+    # Originally the solar has battery production added here...
+    # {
+    #     "name": "solar_power",
+    #     "technology": "solar",
+    #     "production": ts_inputs["p_solar"] + ts_inputs["p_batt"],
+    #     "product": "spot_electricity",
+    # },
+    technologies = [
+        Technology(
+            name=k,
+            CAPEX=v["CAPEX"],
+            OPEX=v["OPEX"],
+            lifetime=v["lifetime"],
+            t0=v["t0"],
+            WACC=v["WACC"],
+            phasing_yr=v["phasing_yr"],
+            phasing_capex=v["phasing_capex"],
+            production=np.asarray(ts_inputs.get(f"p_{k}", zeros)),
+            non_revenue_production=np.zeros(len(ts_inputs.get(f"p_{k}", zeros))),
+            product=Product.SPOT_ELECTRICITY,
+        )
+        for k, v in technologies.items()
+    ]
+
+    inflation = Inflation(
+        year=[-3, 0, 1, 25],
+        rate=[0.10, 0.10, 0.06, 0.06],
+        year_ref=0,  # inflation index is computed with respect to this year
+    )
+
+    depreciation = Depreciation(
+        year=[0, 25],
+        rate=[0, 1],
+    )
+
+    tax_rate = 0.22
+    DEVEX = 0
+    shared_capex = CAPEX_shared
+
+    res, grad = jax.value_and_grad(
+        lambda *args: finances(*args)["IRR"], argnums=0, allow_int=True
+    )(
+        technologies,
+        product_prices,
+        shared_capex,
+        inflation,
+        tax_rate,
+        depreciation,
+        DEVEX,
+    )
+    print(res)
+    print(grad)
+
+    res = finances(
+        technologies,
+        product_prices,
+        shared_capex,
+        inflation,
+        tax_rate,
+        depreciation,
+        DEVEX,
+    )
+    print(res)
+
+    ref = {
+        "cashflow": np.array(
+            [
+                -3.71423011e08,
+                2.24513680e07,
+                2.33846642e07,
+                2.43226626e07,
+                2.53007504e07,
+                2.63201665e07,
+                2.73823554e07,
+                2.84887682e07,
+                2.96408093e07,
+                3.08397247e07,
+                3.20871903e07,
+                3.33846531e07,
+                3.47335186e07,
+                3.61353925e07,
+                3.75917414e07,
+                3.91034056e07,
+                4.06717494e07,
+                4.22984174e07,
+                4.39854907e07,
+                4.57343056e07,
+                4.75457839e07,
+                4.94213055e07,
+                5.13608503e07,
+                5.33661798e07,
+                5.54385615e07,
+                5.76183758e07,
+            ]
+        ),
+        "NPV": 55399626.7,
+        "IRR": 7.26525611 / 100,
+        "CAPEX": 371423011.2610241,
+        "OPEX": np.array(
+            [
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+                5593738.80495959,
+            ]
+        ),
+        "break_even_prices": {"spot_electricity": 29.123712413268382},
+        "LCOE": 43.39325844791887,
+    }
+
+    np.testing.assert_allclose(res["cashflow"], ref["cashflow"])
+    np.testing.assert_allclose(res["NPV"], ref["NPV"])
+    np.testing.assert_allclose(res["IRR"], ref["IRR"])
+    np.testing.assert_allclose(res["CAPEX"], ref["CAPEX"])
+    np.testing.assert_allclose(res["OPEX"], ref["OPEX"])
+    np.testing.assert_allclose(res["LCOE"], ref["LCOE"])
