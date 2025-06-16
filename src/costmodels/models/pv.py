@@ -1,7 +1,6 @@
 import numpy as np
 
 from costmodels.base import CostModel
-from costmodels.units import Quant
 
 
 class PVCostModel(CostModel):
@@ -9,19 +8,17 @@ class PVCostModel(CostModel):
     @property
     def _cm_input_def(self):
         return {
-            "solar_capacity": Quant(np.nan, "MW"),
+            "solar_capacity": np.nan,
             "dc_ac_ratio": 1.5,
-            "panel_cost": Quant(1.1e5, "EUR/MW"),
-            "hardware_installation_cost": Quant(1e5, "EUR/MW"),
-            "inverter_cost": Quant(2e4, "EUR/MW"),
-            "fixed_onm_cost": Quant(4.5e3, "EUR/MW"),
+            "panel_cost": 1.1e5,
+            "hardware_installation_cost": 1e5,
+            "inverter_cost": 2e4,
+            "fixed_onm_cost": 4.5e3,
         }
 
     def __validate_input(self):
         for key, value in self._cm_input.items():
-            if not hasattr(value, "m"):
-                continue
-            if np.isnan(value.m).any():
+            if isinstance(value, (int, float)) and np.isnan(value):
                 raise ValueError(f"Value of {key} is not defined")
 
     def _run(self):

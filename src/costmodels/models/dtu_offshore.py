@@ -3,7 +3,6 @@ from enum import Enum
 import numpy as np
 
 from costmodels.base import CostModel
-from costmodels.units import Quant
 
 
 class Foundation(Enum):
@@ -42,27 +41,27 @@ class DTUOffshoreCostModel(CostModel):
     @property
     def _cm_input_def(self) -> dict:
         return {
-            "rated_power": Quant(np.nan, "MW"),
-            "rotor_speed": Quant(np.nan, "rpm"),
-            "rotor_diameter": Quant(np.nan, "m"),
-            "hub_height": Quant(np.nan, "m"),
+            "rated_power": np.nan,
+            "rotor_speed": np.nan,
+            "rotor_diameter": np.nan,
+            "hub_height": np.nan,
             "foundation_option": Foundation.MONOPILE,
-            "profit": Quant(np.nan, "%"),
-            "capacity_factor": Quant(np.nan, "%"),
-            "decline_factor": Quant(np.nan, "%"),
+            "profit": np.nan,
+            "capacity_factor": np.nan,
+            "decline_factor": np.nan,
             "nwt": np.nan,
-            "wacc": Quant(np.nan, "%"),
-            "devex": Quant(np.nan, "EUR/kW"),
-            "water_depth": Quant(np.nan, "m"),
-            "abex": Quant(np.nan, "EUR"),
-            "electrical_cost": Quant(np.nan, "MEUR/MW"),
+            "wacc": np.nan,
+            "devex": np.nan,
+            "water_depth": np.nan,
+            "abex": np.nan,
+            "electrical_cost": np.nan,
             "currency": "EURO/KW",
             "eur_to_dkk": 7.54,
-            "aep": Quant(np.nan, "MWh"),
+            "aep": [np.nan],
             "lifetime": np.nan,
-            "inflation": Quant(np.nan, "%"),
-            "opex": Quant(np.nan, "EUR/kW"),
-            "eprice": Quant(np.nan, "EUR/kWh"),
+            "inflation": np.nan,
+            "opex": np.nan,
+            "eprice": np.nan,
         }
 
     # --- Helper Methods (Not Cached) ---
@@ -126,8 +125,8 @@ class DTUOffshoreCostModel(CostModel):
         nwt = kwargs["nwt"]
 
         for k, v in kwargs.items():
-            vmag = v.m if isinstance(v, Quant) else v
-            if isinstance(v, Quant) and str(v.u) == "%":
+            vmag = v
+            if k in {"profit", "capacity_factor", "decline_factor", "wacc", "inflation"}:
                 vmag /= 100
             if (
                 k
@@ -146,9 +145,7 @@ class DTUOffshoreCostModel(CostModel):
                 setattr(self, k, int(vmag))
                 continue
             if k == "decline_factor":
-                vmag *= (
-                    -1
-                )  # Keep internal representation as negative for calculation convenience
+                vmag *= -1  # Keep internal representation as negative for calculation convenience
             setattr(self, k, vmag)
 
     # --- Main Calculation Method ---
@@ -753,17 +750,17 @@ class DTUOffshoreCostModel(CostModel):
         # --- Final Output ---
 
         return {
-            "production_net": Quant(aep_net_total, "MWh"),
-            "production_discount": Quant(aep_discount_total, "MWh"),
-            "aep_net": Quant(aep_net_total / self.lifetime, "MWh"),
-            "aep_discount": Quant(aep_discount_total / self.lifetime, "MWh"),
-            "devex_net": Quant(devex_net, "EUR").to("MEUR"),
-            "devex_discount": Quant(devex_discount, "EUR").to("MEUR"),
-            "capex_discount": Quant(capex_discount, "EUR").to("MEUR"),
-            "opex_discount": Quant(opex_discount, "EUR").to("MEUR"),
+            "production_net": aep_net_total,
+            "production_discount": aep_discount_total,
+            "aep_net": aep_net_total / self.lifetime,
+            "aep_discount": aep_discount_total / self.lifetime,
+            "devex_net": devex_net / 1e6,
+            "devex_discount": devex_discount / 1e6,
+            "capex_discount": capex_discount / 1e6,
+            "opex_discount": opex_discount / 1e6,
             "co2_emission_per_wt": total_co2_emission,
-            "cost_per_wt": Quant(total_cost_calculation, "EUR").to("MEUR"),
-            "lcoe": Quant(lcoe, "EUR/MWh"),
-            "capex": Quant(capex_net, "EUR").to("MEUR"),
-            "opex": Quant(opex_net, "EUR").to("MEUR"),
+            "cost_per_wt": total_cost_calculation / 1e6,
+            "lcoe": lcoe,
+            "capex": capex_net / 1e6,
+            "opex": opex_net / 1e6,
         }

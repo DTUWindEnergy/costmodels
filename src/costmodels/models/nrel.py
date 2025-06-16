@@ -3,7 +3,6 @@ from enum import Enum
 import numpy as np
 
 from costmodels.base import CostModel
-from costmodels.units import Quant
 
 
 class NRELTurbineClass(Enum):
@@ -16,22 +15,22 @@ class NRELCostModel(CostModel):
     @property
     def _cm_input_def(self):
         return {
-            "nwt": Quant(np.nan, "count"),
-            "machine_rating": Quant(np.nan, "W"),
-            "rotor_diameter": Quant(np.nan, "m"),
+            "nwt": np.nan,
+            "machine_rating": np.nan,
+            "rotor_diameter": np.nan,
             "turbine_class": NRELTurbineClass.II,
-            "tower_length": Quant(np.nan, "m"),
-            "blade_number": Quant(np.nan, "count"),
+            "tower_length": np.nan,
+            "blade_number": np.nan,
             "blade_has_carbon": False,
-            "max_tip_speed": Quant(np.nan, "m/s"),
-            "max_efficiency": Quant(np.nan, "%"),
-            "main_bearing_number": Quant(np.nan, "count"),
+            "max_tip_speed": np.nan,
+            "max_efficiency": np.nan,
+            "main_bearing_number": np.nan,
             "crane": False,
-            "eprice": Quant(0.2, "EUR/kWh"),
-            "inflation": Quant(2, "%"),
-            "lifetime": Quant(20, "count"),
-            "opex": Quant(np.nan, "EUR/kW"),
-            "aep": Quant(np.nan, "MWh"),
+            "eprice": 0.2,
+            "inflation": 2,
+            "lifetime": 20,
+            "opex": np.nan,
+            "aep": np.nan,
         }
 
     def __init__(self, **kwargs):
@@ -54,29 +53,29 @@ class NRELCostModel(CostModel):
         super().__init__(**kwargs)
 
     def _run(self):
-        self.prob["machine_rating"] = self.machine_rating.to("kW").m
-        self.prob["rotor_diameter"] = self.rotor_diameter.m
+        self.prob["machine_rating"] = self.machine_rating
+        self.prob["rotor_diameter"] = self.rotor_diameter
         self.prob["turbine_class"] = self.turbine_class.value
-        self.prob["tower_length"] = self.tower_length.m
-        self.prob["blade_number"] = self.blade_number.m
+        self.prob["tower_length"] = self.tower_length
+        self.prob["blade_number"] = self.blade_number
         self.prob["blade_has_carbon"] = self.blade_has_carbon
-        self.prob["max_tip_speed"] = self.max_tip_speed.m
-        self.prob["max_efficiency"] = self.max_efficiency.to_base_units().m
-        self.prob["main_bearing_number"] = self.main_bearing_number.m
+        self.prob["max_tip_speed"] = self.max_tip_speed
+        self.prob["max_efficiency"] = self.max_efficiency / 100
+        self.prob["main_bearing_number"] = self.main_bearing_number
         self.prob["crane"] = self.crane
 
         self.prob.run_model()
 
         wtc = self.prob.model._outputs["turbine_cost"][0]
-        capex = Quant(wtc, "EUR") * self.nwt
+        capex = wtc * self.nwt
         opex_total = self.opex * self.machine_rating
         # cashflows = compute_cashflows(
         #     self.eprice, self.inflation, capex, opex_total, self.aep, self.lifetime
         # )
 
         return {
-            "capex": capex.to("EUR"),
-            "opex": opex_total.to_reduced_units(),
+            "capex": capex,
+            "opex": opex_total,
             # "lcoe": self.lcoe(cashflows, self.aep * self.lifetime.m),
             # "npv": self.npv(self.inflation, cashflows),
             # "irr": self.irr(cashflows),

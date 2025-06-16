@@ -1,28 +1,27 @@
 import numpy as np
 
 from costmodels.base import CostModel
-from costmodels.units import Quant
 
 
 class SharedCostModel(CostModel):
     @property
     def _cm_input_def(self):
         return {
-            "area": Quant(np.nan, "km*km"),
-            "grid_capacity": Quant(np.nan, "MW"),
-            "hpp_BOS_soft_cost": Quant(119940, "EUR/MW"),
-            "hpp_grid_connection_cost": Quant(50000, "EUR/MW"),
-            "land_cost": Quant(300000, "EUR/km**2"),
+            "area": np.nan,
+            "grid_capacity": np.nan,
+            "hpp_BOS_soft_cost": 119940,
+            "hpp_grid_connection_cost": 50000,
+            "land_cost": 300000,
         }
 
     def _run(self) -> dict:
         CAPEX = (
             self.hpp_BOS_soft_cost + self.hpp_grid_connection_cost
         ) * self.grid_capacity + self.land_cost * self.area
-        return {"capex": CAPEX.to("MEUR")}
+        return {"capex": CAPEX / 1e6}
 
 
 if __name__ == "__main__":
     SCM = SharedCostModel()
-    res = SCM.run(area=Quant(127, "km*km"), grid_capacity=Quant(300, "MW"))
+    res = SCM.run(area=127, grid_capacity=300)
     print(res)

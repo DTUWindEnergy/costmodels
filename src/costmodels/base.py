@@ -5,9 +5,6 @@ from enum import Enum
 from numbers import Number
 
 import numpy as np
-import pint
-
-from costmodels.units import Quant
 from costmodels.utils import np2scalar
 
 CAPEX_KEY = "capex"
@@ -55,7 +52,6 @@ class CostModel(ABC):
                 "value": value,
                 "default": self._cm_input_def[key],
                 "type": type(value),
-                "unit": value.units if isinstance(value, Quant) else None,
             }
         return formatted_inputs
 
@@ -64,10 +60,8 @@ class CostModel(ABC):
         print(f"{self.__class__.__name__} inputs:")
         for k, v in self.list_input().items():
             print(f"  {k}")
-            value = v["value"].m if hasattr(v["value"], "m") else v["value"]
-            print(f"\tValue: {value}")
+            print(f"\tValue: {v['value']}")
             print(f"\tType: {v['type']}")
-            print(f"\tUnit: {v['unit'] if v['unit'] else 'N/A'}")
 
     def _set_input(self, **kwargs) -> None:
         for key, value in kwargs.items():
@@ -82,29 +76,13 @@ class CostModel(ABC):
                 if not isinstance(value, Enum):
                     value = self._cm_input[key].__class__(value)
                 self._cm_input[key] = value
-            elif isinstance(self._cm_input[key], (Quant, Number, np.number)):
-                is_quant_expected = isinstance(self._cm_input[key], Quant)
-                if is_quant_expected:
-                    # the default value is a Quantity and we try to assign units to provided number
-                    units = self._cm_input[key].units
-                    try:
-                        quant = (
-                            value.to(units)
-                            if isinstance(value, Quant)
-                            else Quant(value, units)
-                        )
-                    except pint.errors.DimensionalityError:
-                        raise ValueError(
-                            f"Invalid unit for '{key}'; Expected [{units}] and got [{value.units}]."
-                        )
-                else:
-                    # keep a unitless number; input specification does not expect a unit
-                    quant = value
-                self._cm_input[key] = quant
+            elif isinstance(self._cm_input[key], (Number, np.number)):
+                assert isinstance(
+                    value, (Number, np.number)
+                ), f"Invalid type for '{key}'"
+                self._cm_input[key] = value
             else:
-                raise ValueError(
-                    f"Invalid type for '{key}'. Only numeric values, pint.Quantity or Enum are allowed."
-                )
+                self._cm_input[key] = value
 
     def run(self, **kwargs) -> dict:
         """The output of model is cached for the same input parameters."""
@@ -126,12 +104,12 @@ class CostModel(ABC):
         pass
 
     @property
-    def _capex(self) -> Quant:
+    def _capex(self):
         """Get the CAPEX of the cost model."""
         return self.run()[CAPEX_KEY]
 
     @property
-    def _opex(self) -> Quant:
+    def _opex(self):
         """Get the CAPEX of the cost model."""
         return self.run()[OPEX_KEY]
 

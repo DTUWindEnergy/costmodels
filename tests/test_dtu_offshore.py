@@ -3,31 +3,30 @@ import warnings
 import numpy as np
 
 from costmodels.models import DTUOffshoreCostModel
-from costmodels.units import Quant
 
 from .utils.DTU_CostModel_org import DTUOffshoreCostModel as FafasDTUOffshoreCostModel
 
 
 def test_dtu_offshore():
     cm = DTUOffshoreCostModel(
-        rated_power=Quant(5.111111111111111, "MW"),
+        rated_power=5.111111111111111,
         rotor_diameter=0.060314403509210746,
         rotor_speed=9.444444444444445,
         hub_height=20.111486515663536,
-        profit=Quant(1, "%"),
-        capacity_factor=Quant(33.333, "%"),
-        decline_factor=Quant(2, "%"),
+        profit=1,
+        capacity_factor=33.333,
+        decline_factor=2,
         nwt=290,
         lifetime=27,
         wacc=0.07222222222222223,
-        inflation=Quant(8, "%"),
+        inflation=8,
         opex=0.0,
         devex=11.11111111111111,
         abex=5.555555555555555,
         water_depth=33.33333333333333,
         electrical_cost=0.0,
         foundation_option=0,
-        eprice=Quant(0.2, "EUR/kWh"),
+        eprice=0.2,
         aep=[5 * 1e6 * 8760, 5 * 1e6 * 8760],
     )
     cm_output = cm.run()
@@ -104,15 +103,15 @@ def test_monte_carlo_agains_original_dtu_offshore_implementation():
         results_our = cm.run()
 
         new_results_mapped = {
-            "AEP net (MWh)": results_our["aep_net"].m,
-            "AEP discount (MWh)": results_our["aep_discount"].m,
-            "DEVEX net (EURO)": results_our["devex_net"].to("EUR").m,
-            "DEVEX discount (EURO)": results_our["devex_discount"].to("EUR").m,
-            "CAPEX net (EURO)": results_our["capex"].to("EUR").m,
-            "CAPEX discount (EURO)": results_our["capex_discount"].to("EUR").m,
-            "OPEX net (EURO)": results_our["opex"].to("EUR").m,
-            "OPEX discount (EURO)": results_our["opex_discount"].to("EUR").m,
-            "LCOE (EURO/MWh)": results_our["lcoe"].to("EUR/MWh").m,
+            "AEP net (MWh)": results_our["aep_net"],
+            "AEP discount (MWh)": results_our["aep_discount"],
+            "DEVEX net (EURO)": results_our["devex_net"] * 1e6,
+            "DEVEX discount (EURO)": results_our["devex_discount"] * 1e6,
+            "CAPEX net (EURO)": results_our["capex"] * 1e6,
+            "CAPEX discount (EURO)": results_our["capex_discount"] * 1e6,
+            "OPEX net (EURO)": results_our["opex"] * 1e6,
+            "OPEX discount (EURO)": results_our["opex_discount"] * 1e6,
+            "LCOE (EURO/MWh)": results_our["lcoe"],
         }
 
         for k, v in new_results_mapped.items():

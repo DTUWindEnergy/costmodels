@@ -1,5 +1,4 @@
 from costmodels.models import MinimalisticCostModel
-from costmodels.units import Quant
 
 
 def test_minimalistic_cost_model():
@@ -8,11 +7,11 @@ def test_minimalistic_cost_model():
     area = mcm.Area
 
     cmo = mcm.run(
-        eprice=Quant(0.2, "EUR/kWh"),
-        inflation=Quant(8, "%"),
+        eprice=0.2,
+        inflation=8,
         lifetime=20,
     )
-    assert cmo["capex"].magnitude > 0
+    assert cmo["capex"] > 0
 
     area /= 2
     assert area < 65 * 10**6

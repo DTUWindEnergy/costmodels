@@ -2,7 +2,6 @@ import numpy as np
 from scipy.special import gamma, gammainc
 
 from costmodels.base import CostModel
-from costmodels.units import Quant
 
 
 class MinimalisticCostModel(CostModel):
@@ -96,8 +95,8 @@ class MinimalisticCostModel(CostModel):
             "z0": 0.0001,
             "kappa": 0.4,
             "f": 1.2e-4 * np.exp(4.0),
-            "eprice": Quant(0.2, "EUR/kWh"),
-            "inflation": Quant(8, "%"),
+            "eprice": 0.2,
+            "inflation": 8,
             "lifetime": 20,
         }
 
@@ -253,7 +252,7 @@ class MinimalisticCostModel(CostModel):
         aep_Wh = Pg * (365 * 24) * ((Nturb - Nrow) * eta + Nrow * eta0)
 
         return {
-            "capex": Quant(CAPEX / 10**6, "MEUR"),
-            "opex": Quant(OPEXtot / 10**6, "MEUR"),
-            "aep": Quant(aep_Wh / 10**9, "GWh"),
+            "capex": CAPEX / 10**6,
+            "opex": OPEXtot / 10**6,
+            "aep": aep_Wh / 10**9,
         }
