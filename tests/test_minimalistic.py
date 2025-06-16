@@ -6,11 +6,7 @@ def test_minimalistic_cost_model():
 
     area = mcm.Area
 
-    cmo = mcm.run(
-        eprice=0.2,
-        inflation=8,
-        lifetime=20,
-    )
+    cmo = mcm.run(lifetime=20)
     assert cmo["capex"] > 0
 
     area /= 2

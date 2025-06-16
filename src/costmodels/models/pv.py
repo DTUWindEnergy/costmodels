@@ -4,16 +4,15 @@ from costmodels.base import CostModel
 
 
 class PVCostModel(CostModel):
-
     @property
     def _cm_input_def(self):
         return {
-            "solar_capacity": np.nan,
+            "solar_capacity": np.nan,  # MW
             "dc_ac_ratio": 1.5,
-            "panel_cost": 1.1e5,
-            "hardware_installation_cost": 1e5,
-            "inverter_cost": 2e4,
-            "fixed_onm_cost": 4.5e3,
+            "panel_cost": 1.1e5,  # EUR/MW
+            "hardware_installation_cost": 1e5,  # EUR/MW
+            "inverter_cost": 2e4,  # EUR/MW
+            "fixed_onm_cost": 4.5e3,  #  "EUR/MW
         }
 
     def __validate_input(self):

@@ -26,7 +26,7 @@ def test_nrel():
     nrel_cm = NRELCostModel(
         machine_rating=5000.0,
         rotor_diameter=126.0,
-        turbine_class=NRELTurbineClass.II,
+        turbine_class=NRELTurbineClass.CLASS_II,
         tower_length=90.0,
         blade_number=3,
         blade_has_carbon=False,
@@ -34,10 +34,7 @@ def test_nrel():
         max_efficiency=90,
         main_bearing_number=2,
         crane=True,
-        eprice=0.2,
-        inflation=2,
         nwt=NWT,
-        lifetime=20,
         opex=20.0,
     )
 

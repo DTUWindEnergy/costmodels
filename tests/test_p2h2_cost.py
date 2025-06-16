@@ -14,4 +14,5 @@ def test_run_power_to_hydrogen_model():
         mean_hydrogen_offtake=mean_hydrogen_offtake,
     )
     np.testing.assert_allclose(res["capex"], 641.5)
-    np.testing.assert_allclose(res["opex"], 13.972591952)
+    # convert MEUR/year to EUR/s
+    np.testing.assert_allclose(res["opex"] * 1e6 / (8760 * 60 * 60), 0.4427647207645701)

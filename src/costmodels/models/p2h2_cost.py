@@ -7,21 +7,21 @@ class PowerToHydrogenCostModel(CostModel):
     @property
     def _cm_input_def(self):
         return {
-            "electrolyzer_capacity": np.nan,
-            "hydrogen_storage_capacity": np.nan,
-            "mean_hydrogen_offtake": np.nan,
-            "electrolyzer_capex_cost": 800000,
-            "electrolyzer_opex_cost": 16000,
-            "electrolyzer_power_electronics_cost": 0,
-            "water_cost": 4,
-            "water_treatment_cost": 2,
-            "water_consumption": 9.4e-3,
-            "storage_capex_cost": 300,
-            "storage_opex_cost": 3,
-            "transportation_cost": 5,
-            "transportation_distance": 0,
-            "plant_lifetime": 25,
-            "dispatch_intervals_per_hour": 1,
+            "electrolyzer_capacity": np.nan,  # "MW"
+            "hydrogen_storage_capacity": np.nan,  # "kg"
+            "mean_hydrogen_offtake": np.nan,  # "kg"
+            "electrolyzer_capex_cost": 800000,  # "EUR/MW"
+            "electrolyzer_opex_cost": 16000,  # "EUR/MW/year"
+            "electrolyzer_power_electronics_cost": 0,  # "EUR/MW"
+            "water_cost": 4,  # "EUR/m**3"
+            "water_treatment_cost": 2,  # "EUR/m**3"
+            "water_consumption": 9.4,  # "l/kg"
+            "storage_capex_cost": 300,  # "EUR/kg"
+            "storage_opex_cost": 3,  # "EUR/kg/year"
+            "transportation_cost": 5,  # "EUR/kg/km"
+            "transportation_distance": 0,  # "km"
+            "plant_lifetime": 25,  # "year"
+            "dispatch_intervals_per_hour": 1,  # "1/h"
         }
 
     def _run(self) -> dict:
@@ -67,18 +67,5 @@ class PowerToHydrogenCostModel(CostModel):
 
         return {
             "capex": CAPEX / 1e6,
-            "opex": OPEX / 1e6,
+            "opex": OPEX / 1e6 / 25,
         }
-
-
-if __name__ == "__main__":
-    electrolyzer_capacity = 800
-    hydrogen_storage_capacity = 5000
-    mean_hydrogen_offtake = 2343
-    PTHCM = PowerToHydrogenCostModel()
-    res = PTHCM.run(
-        electrolyzer_capacity=electrolyzer_capacity,
-        hydrogen_storage_capacity=hydrogen_storage_capacity,
-        mean_hydrogen_offtake=mean_hydrogen_offtake,
-    )
-    print(res)

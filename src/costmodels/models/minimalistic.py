@@ -95,8 +95,6 @@ class MinimalisticCostModel(CostModel):
             "z0": 0.0001,
             "kappa": 0.4,
             "f": 1.2e-4 * np.exp(4.0),
-            "eprice": 0.2,
-            "inflation": 8,
             "lifetime": 20,
         }
 

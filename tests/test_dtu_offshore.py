@@ -7,40 +7,7 @@ from costmodels.models import DTUOffshoreCostModel
 from .utils.DTU_CostModel_org import DTUOffshoreCostModel as FafasDTUOffshoreCostModel
 
 
-def test_dtu_offshore():
-    cm = DTUOffshoreCostModel(
-        rated_power=5.111111111111111,
-        rotor_diameter=0.060314403509210746,
-        rotor_speed=9.444444444444445,
-        hub_height=20.111486515663536,
-        profit=1,
-        capacity_factor=33.333,
-        decline_factor=2,
-        nwt=290,
-        lifetime=27,
-        wacc=0.07222222222222223,
-        inflation=8,
-        opex=0.0,
-        devex=11.11111111111111,
-        abex=5.555555555555555,
-        water_depth=33.33333333333333,
-        electrical_cost=0.0,
-        foundation_option=0,
-        eprice=0.2,
-        aep=[5 * 1e6 * 8760, 5 * 1e6 * 8760],
-    )
-    cm_output = cm.run()
-
-    cm_output_aep = cm.run(aep=1.0)
-
-    assert cm_output_aep["aep_net"] != cm_output["aep_net"]
-
-    grads = cm.grad("capex", ("eprice",))
-    assert "eprice" in grads.keys()
-
-
 def test_monte_carlo_agains_original_dtu_offshore_implementation():
-
     n_samples = 100
     num = 10
     sp = 350
@@ -53,7 +20,7 @@ def test_monte_carlo_agains_original_dtu_offshore_implementation():
         + np.sqrt(4 * np.linspace(1, 20, num) * 10**6 / (np.pi * sp)) / 2,
         profit=np.linspace(0.01, 0.1, num),
         capacity_factor=np.linspace(0.3, 0.6, num),
-        decline_factor=np.linspace(-0.02, -0.01, num),
+        decline_factor=np.linspace(0.02, 0.01, num),
         nwt=np.arange(10, 400, 40),
         project_lifetime=np.arange(15, 25),
         wacc=np.linspace(0.05, 0.1, num),
@@ -93,8 +60,6 @@ def test_monte_carlo_agains_original_dtu_offshore_implementation():
 
         # Adapt parameters for the concise implementation
         adapted_params = params.copy()
-        for key in ["decline_factor", "profit", "capacity_factor", "wacc", "inflation"]:
-            adapted_params[key] *= -100 if key == "decline_factor" else 100
         adapted_params["lifetime"] = adapted_params.pop("project_lifetime")
         if "eprice" not in adapted_params:
             adapted_params["eprice"] = 0.2

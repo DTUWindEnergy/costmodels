@@ -41,27 +41,27 @@ class DTUOffshoreCostModel(CostModel):
     @property
     def _cm_input_def(self) -> dict:
         return {
-            "rated_power": np.nan,
-            "rotor_speed": np.nan,
-            "rotor_diameter": np.nan,
-            "hub_height": np.nan,
+            "rated_power": np.nan,  # MW
+            "rotor_speed": np.nan,  # rpm
+            "rotor_diameter": np.nan,  # m
+            "hub_height": np.nan,  # m
             "foundation_option": Foundation.MONOPILE,
-            "profit": np.nan,
-            "capacity_factor": np.nan,
-            "decline_factor": np.nan,
+            "profit": np.nan,  # %
+            "capacity_factor": np.nan,  # %
+            "decline_factor": np.nan,  # %
             "nwt": np.nan,
-            "wacc": np.nan,
-            "devex": np.nan,
-            "water_depth": np.nan,
-            "abex": np.nan,
-            "electrical_cost": np.nan,
+            "wacc": np.nan,  # %
+            "devex": np.nan,  # EUR/kW
+            "water_depth": np.nan,  # m
+            "abex": np.nan,  # EUR
+            "electrical_cost": np.nan,  # MEUR/MW
             "currency": "EURO/KW",
             "eur_to_dkk": 7.54,
-            "aep": [np.nan],
+            "aep": np.nan,  # MWh
             "lifetime": np.nan,
-            "inflation": np.nan,
-            "opex": np.nan,
-            "eprice": np.nan,
+            "inflation": np.nan,  # %
+            "opex": np.nan,  # EUR/kW
+            "eprice": np.nan,  # EUR/kWh
         }
 
     # --- Helper Methods (Not Cached) ---
@@ -126,8 +126,6 @@ class DTUOffshoreCostModel(CostModel):
 
         for k, v in kwargs.items():
             vmag = v
-            if k in {"profit", "capacity_factor", "decline_factor", "wacc", "inflation"}:
-                vmag /= 100
             if (
                 k
                 in (
@@ -144,8 +142,6 @@ class DTUOffshoreCostModel(CostModel):
             if k in ("nwt", "lifetime"):
                 setattr(self, k, int(vmag))
                 continue
-            if k == "decline_factor":
-                vmag *= -1  # Keep internal representation as negative for calculation convenience
             setattr(self, k, vmag)
 
     # --- Main Calculation Method ---

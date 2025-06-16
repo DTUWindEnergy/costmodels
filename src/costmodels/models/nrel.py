@@ -6,31 +6,28 @@ from costmodels.base import CostModel
 
 
 class NRELTurbineClass(Enum):
-    O = 0
-    I = 1
-    II = 2
+    CLASS_O = 0
+    CLASS_I = 1
+    CLASS_II = 2
 
 
 class NRELCostModel(CostModel):
     @property
     def _cm_input_def(self):
         return {
-            "nwt": np.nan,
-            "machine_rating": np.nan,
-            "rotor_diameter": np.nan,
-            "turbine_class": NRELTurbineClass.II,
-            "tower_length": np.nan,
-            "blade_number": np.nan,
+            "nwt": np.nan,  # count
+            "machine_rating": np.nan,  # W
+            "rotor_diameter": np.nan,  # m
+            "turbine_class": NRELTurbineClass.CLASS_O,
+            "tower_length": np.nan,  # m
+            "blade_number": np.nan,  # count
             "blade_has_carbon": False,
-            "max_tip_speed": np.nan,
-            "max_efficiency": np.nan,
-            "main_bearing_number": np.nan,
+            "max_tip_speed": np.nan,  # m/s
+            "max_efficiency": np.nan,  # %
+            "main_bearing_number": np.nan,  # count
             "crane": False,
-            "eprice": 0.2,
-            "inflation": 2,
-            "lifetime": 20,
-            "opex": np.nan,
-            "aep": np.nan,
+            "opex": np.nan,  # EUR/kW
+            "aep": np.nan,  # MWh
         }
 
     def __init__(self, **kwargs):
@@ -69,17 +66,10 @@ class NRELCostModel(CostModel):
         wtc = self.prob.model._outputs["turbine_cost"][0]
         capex = wtc * self.nwt
         opex_total = self.opex * self.machine_rating
-        # cashflows = compute_cashflows(
-        #     self.eprice, self.inflation, capex, opex_total, self.aep, self.lifetime
-        # )
 
         return {
             "capex": capex,
             "opex": opex_total,
-            # "lcoe": self.lcoe(cashflows, self.aep * self.lifetime.m),
-            # "npv": self.npv(self.inflation, cashflows),
-            # "irr": self.irr(cashflows),
-            # "cashflows": cashflows,
         }
 
     def _list_inputs(self):
