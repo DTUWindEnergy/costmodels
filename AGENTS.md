@@ -18,8 +18,6 @@ The `costmodels` package is organized as follows:
 
 The dataclass interface in `src/costmodels/interface.py` replaces the old `CostModel` base in `src/costmodels/base.py`. Models in `src/costmodels/models` will be ported to this interface. New implementations should subclass `CostModel` and provide a dataclass describing their inputs. The old ones are scheduled to be refactored into the new interface.
 
-With the above mentioned refactoring the `pint` package usage will be deprecated. I.e. Quant class will no longer be used and dependency to `pint` package will be removed in the future. Thus all tests and model implemetation should be updated accordingly. This should be treated with care due to implicit conversion of units when inputs are passed to the models. For instance, if in the old interface in `_cm_input_def` some of the variables had a specific unit like `kW` and in the usage or tests value is passed as `Quant(3000, "W")` that will be internally converted to `3 kW` and `_run` method will assume operations on `kW` rather than the passed input `3000` for magnitude. Thus, treat the porting carefully not to mess up things !!!
-
 ## Development Process with pip
 
 ### 1. Install Dependencies
