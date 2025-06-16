@@ -1,31 +1,31 @@
-from dataclasses import dataclass
 from typing import Any, Dict
 
 import jax
 import jax.numpy as jnp
+import numpy as np
+import pytest
 
-from costmodels.interface import CostModel, CostOutput
+from costmodels.interface import CostModel, CostOutput, _cost_input_dataclass
 
 
-@dataclass
+@_cost_input_dataclass
 class ExampleCostModelInputs:
     a: float = 2.1
     b: int = 2
     flag: bool = True
-    dv: float = 0.0
+    dv: float = jnp.nan
 
 
 class ExampleCostModel(CostModel):
     _inputs_cls = ExampleCostModelInputs
 
     def _run(self, inputs: ExampleCostModelInputs) -> Dict[str, Any]:
-        if inputs.flag:
-            capex = abs(
-                jnp.sin(inputs.dv**2 / inputs.b + inputs.a * jnp.cos(inputs.dv))
-            )
-        else:
-            capex = 0.0
-        opex = abs(jnp.cos(inputs.dv**2 / inputs.a + inputs.b * jnp.sin(inputs.dv)))
+        capex = (
+            jnp.abs(jnp.sin(inputs.dv**2 / inputs.b + inputs.a * jnp.cos(inputs.dv)))
+            if inputs.flag
+            else 0.0
+        )
+        opex = jnp.abs(jnp.cos(inputs.dv**2 / inputs.a + inputs.b * jnp.sin(inputs.dv)))
         return {"capex": capex, "opex": opex}
 
 
@@ -44,8 +44,27 @@ def test_example_cost_model():
     assert jnp.isfinite(val)
     assert jnp.isfinite(grad)
 
+    # JIT support feature is prosponed until need arises !!!
     # check that jit works on value_and_grad
-    jit_fn = jax.jit(lambda x: cm.run(dv=x).capex + cm.run(dv=x).opex)
-    jit_val, jit_grad = jax.value_and_grad(jit_fn)(3.0)
-    assert jnp.isfinite(jit_val)
-    assert jnp.isfinite(jit_grad)
+    # jit_fn = jax.jit(lambda x: cm.run(dv=x).capex + cm.run(dv=x).opex)
+    # jit_val, jit_grad = jax.value_and_grad(jit_fn)(3.0)
+    # assert jnp.isfinite(jit_val)
+    # assert jnp.isfinite(jit_grad)
+
+
+def test_model_does_not_run_with_nan_values_in_inputs():
+    cm = ExampleCostModel(a=2.1, b=3.3, flag=True, dv=jnp.nan)
+    with pytest.raises(ValueError):
+        cm.run()
+    with pytest.raises(ValueError):
+        cm.run(dv=jnp.nan)
+    with pytest.raises(ValueError):
+        cm.run(dv=np.nan)
+
+    val_grad_func = jax.value_and_grad(lambda x: cm.run(dv=x).capex)
+    val_grad_func(jnp.nan)  # jax traced values will not be checked for NaN
+    val_grad_func = jax.value_and_grad(lambda x: cm.run(dv=x, a=np.nan).capex)
+    with pytest.raises(ValueError):
+        val_grad_func(1.0)  # should raise ValueError due to NaN in inputs in a
+
+    cm.run(dv=1.0)
