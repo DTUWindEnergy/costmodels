@@ -1,46 +1,53 @@
+import jax.numpy as jnp
 import numpy as np
 
-from costmodels.base import CostModel
+from costmodels._interface import CostModel, CostOutput, cost_input_dataclass
+
+
+@cost_input_dataclass
+class PowerToHydrogenCostInput:
+    """Input parameters for :class:`PowerToHydrogenCostModel`.
+
+    All values are numeric and unitless. Costs are expressed in EUR.
+    """
+
+    electrolyzer_capacity: float  # MW
+    hydrogen_storage_capacity: float  # kg
+    mean_hydrogen_offtake: float  # kg
+    electrolyzer_capex_cost: float = 800000.0  # EUR/MW
+    electrolyzer_opex_cost: float = 16000.0  # EUR/MW/year
+    electrolyzer_power_electronics_cost: float = 0.0  # EUR/MW
+    water_cost: float = 4.0  # EUR/m**3
+    water_treatment_cost: float = 2.0  # EUR/m**3
+    water_consumption: float = 9.4  # l/kg
+    storage_capex_cost: float = 300.0  # EUR/kg
+    storage_opex_cost: float = 3.0  # EUR/kg/year
+    transportation_cost: float = 5.0  # EUR/kg/km
+    transportation_distance: float = 0.0  # km
+    plant_lifetime: float = 25.0  # year
+    dispatch_intervals_per_hour: float = 1.0  # 1/h
 
 
 class PowerToHydrogenCostModel(CostModel):
-    @property
-    def _cm_input_def(self):
-        return {
-            "electrolyzer_capacity": np.nan,  # "MW"
-            "hydrogen_storage_capacity": np.nan,  # "kg"
-            "mean_hydrogen_offtake": np.nan,  # "kg"
-            "electrolyzer_capex_cost": 800000,  # "EUR/MW"
-            "electrolyzer_opex_cost": 16000,  # "EUR/MW/year"
-            "electrolyzer_power_electronics_cost": 0,  # "EUR/MW"
-            "water_cost": 4,  # "EUR/m**3"
-            "water_treatment_cost": 2,  # "EUR/m**3"
-            "water_consumption": 9.4,  # "l/kg"
-            "storage_capex_cost": 300,  # "EUR/kg"
-            "storage_opex_cost": 3,  # "EUR/kg/year"
-            "transportation_cost": 5,  # "EUR/kg/km"
-            "transportation_distance": 0,  # "km"
-            "plant_lifetime": 25,  # "year"
-            "dispatch_intervals_per_hour": 1,  # "1/h"
-        }
+    _inputs_cls = PowerToHydrogenCostInput
 
-    def _run(self) -> dict:
-        yearly_intervals = 365 * 24 * self.dispatch_intervals_per_hour
-        lifetime_dispatch_intervals = self.plant_lifetime * yearly_intervals
-        electrolyzer_capacity = self.electrolyzer_capacity
-        hydrogen_storage_capacity = self.hydrogen_storage_capacity
-        mean_hydrogen_offtake = self.mean_hydrogen_offtake
+    def _run(self, inputs: PowerToHydrogenCostInput) -> CostOutput:
+        yearly_intervals = 365 * 24 * inputs.dispatch_intervals_per_hour
+        lifetime_dispatch_intervals = inputs.plant_lifetime * yearly_intervals
+        electrolyzer_capacity = inputs.electrolyzer_capacity
+        hydrogen_storage_capacity = inputs.hydrogen_storage_capacity
+        mean_hydrogen_offtake = inputs.mean_hydrogen_offtake
 
-        electrolyzer_capex_cost = self.electrolyzer_capex_cost
-        electrolyzer_opex_cost = self.electrolyzer_opex_cost
-        electrolyzer_power_electronics_cost = self.electrolyzer_power_electronics_cost
-        water_cost = self.water_cost
-        water_treatment_cost = self.water_treatment_cost
-        water_consumption = self.water_consumption
-        storage_capex_cost = self.storage_capex_cost
-        storage_opex_cost = self.storage_opex_cost
-        transportation_cost = self.transportation_cost
-        transportation_distance = self.transportation_distance
+        electrolyzer_capex_cost = inputs.electrolyzer_capex_cost
+        electrolyzer_opex_cost = inputs.electrolyzer_opex_cost
+        electrolyzer_power_electronics_cost = inputs.electrolyzer_power_electronics_cost
+        water_cost = inputs.water_cost
+        water_treatment_cost = inputs.water_treatment_cost
+        water_consumption = inputs.water_consumption
+        storage_capex_cost = inputs.storage_capex_cost
+        storage_opex_cost = inputs.storage_opex_cost
+        transportation_cost = inputs.transportation_cost
+        transportation_distance = inputs.transportation_distance
 
         CAPEX = (
             electrolyzer_capacity
@@ -65,7 +72,4 @@ class PowerToHydrogenCostModel(CostModel):
             + water_consumption_cost
         )
 
-        return {
-            "capex": CAPEX / 1e6,
-            "opex": OPEX / 1e6 / 25,
-        }
+        return CostOutput(capex=CAPEX / 1e6, opex=OPEX / 1e6 / 25)
