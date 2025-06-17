@@ -1,21 +1,20 @@
-import numpy as np
+from costmodels._interface import CostModel, CostOutput, cost_input_dataclass
 
-from costmodels.base import CostModel
+
+@cost_input_dataclass
+class SharedCostInput:
+    area: float  # km*km
+    grid_capacity: float  # MW
+    hpp_BOS_soft_cost: float = 119_940.0  # EUR/MW
+    hpp_grid_connection_cost: float = 50_000.0  # EUR/MW
+    land_cost: float = 300_000.0  # EUR/km**2
 
 
 class SharedCostModel(CostModel):
-    @property
-    def _cm_input_def(self):
-        return {
-            "area": np.nan,  # km*km
-            "grid_capacity": np.nan,  # MW
-            "hpp_BOS_soft_cost": 119940,  # EUR/MW
-            "hpp_grid_connection_cost": 50000,  # EUR/MW
-            "land_cost": 300000,  # EUR/km**2
-        }
+    _inputs_cls = SharedCostInput
 
-    def _run(self) -> dict:
-        CAPEX = (
-            self.hpp_BOS_soft_cost + self.hpp_grid_connection_cost
-        ) * self.grid_capacity + self.land_cost * self.area
-        return {"capex": CAPEX / 1e6}
+    def _run(self, inputs: SharedCostInput) -> CostOutput:
+        capex = (
+            inputs.hpp_BOS_soft_cost + inputs.hpp_grid_connection_cost
+        ) * inputs.grid_capacity + inputs.land_cost * inputs.area
+        return CostOutput(capex=capex / 1e6, opex=0.0)
