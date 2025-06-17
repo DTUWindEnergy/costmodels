@@ -43,7 +43,7 @@ class PowerToHydrogenCostModel(CostModel):
         electrolyzer_power_electronics_cost = inputs.electrolyzer_power_electronics_cost
         water_cost = inputs.water_cost
         water_treatment_cost = inputs.water_treatment_cost
-        water_consumption = inputs.water_consumption
+        water_consumption = inputs.water_consumption / 1e3  # convert l/kg to m**3/kg
         storage_capex_cost = inputs.storage_capex_cost
         storage_opex_cost = inputs.storage_opex_cost
         transportation_cost = inputs.transportation_cost
@@ -72,4 +72,4 @@ class PowerToHydrogenCostModel(CostModel):
             + water_consumption_cost
         )
 
-        return CostOutput(capex=CAPEX / 1e6, opex=OPEX / 1e6 / 25)
+        return CostOutput(capex=CAPEX / 1e6, opex=OPEX / 1e6)
