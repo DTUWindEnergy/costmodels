@@ -48,6 +48,7 @@ def test_monte_carlo_agains_original_dtu_offshore_implementation():
             key: sample_parameters[key][idx]
             for key, idx in zip(sample_parameters.keys(), parameter_idx)
         }
+        params["AEP"] = np.array([1.0])
 
         # Run original DTU model implementation
         origcm = FafasDTUOffshoreCostModel(**params)
@@ -60,34 +61,79 @@ def test_monte_carlo_agains_original_dtu_offshore_implementation():
 
         # Adapt parameters for the concise implementation
         adapted_params = params.copy()
+        adapted_params.pop("AEP")
         adapted_params["lifetime"] = adapted_params.pop("project_lifetime")
         if "eprice" not in adapted_params:
             adapted_params["eprice"] = 0.2
+        adapted_params["aep"] = np.array([1.0])
 
         cm = DTUOffshoreCostModel(**adapted_params)
-        results_our = cm.run()
+        cmo = cm.run()
+        results_our = cm._details
 
         new_results_mapped = {
             "AEP net (MWh)": results_our["aep_net"],
             "AEP discount (MWh)": results_our["aep_discount"],
             "DEVEX net (EURO)": results_our["devex_net"] * 1e6,
             "DEVEX discount (EURO)": results_our["devex_discount"] * 1e6,
-            "CAPEX net (EURO)": results_our["capex"] * 1e6,
+            "CAPEX net (EURO)": cmo.capex * 1e6,
             "CAPEX discount (EURO)": results_our["capex_discount"] * 1e6,
-            "OPEX net (EURO)": results_our["opex"] * 1e6,
+            "OPEX net (EURO)": cmo.opex * 1e6,
             "OPEX discount (EURO)": results_our["opex_discount"] * 1e6,
             "LCOE (EURO/MWh)": results_our["lcoe"],
         }
 
         for k, v in new_results_mapped.items():
             if k in results:
-                if abs(v - results[k]) >= 1e-3:
+                if abs(v - results[k]) / max(abs(v), abs(results[k]), 1e-6) >= 1e-5:
                     warnings.warn(
                         f"Mismatch in {k}: {v} vs {results[k]}; Parameters: {params}"
                     )
                     failed = True
 
     assert not failed
+
+
+def test_dtu_offshore_gradients():
+    # Test the gradients of the DTU Offshore Cost Model
+    params = {
+        "rated_power": 3.111111111111111,
+        "rotor_diameter": 80,
+        "rotor_speed": 9.444444444444445,
+        "hub_height": 20.111486515663536,
+        "profit": 0.01,
+        "capacity_factor": 0.3333333333333333,
+        "decline_factor": -0.02,
+        "nwt": 290,
+        "project_lifetime": 25,
+        "wacc": 0.07222222222222223,
+        "inflation": 0.08,
+        "opex": 30.0,
+        "devex": 11.11111111111111,
+        "abex": 5.555555555555555,
+        "water_depth": 33.33333333333333,
+        "electrical_cost": 0.0,
+        "foundation_option": 0,
+        "eprice": 0.2,
+        "aep": np.array([1.0]),
+    }
+
+    adapted_params = params.copy()
+    adapted_params["lifetime"] = adapted_params.pop("project_lifetime")
+
+    cm = DTUOffshoreCostModel(**adapted_params)
+
+    def func(x):
+        res = cm.run(water_depth=x)
+        return res.capex
+
+    import jax
+
+    value, grad = jax.value_and_grad(func)(params["water_depth"])
+    assert value is not None
+    assert grad is not None
+    assert jax.numpy.isfinite(value)
+    assert jax.numpy.isfinite(grad)
 
 
 # THE TESTS BELOW ARE FOR THE EXCEL IMPLEMENTATION

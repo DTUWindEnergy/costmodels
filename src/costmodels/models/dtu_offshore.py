@@ -1,8 +1,15 @@
+import dataclasses
 from enum import Enum
 
-import numpy as np
+import jax.numpy as jnp
 
-from costmodels.base import CostModel
+np = jnp
+
+from costmodels._interface import (
+    CostModel,
+    CostOutput,
+    cost_input_dataclass,
+)
 
 
 class Foundation(Enum):
@@ -11,6 +18,38 @@ class Foundation(Enum):
     GRAVITY = 2
     JACKET = 3
     FLOATING_MOCKUP = 4
+
+
+class Currency(Enum):
+    DKK = "DKK"
+    EURO = "EURO"
+    DKK_KW = "DKK/KW"
+    EURO_KW = "EURO/KW"
+
+
+@cost_input_dataclass
+class DTUOffshoreCostInput:
+    rated_power: float  # MW
+    rotor_speed: float  # rpm
+    rotor_diameter: float  # m
+    hub_height: float  # m
+    foundation_option: Foundation = Foundation.MONOPILE
+    profit: float  # %
+    capacity_factor: float  # %
+    decline_factor: float  # %
+    nwt: float
+    wacc: float  # %
+    devex: float  # EUR/kW
+    water_depth: float  # m
+    abex: float  # EUR
+    electrical_cost: float  # MEUR/MW
+    currency: Currency = Currency.EURO_KW
+    eur_to_dkk: float = 7.54
+    aep: jnp.ndarray  # MWh
+    lifetime: float
+    inflation: float  # %
+    opex: float  # EUR/kW
+    eprice: float  # EUR/kWh
 
 
 class DTUOffshoreCostModel(CostModel):
@@ -38,31 +77,7 @@ class DTUOffshoreCostModel(CostModel):
         electrical_cost (int): Electrical infrastructure cost in MEURO/MW
     """
 
-    @property
-    def _cm_input_def(self) -> dict:
-        return {
-            "rated_power": np.nan,  # MW
-            "rotor_speed": np.nan,  # rpm
-            "rotor_diameter": np.nan,  # m
-            "hub_height": np.nan,  # m
-            "foundation_option": Foundation.MONOPILE,
-            "profit": np.nan,  # %
-            "capacity_factor": np.nan,  # %
-            "decline_factor": np.nan,  # %
-            "nwt": np.nan,
-            "wacc": np.nan,  # %
-            "devex": np.nan,  # EUR/kW
-            "water_depth": np.nan,  # m
-            "abex": np.nan,  # EUR
-            "electrical_cost": np.nan,  # MEUR/MW
-            "currency": "EURO/KW",
-            "eur_to_dkk": 7.54,
-            "aep": np.nan,  # MWh
-            "lifetime": np.nan,
-            "inflation": np.nan,  # %
-            "opex": np.nan,  # EUR/kW
-            "eprice": np.nan,  # EUR/kWh
-        }
+    _inputs_cls = DTUOffshoreCostInput
 
     # --- Helper Methods (Not Cached) ---
 
@@ -71,13 +86,13 @@ class DTUOffshoreCostModel(CostModel):
         Convert the foundation cost to the specified currency.
         """
         rates = {
-            "DKK": 1,  # DKK to DKK is just 1
-            "EURO": 1 / self.eur_to_dkk,  # Convert to EURO
-            "DKK/KW": 1 / 1000,  # Convert to DKK per KW
-            "EURO/KW": 1 / (self.eur_to_dkk * 1000),  # Convert to EURO per KW
+            "DKK": 1,
+            "EURO": 1 / self.eur_to_dkk,
+            "DKK/KW": 1 / 1000,
+            "EURO/KW": 1 / (self.eur_to_dkk * 1000),
         }
-        # Ensure that a valid currency is provided; if not, assume no conversion (1)
-        return foundation_cost * rates.get(self.currency, 1)  # Added default rate 1
+        key = self.currency.value if isinstance(self.currency, Enum) else self.currency
+        return foundation_cost * rates.get(key, 1)
 
     def CalculateFoundationCost(self):
         """
@@ -146,8 +161,14 @@ class DTUOffshoreCostModel(CostModel):
 
     # --- Main Calculation Method ---
 
-    def _run(self):
-        self.reformat_input(**self._cm_input)
+    def _run(self, inputs: DTUOffshoreCostInput) -> CostOutput:
+        # Convert foundation_option to Enum if it's not already
+        if not isinstance(inputs.foundation_option, Foundation):
+            inputs = dataclasses.replace(
+                inputs, foundation_option=Foundation(inputs.foundation_option)
+            )
+
+        self.reformat_input(**dataclasses.asdict(inputs))
         if self.nwt == 0:
             raise ValueError(
                 "Number of turbines (nwt) must be provided for this calculation."
@@ -687,10 +708,12 @@ class DTUOffshoreCostModel(CostModel):
         ]
 
         # Net and Discounted AEP
-        aep_net_list = [
-            aep_wind_farm_annual * ((1 + self.decline_factor) ** year)
-            for year in range(self.lifetime)
-        ]
+        aep_net_list = jnp.array(
+            [
+                aep_wind_farm_annual * ((1 + self.decline_factor) ** year)
+                for year in range(self.lifetime)
+            ]
+        )
         aep_net_total = np.sum(aep_net_list)  # Total net AEP over lifetime
         # Discount AEP relative to year 0 (start of operation)
         aep_discount_list = [
@@ -698,18 +721,18 @@ class DTUOffshoreCostModel(CostModel):
             for year in range(self.lifetime)
         ]
         aep_discount_total = np.sum(
-            aep_discount_list
+            jnp.array(aep_discount_list)
         )  # Total discounted AEP over lifetime
 
         # Net and Discounted DEVEX
         devex_years = range(-2, 0)  # Years -2 and -1
         devex_net_list = [devex_total / len(devex_years) for _ in devex_years]
-        devex_net = np.sum(devex_net_list)
+        devex_net = np.sum(jnp.array(devex_net_list))
         devex_discount_list = [
             (devex_total / len(devex_years)) * discount_factor_wacc_n[indx]
             for indx, _ in enumerate(devex_years)
         ]
-        devex_discount = np.sum(devex_discount_list)
+        devex_discount = np.sum(jnp.array(devex_discount_list))
 
         # Net and Discounted CAPEX
         capex_net = capex_total_net
@@ -721,13 +744,13 @@ class DTUOffshoreCostModel(CostModel):
         opex_net_list = [
             opex_total_annual * ((1 + self.inflation) ** year) for year in opex_years
         ]
-        opex_net = np.sum(opex_net_list)
+        opex_net = np.sum(jnp.array(opex_net_list))
         opex_base_year_index = 2  # Year 0 index in discount_factor_wacc_n
         opex_discount_list = [
             opex_net_list[year] * discount_factor_wacc_n[year + opex_base_year_index]
             for year in opex_years
         ]
-        opex_discount = np.sum(opex_discount_list)
+        opex_discount = np.sum(jnp.array(opex_discount_list))
 
         # Net and Discounted ABEX (currently zero based on original logic)
         abex_net = 0.0
@@ -745,7 +768,7 @@ class DTUOffshoreCostModel(CostModel):
 
         # --- Final Output ---
 
-        return {
+        all_outputs = {
             "production_net": aep_net_total,
             "production_discount": aep_discount_total,
             "aep_net": aep_net_total / self.lifetime,
@@ -760,3 +783,9 @@ class DTUOffshoreCostModel(CostModel):
             "capex": capex_net / 1e6,
             "opex": opex_net / 1e6,
         }
+
+        capex_value = all_outputs.pop("capex")
+        opex_value = all_outputs.pop("opex")
+        self._details = all_outputs
+
+        return CostOutput(capex=capex_value, opex=opex_value)

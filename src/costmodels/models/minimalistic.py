@@ -249,6 +249,7 @@ class MinimalisticCostModel(CostModel):
         )  # OPEX €/year
 
         OPEXtot = OPEX * YO
-        _ = Pg * (365 * 24) * ((Nturb - Nrow) * eta + Nrow * eta0)
+        aep_Wh = Pg * (365 * 24) * ((Nturb - Nrow) * eta + Nrow * eta0)
+        _ = aep_Wh
 
         return CostOutput(capex=CAPEX / 10**6, opex=OPEXtot / 10**6)
