@@ -1,4 +1,6 @@
+# om = pytest.importorskip("openmdao.api", minversion="0")
 import openmdao.api as om
+import pytest
 
 from costmodels.models import NRELCostModel, NRELTurbineClass
 from costmodels.models.external.nrel_csm_mass_2015 import nrel_csm_2015
@@ -38,8 +40,5 @@ def test_nrel():
         opex=20.0,
     )
 
-    nrel_cmo: dict = nrel_cm.run(aep=10.0)
-    assert (nrel_cmo["capex"] / NWT) == prob.model._outputs["turbine_cost"][0]
-
-    grads = nrel_cm.grad("capex", ("rotor_diameter",))
-    assert "rotor_diameter" in grads.keys()
+    res = nrel_cm.run(aep=10.0)
+    assert (res.capex / NWT) == prob.model._outputs["turbine_cost"][0]

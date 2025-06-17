@@ -1,5 +1,6 @@
 import dataclasses
 from dataclasses import dataclass
+from enum import Enum
 from typing import Any, Dict
 
 import jax.numpy as jnp
@@ -81,6 +82,9 @@ class CostModel:
         for field_info in dataclasses.fields(inputs):
             field_name = field_info.name
             field_value = getattr(inputs, field_name)
+
+            if isinstance(field_value, Enum):
+                continue
 
             if not isinstance(field_value, Tracer) and jnp.isnan(field_value).any():
                 raise ValueError(
