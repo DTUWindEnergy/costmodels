@@ -1,6 +1,3 @@
-import jax.numpy as jnp
-import numpy as np
-
 from costmodels._interface import CostModel, CostOutput, cost_input_dataclass
 
 

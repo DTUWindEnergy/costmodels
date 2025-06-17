@@ -9,7 +9,8 @@ def test_run_pv_model():
     # good run
     pv_cm = PVCostModel()
     res = pv_cm.run(solar_capacity=solar_capacity)
-    assert res["capex"] > 0
+    assert res.capex > 0
+    assert res.opex >= 0
 
     # missing required input
     pv_cm = PVCostModel()

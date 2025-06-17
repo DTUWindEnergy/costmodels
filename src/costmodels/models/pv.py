@@ -1,35 +1,28 @@
-import numpy as np
+from costmodels._interface import CostModel, CostOutput, cost_input_dataclass
 
-from costmodels.base import CostModel
+
+@cost_input_dataclass
+class PVCostInput:
+    """Input parameters for :class:`PVCostModel`."""
+
+    solar_capacity: float  # MW
+    dc_ac_ratio: float = 1.5
+    panel_cost: float = 1.1e5  # EUR/MW
+    hardware_installation_cost: float = 1e5  # EUR/MW
+    inverter_cost: float = 2e4  # EUR/MW
+    fixed_onm_cost: float = 4.5e3  # EUR/MW
 
 
 class PVCostModel(CostModel):
-    @property
-    def _cm_input_def(self):
-        return {
-            "solar_capacity": np.nan,  # MW
-            "dc_ac_ratio": 1.5,
-            "panel_cost": 1.1e5,  # EUR/MW
-            "hardware_installation_cost": 1e5,  # EUR/MW
-            "inverter_cost": 2e4,  # EUR/MW
-            "fixed_onm_cost": 4.5e3,  #  "EUR/MW
-        }
+    """Simple photovoltaic plant cost model."""
 
-    def __validate_input(self):
-        for key, value in self._cm_input.items():
-            if isinstance(value, (int, float)) and np.isnan(value):
-                raise ValueError(f"Value of {key} is not defined")
+    _inputs_cls = PVCostInput
 
-    def _run(self):
-        self.__validate_input()
-
+    def _run(self, inputs: PVCostInput) -> CostOutput:
         capex = (
-            (self.panel_cost + self.hardware_installation_cost) * self.dc_ac_ratio
-            + self.inverter_cost
-        ) * self.solar_capacity
-        opex = self.fixed_onm_cost * self.solar_capacity * self.dc_ac_ratio
+            (inputs.panel_cost + inputs.hardware_installation_cost) * inputs.dc_ac_ratio
+            + inputs.inverter_cost
+        ) * inputs.solar_capacity
+        opex = inputs.fixed_onm_cost * inputs.solar_capacity * inputs.dc_ac_ratio
 
-        return {
-            "capex": capex,
-            "opex": opex,
-        }
+        return CostOutput(capex=capex, opex=opex)
