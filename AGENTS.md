@@ -7,16 +7,12 @@ This document outlines the general structure of the `costmodels` package and the
 The `costmodels` package is organized as follows:
 
 *   **`src/`**: Contains the main source code of the package.
-    *   **`costmodels/interface.py`**: Final dataclass based interface for cost models. New models should subclass the `CostModel` defined here.
-    *   **`costmodels/models/`**: Directory with existing model implementations. These will gradually be ported to the interface in `interface.py`.
+    *   **`costmodels/_interface.py`**: Final dataclass based interface for cost models. New models should subclass the `CostModel` defined here.
+    *   **`costmodels/models/`**: Directory with existing model implementations. These will gradually be ported to the interface in `_interface.py`.
 *   **`tests/`**: Contains all the unit tests for the package.
 *   **`examples/`**: Contains example usage of the package. Example notebooks and scripts are useful references when adding new models. Currenly all of them are outdated and should not be used, will be revived once a new interface port is complete...
 *   **`pyproject.toml`**: Defines project metadata, dependencies, and build system configurations.
 *   **`.gitlab-ci.yml`**: Defines project CI configuration.
-
-## Cost Model Interface
-
-The dataclass interface in `src/costmodels/interface.py` replaces the old `CostModel` base in `src/costmodels/base.py`. Models in `src/costmodels/models` will be ported to this interface. New implementations should subclass `CostModel` and provide a dataclass describing their inputs. The old ones are scheduled to be refactored into the new interface.
 
 ## Development Process with pip
 
