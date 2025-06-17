@@ -1,44 +1,40 @@
-import os
-from pathlib import Path
-
 import jax
 import jax.numpy as jnp
-import matplotlib.pyplot as plt
 import numpy as np
 
-from costmodels.api import CostModel, CostModelOutput
+from costmodels._interface import CostModel, CostOutput, cost_input_dataclass
 from costmodels.finance import (
-    LCO,
     Depreciation,
     Inflation,
     Product,
     Technology,
     finances,
 )
-from costmodels.units import Quant
+
+
+@cost_input_dataclass
+class DummyInputs:
+    a: float = 2.0
+    b: float = 3.0
+    dv: float = jnp.nan
 
 
 class DummyCostModel(CostModel):
     """Minimal example cost model."""
 
-    @property
-    def _cm_input_def(self) -> dict:
-        return {
-            "a": Quant(2, "m"),
-            "b": Quant(3, "EUR"),
-            "dv": Quant(jnp.nan, "m"),
-        }
+    _inputs_cls = DummyInputs
 
-    @staticmethod
-    def _run(x: dict) -> CostModelOutput:
-        capex = jnp.abs(jnp.sin(x["dv"] ** 2 / x["b"] + x["a"] * jnp.cos(x["dv"])))
-        opex = jnp.abs(jnp.cos(x["dv"] ** 2 / x["a"] + x["b"] * jnp.sin(x["dv"])))
-        return CostModelOutput(capex=1e6 * capex, opex=1e3 * opex)
+    def _run(self, inputs: DummyInputs) -> CostOutput:
+        capex = jnp.abs(
+            jnp.sin(inputs.dv**2 / inputs.b + inputs.a * jnp.cos(inputs.dv))
+        )
+        opex = jnp.abs(jnp.cos(inputs.dv**2 / inputs.a + inputs.b * jnp.sin(inputs.dv)))
+        return CostOutput(capex=1e6 * capex, opex=1e3 * opex)
 
 
 if __name__ == "__main__":
-    cm_wind = DummyCostModel(a=Quant(3, "m"))
-    cm_solar = DummyCostModel(a=Quant(4, "m"))
+    cm_wind = DummyCostModel(a=3.0)
+    cm_solar = DummyCostModel(a=4.0)
 
     p_wind = np.random.rand(8760) * 1000  # Example wind production
     p_solar = np.random.rand(8760) * 1000  # Example solar production
@@ -104,6 +100,6 @@ if __name__ == "__main__":
     x0 = {"dv": 3.0}
     x1 = {"dv": 2.0}
 
-    value, grad = jax.jit(jax.value_and_grad(objective, argnums=(0, 1)))(x0, x1)
+    value, grad = jax.value_and_grad(objective, argnums=(0, 1))(x0, x1)
     print(f"Objective value: {value}")
     print(f"Grad: {grad}")

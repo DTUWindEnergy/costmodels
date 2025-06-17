@@ -1,19 +1,20 @@
 import jax.numpy as jnp
 
-from costmodels.api import CostModel, CostModelOutput
+from costmodels._interface import CostModel, CostOutput, cost_input_dataclass
 from costmodels.finance import Depreciation, Inflation, Product, Technology
 from costmodels.project import Project
-from costmodels.units import Quant
+
+
+@cost_input_dataclass
+class DummyInputs:
+    dv: float = jnp.nan
 
 
 class DummyCM(CostModel):
-    @property
-    def _cm_input_def(self):
-        return {"dv": Quant(jnp.nan, "m")}
+    _inputs_cls = DummyInputs
 
-    @staticmethod
-    def _run(x):
-        return CostModelOutput(capex=jnp.abs(x["dv"]) * 1e6, opex=0.0)
+    def _run(self, inputs: DummyInputs) -> CostOutput:
+        return CostOutput(capex=jnp.abs(inputs.dv) * 1e6, opex=0.0)
 
 
 cm = DummyCM()
