@@ -15,6 +15,18 @@ def cost_input_dataclass(cls):
     for name, annot_type in annotations.items():
         # Check if the field already has a default value
         value = getattr(cls, name, dataclasses.MISSING)
+        if value is not dataclasses.MISSING and isinstance(
+            value, (jnp.ndarray, np.ndarray)
+        ):
+            new_fields.append(
+                (
+                    name,
+                    annot_type,
+                    dataclasses.field(default_factory=lambda v=value: jnp.array(v)),
+                )
+            )
+            continue
+
         if value is not dataclasses.MISSING:
             new_fields.append((name, annot_type, dataclasses.field(default=value)))
             continue

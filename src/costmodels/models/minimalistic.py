@@ -1,7 +1,64 @@
-import numpy as np
-from scipy.special import gamma, gammainc
+import jax.numpy as jnp
+from jax import lax
+from jax.scipy.special import gamma, gammainc
 
-from costmodels.base import CostModel
+from costmodels._interface import CostModel, CostOutput, cost_input_dataclass
+
+
+@cost_input_dataclass
+class MinimalisticCostInput:
+    Pg: float = 7.0 * 10**6
+    Nturb: float = 37.0
+    Area: float = 65 * 10**6
+    D: float = 154.0
+    depth: float = 46.75
+    L: float = 8.0
+    AA: jnp.ndarray = jnp.array(
+        [
+            7.81993787,
+            6.5474264,
+            6.70129293,
+            8.28121347,
+            9.73116453,
+            9.2493092,
+            6.96107307,
+            3.1630036,
+            3.76551013,
+            4.6669416,
+            4.5387168,
+            7.1521344,
+            7.81993787,
+        ]
+    )
+    Prop_A: jnp.ndarray = jnp.array(
+        [
+            1.23102344,
+            2.06216461,
+            5.10379159,
+            26.0662667,
+            47.89597244,
+            12.82908865,
+            2.08892594,
+            0.48890485,
+            0.2342071,
+            0.43738423,
+            0.44136423,
+            1.12090622,
+            1.23102344,
+        ]
+    )  # Probability of A
+    kw: float = 2.72
+    H: float = 106.7
+    CT: float = 0.75
+    CP: float = 0.48
+    Lref: float = 20.0
+    rho: float = 1.25
+    Uin: float = 4.0
+    Uout: float = 25.0
+    z0: float = 0.0001
+    kappa: float = 0.4
+    f: float = 1.2e-4 * float(jnp.exp(4.0))
+    lifetime: float = 20.0
 
 
 class MinimalisticCostModel(CostModel):
@@ -45,60 +102,9 @@ class MinimalisticCostModel(CostModel):
         f : Coriolis parameter at latitude 55 degrees
     """
 
-    @property
-    def _cm_input_def(self):
-        return {
-            "Pg": 7.0 * 10**6,
-            "Nturb": 37,
-            "Area": 65 * 10**6,
-            "D": 154,
-            "depth": 46.75,
-            "L": 8,
-            "AA": [
-                7.81993787,
-                6.5474264,
-                6.70129293,
-                8.28121347,
-                9.73116453,
-                9.2493092,
-                6.96107307,
-                3.1630036,
-                3.76551013,
-                4.6669416,
-                4.5387168,
-                7.1521344,
-                7.81993787,
-            ],
-            "Prop_A": [
-                1.23102344,
-                2.06216461,
-                5.10379159,
-                26.0662667,
-                47.89597244,
-                12.82908865,
-                2.08892594,
-                0.48890485,
-                0.2342071,
-                0.43738423,
-                0.44136423,
-                1.12090622,
-                1.23102344,
-            ],  # Probability of A
-            "kw": 2.72,
-            "H": 106.7,
-            "CT": 0.75,
-            "CP": 0.48,
-            "Lref": 20.0,
-            "rho": 1.25,
-            "Uin": 4.0,
-            "Uout": 25.0,
-            "z0": 0.0001,
-            "kappa": 0.4,
-            "f": 1.2e-4 * np.exp(4.0),
-            "lifetime": 20,
-        }
+    _inputs_cls = MinimalisticCostInput
 
-    def _run(self) -> dict:
+    def _run(self, inputs: MinimalisticCostInput) -> CostOutput:
         """Run minimalistic cost model.
 
         Parameters
@@ -112,61 +118,53 @@ class MinimalisticCostModel(CostModel):
             Model output specification.
         """
 
-        A_average = sum(np.asarray(self.AA) * np.asarray(self.Prop_A)) / sum(
-            np.asarray(self.Prop_A)
-        )
+        A_average = jnp.sum(inputs.AA * inputs.Prop_A) / jnp.sum(inputs.Prop_A)
 
-        CT = self.CT
-        CP = self.CP
-        Lref = self.Lref
-        rho = self.rho
-        Uin = self.Uin
-        Uout = self.Uout
-        YO = self.lifetime
-        z0 = self.z0
-        kappa = self.kappa
-        f = self.f
-        Pg = self.Pg
-        Nturb = self.Nturb
-        Area = self.Area
-        D = self.D
-        depth = self.depth
-        L = self.L
-        kw = self.kw
-        H = self.H
+        CT = inputs.CT
+        CP = inputs.CP
+        Lref = inputs.Lref
+        rho = inputs.rho
+        Uin = inputs.Uin
+        Uout = inputs.Uout
+        YO = inputs.lifetime
+        z0 = inputs.z0
+        kappa = inputs.kappa
+        f = inputs.f
+        Pg = inputs.Pg
+        Nturb = inputs.Nturb
+        Area = inputs.Area
+        D = inputs.D
+        depth = inputs.depth
+        L = inputs.L
+        kw = inputs.kw
+        H = inputs.H
 
         # Derived input data
-        Ur = (8 * Pg / (np.pi * rho * CP * D**2)) ** (1 / 3)
+        Ur = (8 * Pg / (jnp.pi * rho * CP * D**2)) ** (1 / 3)
         # Rated wind speed
         Gx = gamma(1 + 1 / kw)
         Uh0 = Gx * A_average
         # Mean velocity at hub height
-        Nrow = 3.5 * np.sqrt(Nturb)
+        Nrow = 3.5 * jnp.sqrt(Nturb)
         # Number of turbines affected by the free wind
-        sr = np.sqrt(Area) / (D * (np.sqrt(Nturb) - 1))
+        sr = jnp.sqrt(Area) / (D * (jnp.sqrt(Nturb) - 1))
         # Mean spacing in diameters
-        Ctau = np.pi * CT / (8 * sr * sr)
+        Ctau = jnp.pi * CT / (8 * sr * sr)
         # Wake parameter
         alpha = 1 / (Ur**3 - Uin**3)
         beta = -(Uin**3) / (Ur**3 - Uin**3)
 
         # Geostrophic wind speed
-        nmax = 10
-        eps = 10 ** (-5)
-        n = 0
-        G1 = Uh0 * (1.0 + np.log(Uh0 / (f * H)) / np.log(H / z0))
-        # first guess
-        dG = np.abs(Uh0 - G1)
-        while n < nmax and dG > eps:
-            n = n + 1
-            G2 = Uh0 * (1.0 + np.log(G1 / (f * H)) / np.log(H / z0))
-            dG = np.abs(G2 - G1)
-            G1 = G2
-        G = G1
+        def body(_, g1):
+            return Uh0 * (1.0 + jnp.log(g1 / (f * H)) / jnp.log(H / z0))
+
+        G1 = Uh0 * (1.0 + jnp.log(Uh0 / (f * H)) / jnp.log(H / z0))
+        G = lax.fori_loop(0, 10, body, G1)
 
         # Mean velocity at hub height without wake effects
         Uh0 = G / (
-            1.0 + np.log(G / (f * H)) / kappa * np.sqrt((kappa / np.log(H / z0)) ** 2)
+            1.0
+            + jnp.log(G / (f * H)) / kappa * jnp.sqrt((kappa / jnp.log(H / z0)) ** 2)
         )
 
         # Power without wake effects
@@ -179,9 +177,9 @@ class MinimalisticCostModel(CostModel):
                 - gammainc(1 + 3 / kw, (Uin / A_average) ** kw)
             )
             + beta
-            * (np.exp(-((Uin / A_average) ** kw)) - np.exp(-((Ur / A_average) ** kw)))
-            + np.exp(-((Ur / A_average) ** kw))
-            - np.exp(-((Uout / A_average) ** kw))
+            * (jnp.exp(-((Uin / A_average) ** kw)) - jnp.exp(-((Ur / A_average) ** kw)))
+            + jnp.exp(-((Ur / A_average) ** kw))
+            - jnp.exp(-((Uout / A_average) ** kw))
         )
         # Without wake effects
         Power0 = eta0 * Pg
@@ -190,13 +188,13 @@ class MinimalisticCostModel(CostModel):
         # Mean velocity at hub height with wake effects
         # Uh = G/( 1. + np.log(G/(f*H))/kappa*np.sqrt( Ctau+(kappa/np.log(H/z0))**2 ) );
         # Auxiliary variables
-        gam = np.log(G / (f * H))
-        delta = np.log(H / z0)
+        gam = jnp.log(G / (f * H))
+        delta = jnp.log(H / z0)
         eps1 = (1 + gam / delta) / (
-            1 + gam / kappa * np.sqrt(Ctau + (kappa / delta) ** 2)
+            1 + gam / kappa * jnp.sqrt(Ctau + (kappa / delta) ** 2)
         )
         eps2 = (1 + gam / delta) / (
-            1 + gam / kappa * np.sqrt(Ctau * (Ur / Uout) ** 3.2 + (kappa / delta) ** 2)
+            1 + gam / kappa * jnp.sqrt(Ctau * (Ur / Uout) ** 3.2 + (kappa / delta) ** 2)
         )
         # Power production with wake effects
         eta = (
@@ -209,11 +207,11 @@ class MinimalisticCostModel(CostModel):
             )
             + beta
             * (
-                np.exp(-((Uin / (eps1 * A_average)) ** kw))
-                - np.exp(-((Ur / (eps1 * A_average)) ** kw))
+                jnp.exp(-((Uin / (eps1 * A_average)) ** kw))
+                - jnp.exp(-((Ur / (eps1 * A_average)) ** kw))
             )
-            + np.exp(-((Ur / (eps1 * A_average)) ** kw))
-            - np.exp(-((Uout / (eps2 * A_average)) ** kw))
+            + jnp.exp(-((Ur / (eps1 * A_average)) ** kw))
+            - jnp.exp(-((Uout / (eps2 * A_average)) ** kw))
         )
         Power = eta * Pg
         # Power prodction for a single turbine
@@ -222,20 +220,24 @@ class MinimalisticCostModel(CostModel):
         Cturbines = 1.25 * (-0.15 * 10**6 + 0.92 * Pg) * Nturb  # €
         Ccables = 675.0 * sr * D * (Nturb - 1.0)  # Only grid between the turbines in €
         Cfm = Nturb * Pg * (depth**2 + 100 * depth + 1500) / 7500  # In €
-        Cfj = Nturb * Pg * (4.5 * depth**2 - 35 * depth + 2500) / 7500  # I n€
-        Css = Cfm
-        if depth > 35:
-            Css = Cfj
+        Cfj = Nturb * Pg * (4.5 * depth**2 - 35 * depth + 2500) / 7500  # In €
+        Css = jnp.where(depth > 35, Cfj, Cfm)
         CAPEX = (Cturbines + Css + Ccables) / (0.81 - 0.06 * L / Lref)  # In €
         Pg_ref = 10**7
-        if Pg < 0.5 * Pg_ref:
-            F_om = 0.86 ** (-0.5 * Pg_ref / Pg)
-        if Pg >= 0.5 * Pg_ref and Pg < Pg_ref:
-            F_om = 1.0 - 0.325 * (Pg - Pg_ref) / Pg_ref
-        if Pg >= Pg_ref and Pg < 2 * Pg_ref:
-            F_om = 1.0 - 0.14 * (Pg - Pg_ref) / Pg_ref
-        if Pg >= 2 * Pg_ref:
-            F_om = 0.86 ** (0.5 * Pg / Pg_ref)
+        F_om = jnp.select(
+            [
+                Pg < 0.5 * Pg_ref,
+                (Pg >= 0.5 * Pg_ref) & (Pg < Pg_ref),
+                (Pg >= Pg_ref) & (Pg < 2 * Pg_ref),
+                Pg >= 2 * Pg_ref,
+            ],
+            [
+                0.86 ** (-0.5 * Pg_ref / Pg),
+                1.0 - 0.325 * (Pg - Pg_ref) / Pg_ref,
+                1.0 - 0.14 * (Pg - Pg_ref) / Pg_ref,
+                0.86 ** (0.5 * Pg / Pg_ref),
+            ],
+        )
 
         OPEX = (
             Nturb
@@ -247,10 +249,6 @@ class MinimalisticCostModel(CostModel):
         )  # OPEX €/year
 
         OPEXtot = OPEX * YO
-        aep_Wh = Pg * (365 * 24) * ((Nturb - Nrow) * eta + Nrow * eta0)
+        _ = Pg * (365 * 24) * ((Nturb - Nrow) * eta + Nrow * eta0)
 
-        return {
-            "capex": CAPEX / 10**6,
-            "opex": OPEXtot / 10**6,
-            "aep": aep_Wh / 10**9,
-        }
+        return CostOutput(capex=CAPEX / 10**6, opex=OPEXtot / 10**6)
