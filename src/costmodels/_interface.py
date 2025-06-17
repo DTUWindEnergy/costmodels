@@ -44,7 +44,7 @@ def cost_input_dataclass(cls):
         bases=cls.__bases__,
         namespace=dict(cls.__dict__),
     )
-    return dataclass(new_cls)
+    return new_cls
 
 
 @dataclass
