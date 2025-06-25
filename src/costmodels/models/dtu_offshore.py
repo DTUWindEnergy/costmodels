@@ -6,6 +6,7 @@ import jax.numpy as jnp
 np = jnp
 
 from costmodels._interface import (
+    CostInput,
     CostModel,
     CostOutput,
     cost_input_dataclass,
@@ -28,7 +29,7 @@ class Currency(Enum):
 
 
 @cost_input_dataclass
-class DTUOffshoreCostInput:
+class DTUOffshoreCostInput(CostInput):
     rated_power: float  # MW
     rotor_speed: float  # rpm
     rotor_diameter: float  # m

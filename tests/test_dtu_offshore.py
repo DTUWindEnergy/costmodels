@@ -113,7 +113,7 @@ def test_dtu_offshore_gradients():
         "abex": 5.555555555555555,
         "water_depth": 33.33333333333333,
         "electrical_cost": 0.0,
-        "foundation_option": 0,
+        "foundation_option": 1,
         "eprice": 0.2,
         "aep": np.array([1.0]),
     }

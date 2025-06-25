@@ -65,18 +65,12 @@ class CostOutput:
     opex: float
 
     def __post_init__(self):
-        if isinstance(self.capex, jnp.ndarray):
-            self.capex = self.capex.item()
-        if isinstance(self.opex, jnp.ndarray):
-            self.opex = self.opex.item()
+        self.capex = jnp.asarray(self.capex).squeeze()
+        self.opex = jnp.asarray(self.opex).squeeze()
 
 
-@cost_input_dataclass
-class _CostInput:
-    """This is not a base class, but simply a filler for _inputs_cls in CostModel.
-    It is used to ensure that subclasses of CostModel have a concrete dataclass
-    with specific fields. It should not be used anywhere else.
-    """
+class CostInput:
+    """Base class for cost model inputs."""
 
     def __init__(self, **_):  # pragma: no cover
         raise NotImplementedError(
@@ -84,10 +78,16 @@ class _CostInput:
             "Please implement a concrete subclass with specific fields."
         )
 
+    def __post_init__(self):
+        for field in dataclasses.fields(self):
+            value = getattr(self, field.name)
+            if isinstance(value, list):
+                setattr(self, field.name, jnp.array(value))
+
 
 class CostModel:
     # subclass must set this to a concrete dataclass
-    _inputs_cls = _CostInput
+    _inputs_cls = CostInput
 
     # Initialize base (static) inputs with a dataclass of inputs
     def __init__(self, **kwargs):
@@ -123,6 +123,6 @@ class CostModel:
         return output
 
     # Subclasses implement their internals here
-    def _run(self, inputs: _CostInput) -> Dict[str, Any]:  # pragma: no cover
+    def _run(self, inputs: CostInput) -> Dict[str, Any]:  # pragma: no cover
         _ = inputs
         raise NotImplementedError
