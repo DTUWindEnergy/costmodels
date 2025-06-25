@@ -68,3 +68,15 @@ def test_model_does_not_run_with_nan_values_in_inputs():
         val_grad_func(1.0)  # should raise ValueError due to NaN in inputs in a
 
     cm.run(dv=1.0)
+
+
+def test_array_input_with_shape_one():
+    cm = ExampleCostModel(a=2.1, b=3.3, flag=True, dv=jnp.array([1.0]))
+    out = cm.run()
+    # should always be scalar values
+    assert jnp.isscalar(out.capex) and jnp.isscalar(out.opex)
+
+    # value and grad should work with array inputs
+    val, grad = jax.value_and_grad(lambda x: cm.run(dv=x).capex)(jnp.array([1.0]))
+    assert jnp.isfinite(val)
+    assert jnp.isfinite(grad)

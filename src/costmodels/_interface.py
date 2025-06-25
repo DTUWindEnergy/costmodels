@@ -64,6 +64,12 @@ class CostOutput:
     capex: float
     opex: float
 
+    def __post_init__(self):
+        if isinstance(self.capex, jnp.ndarray):
+            self.capex = self.capex.item()
+        if isinstance(self.opex, jnp.ndarray):
+            self.opex = self.opex.item()
+
 
 @cost_input_dataclass
 class _CostInput:
@@ -112,7 +118,8 @@ class CostModel:
 
         output = self._run(inputs)
         if isinstance(output, dict):
-            return CostOutput(**output)
+            output = CostOutput(output["capex"], output["opex"])
+
         return output
 
     # Subclasses implement their internals here

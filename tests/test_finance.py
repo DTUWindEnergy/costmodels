@@ -381,8 +381,6 @@ def test_finances_against_reference_from_hydesign_1():
         depreciation,
         DEVEX,
     )
-    print(res)
-    print(grad)
 
     res = finances(
         technologies,
@@ -393,7 +391,6 @@ def test_finances_against_reference_from_hydesign_1():
         depreciation,
         DEVEX,
     )
-    print(res)
 
     ref = {
         "cashflow": np.array(
