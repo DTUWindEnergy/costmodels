@@ -134,6 +134,7 @@ def test_dtu_offshore_gradients():
     assert grad is not None
     assert jax.numpy.isfinite(value)
     assert jax.numpy.isfinite(grad)
+    assert grad != 0, "Gradient should not be zero for non-trivial input."
 
 
 # THE TESTS BELOW ARE FOR THE EXCEL IMPLEMENTATION
