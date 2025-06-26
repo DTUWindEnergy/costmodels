@@ -111,7 +111,7 @@ wind_technology = Technology(
     product=Product.SPOT_ELECTRICITY,
 )
 
-product_prices = {Product.SPOT_ELECTRICITY: np.array([0.1])}  # EUR/kWh
+product_prices = {Product.SPOT_ELECTRICITY: np.random.uniform(30, 36, LIFETIME)}
 inflation = Inflation(rate=[0.0, 0.0], year=[0, LIFETIME], year_ref=0)
 depreciation = Depreciation(year=[0, LIFETIME], rate=[0, 1])
 
@@ -147,19 +147,11 @@ def topfarm_npv_func(AEP, water_depth, **kwargs):
 
 npv_grad_func = jax.grad(npv_func, argnums=(0, 1), has_aux=True)
 
-# print(npv_func(1e9, [20.0] * n_wt))  # Test the npv_func
-# print(npv_grad_func(1e9, jnp.array([20.0] * n_wt)))  # Test the gradient function
-
 
 def topfarm_npv_grad_func(AEP, water_depth, **kwargs):
     gradients, _ = npv_grad_func(AEP, water_depth)
     aep_grad, water_depth_grad = gradients
     return np.asarray(aep_grad), np.asarray(water_depth_grad)
-
-
-# print(
-#     topfarm_npv_grad_func(1e9, jnp.array([20.0] * n_wt))
-# )  # Test the TopFarm gradient function
 
 
 # Water Depth
