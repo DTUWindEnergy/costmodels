@@ -1,3 +1,11 @@
+"""Financial utilities for evaluating energy projects.
+
+This module collects helper functions for common financial calculations such as
+net present value (NPV), internal rate of return (IRR) and levelized cost of
+energy (LCO).  Most of the computations rely on JAX in order to allow
+differentiable and vectorized execution where possible.
+"""
+
 import pickle
 from dataclasses import dataclass, field, fields
 from enum import Enum
@@ -420,6 +428,33 @@ def finances(
     devex: float,
     lcos: tuple[LCO] = None,
 ):
+    """Compute overall project finances for a set of technologies.
+
+    Parameters
+    ----------
+    technologies : list[Technology]
+        Technologies taking part in the project.
+    product_prices : dict
+        Mapping from :class:`Product` to sale price time series.
+    shared_capex : float
+        Capital expenditure shared among all technologies.
+    inflation : Inflation
+        Inflation rates used to compute the price index.
+    tax_rate : float
+        Corporate tax rate.
+    depreciation : Depreciation
+        Depreciation schedule for the assets.
+    devex : float
+        Development expenditure.
+    lcos : tuple[LCO], optional
+        Definitions of levelized costs to evaluate.
+
+    Returns
+    -------
+    dict
+        Dictionary with keys like ``NPV`` and ``IRR`` along with levelized
+        costs for each entry in ``lcos``.
+    """
     techs = [k.name for k in technologies]
     lcos = lcos or [LCO(name="LCOE", costs=techs, accounts_for_shared=True)]
     t0s = [v.t0 for v in technologies]
