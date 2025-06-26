@@ -267,6 +267,91 @@ def _cashflow(
     return Cashflow
 
 
+def _phased_capex(technologies, shared_capex, inflation, phasing_yr, global_t_neg):
+    """Return discounted CAPEX and discount factor for a set of technologies.
+
+    The function aggregates CAPEX phasing from each technology and computes the
+    equivalent present value CAPEX considering inflation and a weighted average
+    cost of capital.
+    """
+
+    capexs = [t.CAPEX for t in technologies]
+    waccs = [t.WACC for t in technologies]
+
+    phasing_capex = np.zeros_like(phasing_yr, dtype=float)
+    for t in technologies:
+        for y, c in zip(t.phasing_yr, t.phasing_capex):
+            phasing_capex = phasing_capex.at[y + t.t0 - global_t_neg].add(c * t.CAPEX)
+
+    discount_rate = _wacc(capexs, waccs, shared_capex)
+    inflation_index_phasing = _inflation_index(yr=phasing_yr, inflation=inflation)
+    capex_eq = _capex_phasing(
+        capex=np.sum(np.asarray(capexs)) + shared_capex,
+        phasing_yr=phasing_yr,
+        phasing_capex=phasing_capex,
+        discount_rate=discount_rate,
+        inflation_index=inflation_index_phasing,
+    )
+
+    return capex_eq, discount_rate
+
+
+def _annual_costs(technologies, ny):
+    """Compute annual OPEX, consumption costs and production."""
+
+    annual_operational_cost = np.zeros(ny)
+    annual_consumption_cost = np.zeros(ny)
+
+    for t in technologies:
+        lifetime = t.lifetime
+        t0 = t.t0
+        annual_operational_cost = annual_operational_cost.at[t0 : lifetime + t0].set(
+            annual_operational_cost[t0 : lifetime + t0]
+            + np.broadcast_to(t.OPEX, lifetime)
+        )
+
+        consumption = t.consumption
+        if np.size(consumption) > lifetime:
+            c = np.sum(np.split(consumption, lifetime), axis=1)
+        elif np.size(consumption) == lifetime:
+            c = consumption
+        else:
+            c = np.broadcast_to(consumption, lifetime)
+        annual_consumption_cost = annual_consumption_cost.at[t0 : lifetime + t0].add(c)
+
+    annual_energy_production = _annual_production(technologies, ny)
+
+    return annual_operational_cost, annual_consumption_cost, annual_energy_production
+
+
+def _compute_lco(
+    annual_operational_cost,
+    annual_consumption_cost,
+    annual_energy_production,
+    capex_eq,
+    discount_rate,
+    iy,
+):
+    """Calculate the levelized cost of output from yearly costs and production."""
+
+    level_costs = (
+        np.sum(
+            (annual_operational_cost + annual_consumption_cost)
+            / (1 + discount_rate) ** iy
+        )
+        + capex_eq
+    )
+    level_aep = np.sum(annual_energy_production / (1 + discount_rate) ** iy)
+
+    lco = jax.lax.cond(
+        level_aep > 0,
+        lambda _: level_costs / level_aep,
+        lambda _: 1e6,
+        operand=None,
+    )
+    return lco
+
+
 def _product_specific_finance(
     technologies,
     shared_capex,
@@ -278,59 +363,26 @@ def _product_specific_finance(
     iy,
     phasing_yr,
 ):
-    capexs = [t.CAPEX for t in technologies]
-    waccs = [t.WACC for t in technologies]
-    opexs = [t.OPEX for t in technologies]
-    consumptions = [t.consumption for t in technologies]
-    phasing_capex = np.zeros_like(phasing_yr, dtype=float)
-    for t in technologies:
-        for y, c in zip(t.phasing_yr, t.phasing_capex):
-            phasing_capex = phasing_capex.at[y + t.t0 - global_t_neg].add(c * t.CAPEX)
-    # Discount rate
-    hpp_discount_factor = _wacc(capexs, waccs, shared_capex)
-    # Apply CAPEX phasing using the inflation index for all years before the start of the project (t=0).
-    inflation_index_phasing = _inflation_index(yr=phasing_yr, inflation=inflation)
-    CAPEX_eq = _capex_phasing(
-        capex=np.sum(np.asarray(capexs)) + shared_capex,
-        phasing_yr=phasing_yr,
-        phasing_capex=phasing_capex,
-        discount_rate=hpp_discount_factor,
-        inflation_index=inflation_index_phasing,
+    """Calculate levelized costs for a subset of technologies."""
+    capex_eq, hpp_discount_factor = _phased_capex(
+        technologies, shared_capex, inflation, phasing_yr, global_t_neg
     )
-    annual_operational_cost = np.zeros(ny)
-    annual_consumption_cost = np.zeros(ny)
-    for opex, lifetime, t0, consumption in zip(opexs, lifetimes, t0s, consumptions):
-        annual_operational_cost = annual_operational_cost.at[t0 : lifetime + t0].set(
-            annual_operational_cost[t0 : lifetime + t0]
-            + np.broadcast_to(opex, lifetime)
-        )  # np.ones(lifetime) * opex
-        if np.size(consumption) > lifetime:
-            c = np.sum(np.split(consumption, lifetime), axis=1)
-        elif np.size(consumption) == lifetime:
-            c = consumption
-        else:
-            c = np.broadcast_to(consumption, lifetime)
-        annual_consumption_cost = annual_consumption_cost.at[t0 : lifetime + t0].add(c)
-    annual_energy_production = _annual_production(technologies, ny)
 
-    level_costs = (
-        np.sum(
-            (annual_operational_cost + annual_consumption_cost)
-            / (1 + hpp_discount_factor) ** iy
-        )
-        + CAPEX_eq
+    annual_operational_cost, annual_consumption_cost, annual_energy_production = (
+        _annual_costs(technologies, ny)
     )
-    level_AEP = np.sum(annual_energy_production / (1 + hpp_discount_factor) ** iy)
 
-    LCO = jax.lax.cond(
-        level_AEP > 0,
-        lambda _: level_costs / level_AEP,  # in Euro/MWh
-        lambda _: 1e6,
-        operand=None,
+    LCO = _compute_lco(
+        annual_operational_cost,
+        annual_consumption_cost,
+        annual_energy_production,
+        capex_eq,
+        hpp_discount_factor,
+        iy,
     )
     return {
         "LCO": LCO,
-        "CAPEX_eq": CAPEX_eq,
+        "CAPEX_eq": capex_eq,
         "annual_operational_cost": annual_operational_cost,
         "hpp_discount_factor": hpp_discount_factor,
     }
