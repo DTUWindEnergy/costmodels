@@ -80,3 +80,25 @@ def test_array_input_with_shape_one():
     val, grad = jax.value_and_grad(lambda x: cm.run(dv=x).capex)(jnp.array([1.0]))
     assert jnp.isfinite(val)
     assert jnp.isfinite(grad)
+
+
+@cost_input_dataclass
+class ArrayInputs:
+    arr: jnp.ndarray = jnp.array([1.0, 2.0])
+
+
+class ArrayModel(CostModel):
+    _inputs_cls = ArrayInputs
+
+    def _run(self, inputs: ArrayInputs) -> Dict[str, Any]:
+        return {"capex": float(jnp.sum(inputs.arr)), "opex": 0.0}
+
+
+def test_default_array_is_unique_per_instance():
+    model_a = ArrayModel()
+    model_b = ArrayModel()
+
+    model_a.base_inputs.arr += 1
+
+    assert jnp.array_equal(model_a.base_inputs.arr, jnp.array([2.0, 3.0]))
+    assert jnp.array_equal(model_b.base_inputs.arr, jnp.array([1.0, 2.0]))
