@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Any, Dict
 
 import jax
@@ -102,3 +103,44 @@ def test_default_array_is_unique_per_instance():
 
     assert jnp.array_equal(model_a.base_inputs.arr, jnp.array([2.0, 3.0]))
     assert jnp.array_equal(model_b.base_inputs.arr, jnp.array([1.0, 2.0]))
+
+
+class DummyEnum(Enum):
+    RED = 1
+    BLUE = 2
+
+
+@cost_input_dataclass
+class EnumModelInputs:
+    value: float = 1.0
+    color: DummyEnum = DummyEnum.RED
+
+
+class EnumModel(CostModel):
+    _inputs_cls = EnumModelInputs
+
+    def _run(self, inputs: EnumModelInputs) -> Dict[str, Any]:
+        factor = 1.0 if inputs.color is DummyEnum.RED else 2.0
+        return {"capex": inputs.value * factor, "opex": inputs.value}
+
+
+def test_enum_field_default_used_without_overrides():
+    cm = EnumModel()
+    out = cm.run()
+    assert isinstance(out, CostOutput)
+    assert jnp.allclose(out.capex, 1.0)
+    assert jnp.allclose(out.opex, 1.0)
+
+    val, grad = jax.value_and_grad(lambda x: cm.run(value=x).capex)(1.0)
+    assert jnp.allclose(val, 1.0)
+    assert jnp.allclose(grad, 1.0)
+
+    out_blue = cm.run(color=DummyEnum.BLUE, value=1.0)
+    assert jnp.allclose(out_blue.capex, 2.0)
+    assert jnp.allclose(out_blue.opex, 1.0)
+
+    val_blue, grad_blue = jax.value_and_grad(
+        lambda x: cm.run(color=DummyEnum.BLUE, value=x).capex
+    )(1.0)
+    assert jnp.allclose(val_blue, 2.0)
+    assert jnp.allclose(grad_blue, 2.0)
