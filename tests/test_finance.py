@@ -5,6 +5,7 @@ import jax
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pytest
 
 from costmodels.finance import (
     LCO,
@@ -12,8 +13,103 @@ from costmodels.finance import (
     Inflation,
     Product,
     Technology,
+    _inflation_index,
     finances,
 )
+
+################ UNIT TESTS #######################
+
+
+@pytest.mark.parametrize(
+    "years, inflation, expected",
+    [
+        # === Test Case 1: Constant inflation rate ===
+        # Simple case with ref_year = 0
+        (
+            np.arange(5),
+            Inflation(rate=0.05, year_ref=0),
+            (1.05) ** np.arange(5),
+        ),
+        # Constant rate with a different ref_year
+        (
+            np.arange(5),
+            Inflation(rate=0.02, year_ref=2),
+            (1.02) ** (np.arange(5) - 2),
+        ),
+        # === Test Case 2: Variable inflation rate ===
+        # Years match the inflation data points exactly
+        (
+            np.array([0, 1, 2, 3]),
+            Inflation(year=(0, 1, 2, 3), rate=(0.02, 0.03, 0.04, 0.05), year_ref=0),
+            np.array([1.0, 1.03, 1.03 * 1.04, 1.03 * 1.04 * 1.05]),
+        ),
+        # Years require linear interpolation
+        (
+            np.arange(5),  # years = [0, 1, 2, 3, 4]
+            Inflation(year=(0, 2, 4), rate=(0.02, 0.04, 0.06), year_ref=0),
+            # Interpolated infl rates: [0.02, 0.03, 0.04, 0.05, 0.06]
+            np.array([1.0, 1.03, 1.0712, 1.12476, 1.1922456]),
+        ),
+        # Years require clipping (extrapolation)
+        (
+            np.arange(6),  # years = [0, 1, 2, 3, 4, 5]
+            Inflation(year=(2, 4), rate=(0.03, 0.05), year_ref=2),
+            # Clipped/interpolated infl rates: [0.03, 0.03, 0.03, 0.04, 0.05, 0.05]
+            np.array([1.03**-2, 1.03**-1, 1.0, 1.04, 1.04 * 1.05, 1.04 * 1.05**2]),
+        ),
+        # === Test Case 3: Reference year handling ===
+        # ref_year is not in years array, should default to index 0 for normalization
+        (
+            np.arange(5),
+            Inflation(rate=0.1, year_ref=10),
+            (1.1) ** np.arange(5),  # Same as if ref_year=0
+        ),
+        # === Test Case 4: Scalar input for years ===
+        # Scalar input that is the ref_year
+        (
+            0,
+            Inflation(rate=0.05, year_ref=0),
+            np.array(1.0),
+        ),
+        # Scalar input that is not the ref_year
+        (
+            3,
+            Inflation(rate=0.05, year_ref=0),
+            np.array(1.0),
+        ),
+        # No reference provided
+        (
+            np.arange(5),
+            Inflation(rate=0.05),
+            (1.05) ** np.arange(5),
+        ),
+        # Scalar input with variable inflation
+        (
+            3,
+            Inflation(year=(0, 5), rate=(0.02, 0.08), year_ref=0),
+            np.array(1.0),
+        ),
+    ],
+    ids=[
+        "constant_rate_ref_zero",
+        "constant_rate_ref_middle",
+        "variable_rate_exact_match",
+        "variable_rate_interpolation",
+        "variable_rate_clipping",
+        "ref_year_not_in_years",
+        "scalar_year_is_ref",
+        "scalar_year_not_ref_constant_rate",
+        "no_reference",
+        "scalar_year_not_ref_variable_rate",
+    ],
+)
+def test_inflation_index_scenarios(years, inflation, expected):
+    """Test _inflation_index with various scenarios."""
+    result = _inflation_index(years, inflation)
+    np.testing.assert_allclose(result, expected, rtol=1e-6)
+
+
+################ INTEGRATION TESTS ################
 
 
 def test_finances_run_against_reference_from_hydesign_0():
@@ -370,18 +466,6 @@ def test_finances_against_reference_from_hydesign_1():
     DEVEX = 0
     shared_capex = CAPEX_shared
 
-    res, grad = jax.value_and_grad(
-        lambda *args: finances(*args)["IRR"], argnums=0, allow_int=True
-    )(
-        technologies,
-        product_prices,
-        shared_capex,
-        inflation,
-        tax_rate,
-        depreciation,
-        DEVEX,
-    )
-
     res = finances(
         technologies,
         product_prices,
@@ -465,3 +549,24 @@ def test_finances_against_reference_from_hydesign_1():
     np.testing.assert_allclose(res["CAPEX"], ref["CAPEX"])
     np.testing.assert_allclose(res["OPEX"], ref["OPEX"])
     np.testing.assert_allclose(res["LCOE"], ref["LCOE"])
+
+    def grad_func(production):
+        """Function to compute IRR gradient."""
+        technologies[0].production = production
+        technologies[1].production = production
+        technologies[2].production = production
+        return finances(
+            technologies,
+            product_prices,
+            shared_capex,
+            inflation,
+            tax_rate,
+            depreciation,
+            DEVEX,
+        )["IRR"]
+
+    production_sample = np.asarray(production_sample)
+    val, grad = jax.value_and_grad(grad_func)(production_sample)
+
+    assert np.isfinite(val), "IRR value is not finite"
+    assert np.all(np.isfinite(grad)), "IRR gradient contains non-finite values"

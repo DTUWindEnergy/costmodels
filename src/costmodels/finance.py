@@ -6,14 +6,11 @@ energy (LCO).  Most of the computations rely on JAX in order to allow
 differentiable and vectorized execution where possible.
 """
 
-import pickle
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass
 from enum import Enum
-from functools import partial
 
 import jax
 import jax.numpy as np
-from jax import tree_util
 from jax.scipy.optimize import minimize
 
 
@@ -117,22 +114,14 @@ def _wacc(capexs, waccs, shared_capex):
     return WACC_after_tax
 
 
-def _inflation_index(yr, inflation):
+def _inflation_index(years, inflation):
     """Compute inflation index via linear interpolation in JAX."""
-    # to JAX arrays
-    years = np.asarray(yr)
-    x = np.asarray(inflation.year)
-    y = np.asarray(inflation.rate)
-    # find right bin for each query year
-    idx = np.searchsorted(x, years, side="right")
-    idx = np.clip(idx, 1, x.shape[0] - 1)
-    x0 = x[idx - 1]
-    x1 = x[idx]
-    y0 = y[idx - 1]
-    y1 = y[idx]
-    # linear interpolation
-    slope = (y1 - y0) / (x1 - x0)
-    infl = y0 + slope * (years - x0)
+    years = np.asarray(years)
+    if isinstance(inflation.rate, float):
+        infl = np.full_like(years, inflation.rate, dtype=float)
+    else:
+        infl = np.interp(years, np.asarray(inflation.year), np.asarray(inflation.rate))
+
     # cumulative product and normalization at reference year
     infl_idx = np.cumprod(1.0 + infl)
     ref_mask = years == inflation.year_ref
@@ -284,7 +273,7 @@ def _phased_capex(technologies, shared_capex, inflation, phasing_yr, global_t_ne
             phasing_capex = phasing_capex.at[y + t.t0 - global_t_neg].add(c * t.CAPEX)
 
     discount_rate = _wacc(capexs, waccs, shared_capex)
-    inflation_index_phasing = _inflation_index(yr=phasing_yr, inflation=inflation)
+    inflation_index_phasing = _inflation_index(years=phasing_yr, inflation=inflation)
     capex_eq = _capex_phasing(
         capex=np.sum(np.asarray(capexs)) + shared_capex,
         phasing_yr=phasing_yr,
@@ -394,16 +383,12 @@ class Product(Enum):
         return self.value > other.value
 
 
-_jax_ptree_child = partial(field, metadata={"child": True})
-
-
-@tree_util.register_pytree_node_class
 @dataclass
 class Technology:
     # dynamic
-    CAPEX: float = _jax_ptree_child()
-    OPEX: float = _jax_ptree_child()
-    production: list = _jax_ptree_child()
+    CAPEX: float
+    OPEX: float
+    production: list
 
     # static
     name: str
@@ -417,34 +402,12 @@ class Technology:
     penalty: float = None
     consumption: float = 0.0
 
-    def tree_flatten(self):
-        children, aux = [], []
-        for f in fields(self):
-            (children if f.metadata.get("child") else aux).append(getattr(self, f.name))
-        return tuple(children), tuple(aux)
-
-    @classmethod
-    def tree_unflatten(cls, aux, children):
-        init_kwargs = {}
-        child_it = iter(children)
-        aux_it = iter(aux)
-        for f in fields(cls):
-            if f.metadata.get("child"):
-                init_kwargs[f.name] = next(child_it)
-            else:
-                init_kwargs[f.name] = next(aux_it)
-        return cls(**init_kwargs)
-
 
 @dataclass
 class Inflation:
-    rate: tuple
-    year: tuple
-    year_ref: int
-
-    def __hash__(self):
-        vals = tuple(getattr(self, f.name) for f in fields(self))
-        return hash(pickle.dumps(vals, protocol=pickle.HIGHEST_PROTOCOL))
+    rate: tuple | float
+    year: tuple | None = None
+    year_ref: int = 0
 
 
 @dataclass
@@ -452,20 +415,12 @@ class Depreciation:
     year: tuple
     rate: tuple
 
-    def __hash__(self):
-        vals = tuple(getattr(self, f.name) for f in fields(self))
-        return hash(pickle.dumps(vals, protocol=pickle.HIGHEST_PROTOCOL))
-
 
 @dataclass
 class LCO:
     name: str
     costs: tuple[str]
     accounts_for_shared: bool = True
-
-    def __hash__(self):
-        vals = tuple(getattr(self, f.name) for f in fields(self))
-        return hash(pickle.dumps(vals, protocol=pickle.HIGHEST_PROTOCOL))
 
 
 def finances(
@@ -544,9 +499,9 @@ def finances(
     annual_operational_cost = res["annual_operational_cost"]
     hpp_discount_factor = res["hpp_discount_factor"]
     cashflows = np.zeros(ny)
-    inflation_index = _inflation_index(  # It includes t=0, to compute the reference
-        yr=np.arange(len(cashflows) + 1), inflation=inflation
-    )
+    inflation_index = _inflation_index(
+        years=np.arange(len(cashflows) + 1), inflation=inflation
+    )  # It includes t=0, to compute the reference
     annual_revenue = _annual_revenue(technologies, product_prices, ny)
     cashflow = _cashflow(
         net_revenue_t=annual_revenue,
