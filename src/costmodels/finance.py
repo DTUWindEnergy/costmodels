@@ -10,25 +10,27 @@ from dataclasses import dataclass
 from enum import Enum
 
 import jax
-import jax.numpy as np
+import jax.numpy as jnp
 from jax.scipy.optimize import minimize
+
+from costmodels._interface import CostModel
 
 
 def _irr(cashflows):
-    res = np.roots(cashflows[::-1], strip_zeros=False)
+    res = jnp.roots(cashflows[::-1], strip_zeros=False)
     mask = (res.imag == 0) & (res.real > 0)
 
     def true_fn(args):
         res, mask = args
         rates = 1.0 / res.real - 1.0
-        valid_rates = np.where(mask, np.abs(rates), np.inf)
-        best_idx = np.argmin(valid_rates)
+        valid_rates = jnp.where(mask, jnp.abs(rates), jnp.inf)
+        best_idx = jnp.argmin(valid_rates)
         return rates[best_idx]
 
     def false_fn(_):
-        return np.nan
+        return jnp.nan
 
-    return jax.lax.cond(np.any(mask), true_fn, false_fn, (res, mask))
+    return jax.lax.cond(jnp.any(mask), true_fn, false_fn, (res, mask))
 
 
 def _npv(rate, cashflows):
@@ -46,25 +48,26 @@ def _npv(rate, cashflows):
     Returns:
         The NPV as a JAX scalar.
     """
-    cashflows_arr = np.asarray(cashflows)
-    periods = np.arange(cashflows_arr.shape[0], dtype=cashflows_arr.dtype)
-    discount_factors = (1 + np.asarray(rate, dtype=cashflows_arr.dtype)) ** periods
+    cashflows_arr = jnp.asarray(cashflows)
+    periods = jnp.arange(cashflows_arr.shape[0], dtype=cashflows_arr.dtype)
+    discount_factors = (1 + jnp.asarray(rate, dtype=cashflows_arr.dtype)) ** periods
     discounted_cashflows = cashflows_arr / discount_factors
-    npv = np.sum(discounted_cashflows)
+    npv = jnp.sum(discounted_cashflows)
     return npv
 
 
 def _annual_revenue(technologies, product_prices, ny):
-    annual_revenue = np.zeros(ny)
+    annual_revenue = jnp.zeros(ny)
     for t in technologies:
         t0 = t.t0
         lifetime = t.lifetime
-        penalty = np.zeros_like(t.production)  # TODO: or t.penalty
+        penalty = jnp.zeros_like(t.production)  # TODO: or t.penalty
         annual_revenue = annual_revenue.at[t0 : lifetime + t0].add(
-            np.sum(
-                np.asarray(
-                    np.split(
-                        np.asarray(t.production) * np.asarray(product_prices[t.product])
+            jnp.sum(
+                jnp.asarray(
+                    jnp.split(
+                        jnp.asarray(t.production)
+                        * jnp.asarray(product_prices[t.product])
                         - penalty,
                         lifetime,
                     )
@@ -76,14 +79,14 @@ def _annual_revenue(technologies, product_prices, ny):
 
 
 def _annual_production(technologies, ny):
-    annual_energy_production = np.zeros(ny)
+    annual_energy_production = jnp.zeros(ny)
     for t in technologies:
         t0 = t.t0
         lifetime = t.lifetime
         non_rev = t.non_revenue_production
         annual_energy_production = annual_energy_production.at[t0 : lifetime + t0].add(
-            np.sum(
-                np.asarray(np.split(np.asarray(t.production) + non_rev, lifetime)),
+            jnp.sum(
+                jnp.asarray(jnp.split(jnp.asarray(t.production) + non_rev, lifetime)),
                 axis=1,
             )
         )
@@ -108,24 +111,26 @@ def _wacc(capexs, waccs, shared_capex):
 
     # Weighted average cost of capital
     WACC_after_tax = (
-        np.sum(np.asarray(capexs) * np.asarray(waccs))
-        + shared_capex * np.mean(np.asarray(waccs))
-    ) / (np.sum(np.asarray(capexs)) + shared_capex)
+        jnp.sum(jnp.asarray(capexs) * jnp.asarray(waccs))
+        + shared_capex * jnp.mean(jnp.asarray(waccs))
+    ) / (jnp.sum(jnp.asarray(capexs)) + shared_capex)
     return WACC_after_tax
 
 
 def _inflation_index(years, inflation):
     """Compute inflation index via linear interpolation in JAX."""
-    years = np.asarray(years)
+    years = jnp.asarray(years)
     if isinstance(inflation.rate, float):
-        infl = np.full_like(years, inflation.rate, dtype=float)
+        infl = jnp.full_like(years, inflation.rate, dtype=float)
     else:
-        infl = np.interp(years, np.asarray(inflation.year), np.asarray(inflation.rate))
+        infl = jnp.interp(
+            years, jnp.asarray(inflation.year), jnp.asarray(inflation.rate)
+        )
 
     # cumulative product and normalization at reference year
-    infl_idx = np.cumprod(1.0 + infl)
+    infl_idx = jnp.cumprod(1.0 + infl)
     ref_mask = years == inflation.year_ref
-    ref_idx = np.argmax(ref_mask)  # first match
+    ref_idx = jnp.argmax(ref_mask)  # first match
     return infl_idx / infl_idx[ref_idx]
 
 
@@ -151,9 +156,9 @@ def _capex_phasing(
     CAPEX_eq : Present value equivalent CAPEX
     """
 
-    phasing_capex = inflation_index * capex * phasing_capex / np.sum(phasing_capex)
-    capex_eq = np.sum(
-        np.asarray(
+    phasing_capex = inflation_index * capex * phasing_capex / jnp.sum(phasing_capex)
+    capex_eq = jnp.sum(
+        jnp.asarray(
             [
                 phasing_capex[ii] / (1 + discount_rate) ** yr
                 for ii, yr in enumerate(phasing_yr)
@@ -183,7 +188,7 @@ def _break_even_price(
 
     def fun(price):
         product_prices_temp[product] = (
-            np.ones_like(product_prices_temp[product]) * price
+            jnp.ones_like(product_prices_temp[product]) * price
         )
         revenues = _annual_revenue(technologies, generations, product_prices_temp, ny)
         cashflow = _cashflow(
@@ -200,7 +205,7 @@ def _break_even_price(
         NPV = _npv(discount_rate, cashflow)
         return NPV**2
 
-    out = minimize(fun=fun, x0=np.asarray([50.0]), method="BFGS", tol=1e-10)
+    out = minimize(fun=fun, x0=jnp.asarray([50.0]), method="BFGS", tol=1e-10)
     return out.x[0]
 
 
@@ -234,25 +239,25 @@ def _cashflow(
     IRR : Internal rate of return
     """
 
-    yr = np.arange(
+    yr = jnp.arange(
         len(net_revenue_t) + 1
     )  # extra year to start at 0 and end at end of lifetime.
-    depre = np.interp(
-        np.asarray(yr), np.asarray(depreciation.year), np.asarray(depreciation.rate)
+    depre = jnp.interp(
+        jnp.asarray(yr), jnp.asarray(depreciation.year), jnp.asarray(depreciation.rate)
     )
 
     # EBITDA: earnings before interest and taxes in nominal prices
     EBITDA = (net_revenue_t - maintenance_cost_per_year) * inflation_index[1:]
 
     # EBIT taxable income
-    depreciation_on_each_year = np.diff(investment_cost * depre)
+    depreciation_on_each_year = jnp.diff(investment_cost * depre)
     EBIT = EBITDA - depreciation_on_each_year
 
     # Taxes
     Taxes = EBIT * tax_rate
 
     Net_income = EBITDA - Taxes
-    Cashflow = np.insert(Net_income, 0, -investment_cost - development_cost)
+    Cashflow = jnp.insert(Net_income, 0, -investment_cost - development_cost)
     return Cashflow
 
 
@@ -264,18 +269,18 @@ def _phased_capex(technologies, shared_capex, inflation, phasing_yr, global_t_ne
     cost of capital.
     """
 
-    capexs = [t.CAPEX for t in technologies]
-    waccs = [t.WACC for t in technologies]
+    capexs = [t.capex for t in technologies]
+    waccs = [t.wacc for t in technologies]
 
-    phasing_capex = np.zeros_like(phasing_yr, dtype=float)
+    phasing_capex = jnp.zeros_like(phasing_yr, dtype=float)
     for t in technologies:
         for y, c in zip(t.phasing_yr, t.phasing_capex):
-            phasing_capex = phasing_capex.at[y + t.t0 - global_t_neg].add(c * t.CAPEX)
+            phasing_capex = phasing_capex.at[y + t.t0 - global_t_neg].add(c * t.capex)
 
     discount_rate = _wacc(capexs, waccs, shared_capex)
     inflation_index_phasing = _inflation_index(years=phasing_yr, inflation=inflation)
     capex_eq = _capex_phasing(
-        capex=np.sum(np.asarray(capexs)) + shared_capex,
+        capex=jnp.sum(jnp.asarray(capexs)) + shared_capex,
         phasing_yr=phasing_yr,
         phasing_capex=phasing_capex,
         discount_rate=discount_rate,
@@ -288,24 +293,24 @@ def _phased_capex(technologies, shared_capex, inflation, phasing_yr, global_t_ne
 def _annual_costs(technologies, ny):
     """Compute annual OPEX, consumption costs and production."""
 
-    annual_operational_cost = np.zeros(ny)
-    annual_consumption_cost = np.zeros(ny)
+    annual_operational_cost = jnp.zeros(ny)
+    annual_consumption_cost = jnp.zeros(ny)
 
     for t in technologies:
         lifetime = t.lifetime
         t0 = t.t0
         annual_operational_cost = annual_operational_cost.at[t0 : lifetime + t0].set(
             annual_operational_cost[t0 : lifetime + t0]
-            + np.broadcast_to(t.OPEX, lifetime)
+            + jnp.broadcast_to(t.opex, lifetime)
         )
 
         consumption = t.consumption
-        if np.size(consumption) > lifetime:
-            c = np.sum(np.split(consumption, lifetime), axis=1)
-        elif np.size(consumption) == lifetime:
+        if jnp.size(consumption) > lifetime:
+            c = jnp.sum(jnp.split(consumption, lifetime), axis=1)
+        elif jnp.size(consumption) == lifetime:
             c = consumption
         else:
-            c = np.broadcast_to(consumption, lifetime)
+            c = jnp.broadcast_to(consumption, lifetime)
         annual_consumption_cost = annual_consumption_cost.at[t0 : lifetime + t0].add(c)
 
     annual_energy_production = _annual_production(technologies, ny)
@@ -324,13 +329,13 @@ def _compute_lco(
     """Calculate the levelized cost of output from yearly costs and production."""
 
     level_costs = (
-        np.sum(
+        jnp.sum(
             (annual_operational_cost + annual_consumption_cost)
             / (1 + discount_rate) ** iy
         )
         + capex_eq
     )
-    level_aep = np.sum(annual_energy_production / (1 + discount_rate) ** iy)
+    level_aep = jnp.sum(annual_energy_production / (1 + discount_rate) ** iy)
 
     lco = jax.lax.cond(
         level_aep > 0,
@@ -379,41 +384,42 @@ class Product(Enum):
     SPOT_ELECTRICITY = 0
     HYDROGEN = 1
 
-    def __lt__(self, other):
-        return self.value > other.value
-
 
 @dataclass
 class Technology:
-    # dynamic
-    CAPEX: float
-    OPEX: float
-    production: list
-
-    # static
     name: str
     lifetime: int
-    t0: int
-    WACC: float
-    phasing_yr: list
-    phasing_capex: list
-    product: Product
-    non_revenue_production: list = None
+    production: list | None = None
+    cost_model: CostModel | None = None
+    capex: float | None = None
+    opex: float | None = None
+    t0: int = 0
+    wacc: float = 0.0
+    phasing_yr: tuple = (0,)
+    phasing_capex: tuple = (1.0,)
+    product: Product = Product.SPOT_ELECTRICITY
+    non_revenue_production: list | None = None
     penalty: float = None
     consumption: float = 0.0
+
+    def __post_init__(self):
+        if self.cost_model is None and (self.capex is None or self.opex is None):
+            raise ValueError("Either a cost model or CAPEX and OPEX must be provided.")
+        if self.non_revenue_production is None:
+            self.non_revenue_production = jnp.array([0.0] * self.lifetime)
 
 
 @dataclass
 class Inflation:
-    rate: tuple | float
+    rate: tuple | float = 0.0
     year: tuple | None = None
     year_ref: int = 0
 
 
 @dataclass
 class Depreciation:
-    year: tuple
-    rate: tuple
+    year: tuple = (0,)
+    rate: tuple = (0.0,)
 
 
 @dataclass
@@ -468,8 +474,8 @@ def finances(
     global_t1 = max([_lt + _t0 for _lt, _t0 in zip(lifetimes, t0s)])
     global_t_neg = min([v.t0 + min(v.phasing_yr) for v in technologies])
     ny = global_t1 - global_t0
-    iy = np.arange(ny) + 1
-    phasing_yr = np.arange(global_t1 - global_t_neg) + global_t_neg
+    iy = jnp.arange(ny) + 1
+    phasing_yr = jnp.arange(global_t1 - global_t_neg) + global_t_neg
 
     lcos_res = {}  # for each prpduct calculate the levelized costs
     for _, lco in enumerate(lcos):
@@ -498,9 +504,9 @@ def finances(
     CAPEX_eq = res["CAPEX_eq"]
     annual_operational_cost = res["annual_operational_cost"]
     hpp_discount_factor = res["hpp_discount_factor"]
-    cashflows = np.zeros(ny)
+    cashflows = jnp.zeros(ny)
     inflation_index = _inflation_index(
-        years=np.arange(len(cashflows) + 1), inflation=inflation
+        years=jnp.arange(len(cashflows) + 1), inflation=inflation
     )  # It includes t=0, to compute the reference
     annual_revenue = _annual_revenue(technologies, product_prices, ny)
     cashflow = _cashflow(

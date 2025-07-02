@@ -43,11 +43,11 @@ if __name__ == "__main__":
 
     wind_plant = Technology(
         name="wind_plant",
-        CAPEX=0,
-        OPEX=0,
+        capex=0,
+        opex=0,
         lifetime=25,
         t0=0,
-        WACC=0.06,
+        wacc=0.06,
         phasing_yr=[-1, 0],
         phasing_capex=[1, 1],
         production=np.tile(p_wind, 25),
@@ -56,11 +56,11 @@ if __name__ == "__main__":
     )
     solar_plant = Technology(
         name="solar_plant",
-        CAPEX=0,
-        OPEX=0,
+        capex=0,
+        opex=0,
         lifetime=25,
         t0=0,
-        WACC=0.06,
+        wacc=0.06,
         phasing_yr=[-1, 0],
         phasing_capex=[1, 1],
         production=np.tile(p_solar, 25),
@@ -83,10 +83,10 @@ if __name__ == "__main__":
     def objective(x0, x1):
         wind_cmo = cm_wind.run(**x0)
         solar_cmo = cm_solar.run(**x1)
-        wind_plant.CAPEX = wind_cmo.capex
-        wind_plant.OPEX = wind_cmo.opex
-        solar_plant.CAPEX = solar_cmo.capex
-        solar_plant.OPEX = solar_cmo.opex
+        wind_plant.capex = wind_cmo.capex
+        wind_plant.opex = wind_cmo.opex
+        solar_plant.capex = solar_cmo.capex
+        solar_plant.opex = solar_cmo.opex
         return finances(
             technologies=[wind_plant, solar_plant],
             product_prices=product_prices,

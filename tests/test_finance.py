@@ -230,11 +230,11 @@ def test_finances_run_against_reference_from_hydesign_0():
     technologies = [
         Technology(
             name=k,
-            CAPEX=v["CAPEX"],
-            OPEX=v["OPEX"],
+            capex=v["CAPEX"],
+            opex=v["OPEX"],
             lifetime=v["lifetime"],
             t0=v["t0"],
-            WACC=v["WACC"],
+            wacc=v["WACC"],
             phasing_yr=v["phasing_yr"],
             phasing_capex=v["phasing_capex"],
             production=v["production"],
@@ -437,11 +437,11 @@ def test_finances_against_reference_from_hydesign_1():
     technologies = [
         Technology(
             name=k,
-            CAPEX=v["CAPEX"],
-            OPEX=v["OPEX"],
+            capex=v["CAPEX"],
+            opex=v["OPEX"],
             lifetime=v["lifetime"],
             t0=v["t0"],
-            WACC=v["WACC"],
+            wacc=v["WACC"],
             phasing_yr=v["phasing_yr"],
             phasing_capex=v["phasing_capex"],
             production=np.asarray(ts_inputs.get(f"p_{k}", zeros)),

@@ -78,7 +78,7 @@ def test_monte_carlo_agains_original_dtu_offshore_implementation():
             "DEVEX discount (EURO)": results_our["devex_discount"] * 1e6,
             "CAPEX net (EURO)": cmo.capex * 1e6,
             "CAPEX discount (EURO)": results_our["capex_discount"] * 1e6,
-            "OPEX net (EURO)": cmo.opex * 1e6,
+            "OPEX net (EURO)": cmo.opex * 1e6 * cm.lifetime,
             "OPEX discount (EURO)": results_our["opex_discount"] * 1e6,
             "LCOE (EURO/MWh)": results_our["lcoe"],
         }

@@ -1,4 +1,4 @@
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 
 import jax
 import jax.numpy as jnp
@@ -12,17 +12,30 @@ class Project:
 
     technologies: list[Technology]
     product_prices: dict
-    inflation: Inflation
-    depreciation: Depreciation
+    inflation: Inflation = field(default_factory=lambda: Inflation())
+    depreciation: Depreciation = field(default_factory=lambda: Depreciation())
     shared_capex: float = 0.0
     tax_rate: float = 0.0
     devex: float = 0.0
     lcos: tuple[LCO] | None = None
 
-    def npv(self) -> float:
-        """Return project Net Present Value."""
+    def _npv(self, productions: dict, cost_model_args: dict) -> float:
+        techs = []
+        for t in self.technologies:
+            updated_t = t
+            if t.cost_model and t.name in cost_model_args:
+                cost_output = t.cost_model.run(**cost_model_args[t.name])
+                updated_t = replace(
+                    updated_t,
+                    capex=cost_output.capex,
+                    opex=cost_output.opex,
+                )
+            if t.name in productions:
+                updated_t = replace(updated_t, production=productions[t.name])
+            techs.append(updated_t)
+
         return finances(
-            technologies=self.technologies,
+            technologies=techs,
             product_prices=self.product_prices,
             shared_capex=self.shared_capex,
             inflation=self.inflation,
@@ -32,32 +45,12 @@ class Project:
             lcos=self.lcos,
         )["NPV"]
 
-    def npv_and_grad_production(self, productions: dict[str, jnp.ndarray]):
-        """Return NPV and its gradient with respect to technology production.
+    def npv(self, productions: dict = {}, cost_model_args: dict = {}) -> float:
+        """Return project Net Present Value for the given parameters."""
+        return self._npv(productions, cost_model_args)
 
-        Parameters
-        ----------
-        productions:
-            A mapping from technology names to production values. Gradients are
-            returned for all productions in the mapping as a dictionary with the
-            same keys.
-        """
-
-        def objective(prod_dict):
-            techs = [
-                replace(t, production=prod_dict[t.name]) if t.name in prod_dict else t
-                for t in self.technologies
-            ]
-            return finances(
-                technologies=techs,
-                product_prices=self.product_prices,
-                shared_capex=self.shared_capex,
-                inflation=self.inflation,
-                tax_rate=self.tax_rate,
-                depreciation=self.depreciation,
-                devex=self.devex,
-                lcos=self.lcos,
-            )["NPV"]
-
-        value, grad = jax.value_and_grad(objective)(productions)
-        return value, grad
+    def npv_grad(self, productions: dict = {}, cost_model_args: dict = {}) -> tuple:
+        """Return NPV gradient with respect to cost model arguments and productions."""
+        if not hasattr(self, "grad_fn"):
+            self.grad_fn = jax.grad(self._npv, argnums=(0, 1))
+        return self.grad_fn(productions, cost_model_args)

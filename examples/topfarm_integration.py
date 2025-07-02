@@ -1,7 +1,5 @@
 import warnings
 
-import jax
-import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import numpy as np
 from py_wake import BastankhahGaussian
@@ -17,8 +15,9 @@ from topfarm.easy_drivers import EasyScipyOptimizeDriver
 from topfarm.plotting import XYPlotComp
 from topfarm.utils import plot_list_recorder
 
-from costmodels.finance import Depreciation, Inflation, Product, Technology, finances
+from costmodels.finance import Product, Technology
 from costmodels.models import DTUOffshoreCostModel
+from costmodels.project import Project
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -98,67 +97,56 @@ print(out)
 
 wind_technology = Technology(
     name="wind",
-    CAPEX=out.capex,
-    # TODO: technology assumes annual opex and model gives out over lifetime
-    OPEX=out.opex / LIFETIME,
     lifetime=LIFETIME,
-    t0=0,
-    WACC=0.0,
-    phasing_yr=[0],
-    phasing_capex=[1],
-    production=np.array([1.0] * LIFETIME),
-    non_revenue_production=np.array([0.0] * LIFETIME),
     product=Product.SPOT_ELECTRICITY,
+    cost_model=cost_model,
 )
 
-product_prices = {Product.SPOT_ELECTRICITY: np.random.uniform(30, 36, LIFETIME)}
-inflation = Inflation(rate=[0.0, 0.0], year=[0, LIFETIME], year_ref=0)
-depreciation = Depreciation(year=[0, LIFETIME], rate=[0, 1])
+wind_farm_project = Project(
+    technologies=[wind_technology],
+    product_prices={Product.SPOT_ELECTRICITY: np.random.uniform(0, 6, LIFETIME)},
+)
 
 
 # Economy
 def npv_func(AEP, water_depth, **kwargs):
-    cost_model_output = cost_model.run(aep=AEP, water_depth=water_depth)
-    wind_technology.CAPEX = cost_model_output.capex
-    wind_technology.OPEX = cost_model_output.opex / LIFETIME
-    wind_technology.production = jnp.array([AEP] * LIFETIME).squeeze()
-
-    wind_finances = finances(
-        technologies=[wind_technology],
-        product_prices=product_prices,
-        shared_capex=0.0,
-        inflation=inflation,
-        tax_rate=0.0,
-        depreciation=depreciation,
-        devex=0.0,
+    return np.asarray(
+        wind_farm_project.npv(
+            productions={
+                wind_technology.name: AEP,
+            },
+            cost_model_args={
+                wind_technology.name: {
+                    "water_depth": water_depth,
+                    "aep": AEP,
+                }
+            },
+        )
     )
 
-    return wind_finances["NPV"], {
-        "irr": wind_finances["IRR"],
-        "OPEX": wind_finances["OPEX"],
-        "CAPEX": wind_finances["CAPEX"],
-    }
 
-
-def topfarm_npv_func(AEP, water_depth, **kwargs):
-    npv_value, _ = npv_func(AEP, water_depth)
-    return np.asarray(npv_value)
-
-
-npv_grad_func = jax.grad(npv_func, argnums=(0, 1), has_aux=True)
-
-
-def topfarm_npv_grad_func(AEP, water_depth, **kwargs):
-    gradients, _ = npv_grad_func(AEP, water_depth)
-    aep_grad, water_depth_grad = gradients
-    return np.asarray(aep_grad), np.asarray(water_depth_grad)
+def npv_grad_func(AEP, water_depth, **kwargs):
+    grads = wind_farm_project.npv_grad(
+        productions={
+            wind_technology.name: AEP,
+        },
+        cost_model_args={
+            wind_technology.name: {
+                "water_depth": water_depth,
+                "aep": AEP,
+            }
+        },
+    )
+    prod_grad = grads[0][wind_technology.name]
+    water_depth_grad = grads[1][wind_technology.name]["water_depth"]
+    return np.asarray(prod_grad), np.asarray(water_depth_grad)
 
 
 # Water Depth
 def water_depth_func(x, y, **kwargs):
     xnew, ynew = np.meshgrid(x, y)
     points = np.array([xnew.flatten(), ynew.flatten()]).T
-    return -np.diag(f(points).reshape(n_wt, n_wt).T)
+    return 10 * np.diag(f(points).reshape(n_wt, n_wt).T)
 
 
 # Water Depth
@@ -177,8 +165,8 @@ npv_comp = CostModelComponent(
         ("water_depth", 30 * np.ones(n_wt)),
     ],
     n_wt=n_wt,
-    cost_function=topfarm_npv_func,
-    cost_gradient_function=topfarm_npv_grad_func,
+    cost_function=npv_func,
+    cost_gradient_function=npv_grad_func,
     objective=True,
     maximize=True,
     output_keys=[("npv", 0)],

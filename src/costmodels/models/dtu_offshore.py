@@ -782,7 +782,7 @@ class DTUOffshoreCostModel(CostModel):
             "cost_per_wt": total_cost_calculation / 1e6,
             "lcoe": lcoe,
             "capex": capex_net / 1e6,
-            "opex": opex_net / 1e6,
+            "opex": opex_net / 1e6 / self.lifetime,
         }
 
         capex_value = all_outputs.pop("capex")

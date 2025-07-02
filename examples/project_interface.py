@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 
 from costmodels._interface import CostModel, CostOutput, cost_input_dataclass
-from costmodels.finance import Depreciation, Inflation, Product, Technology
+from costmodels.finance import Product, Technology
 from costmodels.project import Project
 
 
@@ -17,31 +17,24 @@ class DummyCM(CostModel):
         return CostOutput(capex=jnp.abs(inputs.dv) * 1e6, opex=1.0)
 
 
-TECH_NAME = "demo"
 cm = DummyCM()
 costs = cm.run(dv=100.0)
 
 tech = Technology(
-    name=TECH_NAME,
-    CAPEX=costs.capex,
-    OPEX=costs.opex,
+    name="demo",
     lifetime=20,
-    t0=0,
-    WACC=0.0,
-    phasing_yr=[0],
-    phasing_capex=[1],
-    production=jnp.array([0.0] * 20),
-    non_revenue_production=jnp.array([0.0] * 20),
+    capex=costs.capex,
+    opex=costs.opex,
     product=Product.SPOT_ELECTRICITY,
 )
 
 proj = Project(
     technologies=[tech],
     product_prices={Product.SPOT_ELECTRICITY: jnp.array([50.0])},
-    inflation=Inflation(rate=[0.0, 0.0], year=[0, 20], year_ref=0),
-    depreciation=Depreciation(year=[0, 20], rate=[0, 1]),
 )
 
-npv, grad = proj.npv_and_grad_production({TECH_NAME: jnp.array([1.0] * 20)})
+npv = proj.npv(productions={tech.name: jnp.array([1.0] * 20)})
+grad_prod, grad_cm = proj.npv_grad(productions={tech.name: jnp.array([1.0] * 20)})
 print(f"Net Present Value: {npv}")
-print(f"dNPV/dproduction: {grad}")
+print(f"dNPV/dproduction: {grad_prod[tech.name]}")
+_ = grad_cm  # empty because didn't pass any cost model args
