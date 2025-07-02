@@ -187,7 +187,7 @@ tf = TopFarmProblem(
     design_vars=dict(zip("xy", initial.T)),
     cost_comp=cost_comp,
     constraints=[XYBoundaryConstraint(boundary), SpacingConstraint(500)],
-    driver=EasyScipyOptimizeDriver(maxiter=100),
+    driver=EasyScipyOptimizeDriver(maxiter=10),  # too little; just for demo purposes
     plot_comp=XYPlotComp(),
 )
 
