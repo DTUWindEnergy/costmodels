@@ -6,9 +6,9 @@ requires-python = ">=3.9,<3.13"
 version = "0.1.0"
 dependencies = [
     "numpy",
-    "scipy>=1.15.1,<2",
-    "matplotlib>=3.10.0,<4",
-    "jax>=0.5.3,<0.7",
+    "scipy>=1.10.1,<2",
+    "matplotlib>=3.7.5,<4",
+    "jax>=0.5.3,<1.0",
 ]
 
 [project.optional-dependencies]

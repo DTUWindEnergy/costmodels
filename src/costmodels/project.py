@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field, replace
 
 import jax
-import jax.numpy as jnp
 
 from .finance import LCO, Depreciation, Inflation, Technology, finances
 
