@@ -30,27 +30,27 @@ class Currency(Enum):
 
 @cost_input_dataclass
 class DTUOffshoreCostInput(CostInput):
+    lifetime: float  # years
     rated_power: float  # MW
     rotor_speed: float  # rpm
     rotor_diameter: float  # m
     hub_height: float  # m
-    foundation_option: Foundation = Foundation.MONOPILE
-    profit: float  # %
     capacity_factor: float  # %
-    decline_factor: float  # %
     nwt: float
-    wacc: float  # %
-    devex: float  # EUR/kW
     water_depth: float  # m
-    abex: float  # EUR
-    electrical_cost: float  # MEUR/MW
+    foundation_option: Foundation = Foundation.MONOPILE
+    profit: float = 0.01  # %
+    decline_factor: float = 0.01  # %
+    wacc: float = 0.07  # %
+    devex: float = 0.0  # EUR/kW
+    abex: float = 0.0  # EUR
+    electrical_cost: float = 0.0  # MEUR/MW
     currency: Currency = Currency.EURO_KW
     eur_to_dkk: float = 7.54
     aep: jnp.ndarray  # MWh
-    lifetime: float
-    inflation: float  # %
-    opex: float  # EUR/kW
-    eprice: float  # EUR/kWh
+    inflation: float = 0.02  # %
+    opex: float = 0.02  # EUR/kW
+    eprice: float = 0.1  # EUR/kWh
 
 
 class DTUOffshoreCostModel(CostModel):

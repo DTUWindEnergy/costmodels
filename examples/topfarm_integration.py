@@ -77,19 +77,9 @@ cost_model = DTUOffshoreCostModel(
     rotor_speed=10.0,
     rotor_diameter=windTurbines.diameter(),
     hub_height=windTurbines.hub_height(),
-    profit=0.01,
-    capacity_factor=0.4,
-    decline_factor=0.01,
-    nwt=n_wt,
-    wacc=0.07,
-    devex=0.0,
-    abex=0.0,
-    electrical_cost=0.0,
     lifetime=LIFETIME,
-    inflation=0.02,
-    opex=0.02,
-    eprice=0.1,
-    foundation_option=1,
+    capacity_factor=0.4,
+    nwt=n_wt,
 )
 
 out = cost_model.run(aep=1.0e9, water_depth=20.0)
