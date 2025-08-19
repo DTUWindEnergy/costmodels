@@ -59,6 +59,9 @@ def _npv(rate, cashflows):
 def _annual_revenue(technologies, product_prices, ny):
     annual_revenue = jnp.zeros(ny)
     for t in technologies:
+        price = product_prices[t.product]
+        if jnp.size(price) == 1:
+            price = jnp.full_like(annual_revenue, price)
         t0 = t.t0
         lifetime = t.lifetime
         penalty = jnp.zeros_like(t.production)  # TODO: or t.penalty
@@ -66,9 +69,7 @@ def _annual_revenue(technologies, product_prices, ny):
             jnp.sum(
                 jnp.asarray(
                     jnp.split(
-                        jnp.asarray(t.production)
-                        * jnp.asarray(product_prices[t.product])
-                        - penalty,
+                        jnp.asarray(t.production) * jnp.asarray(price) - penalty,
                         lifetime,
                     )
                 ),
