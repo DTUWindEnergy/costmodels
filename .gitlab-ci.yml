@@ -45,3 +45,20 @@ test_pip_install:
     - pixi run pytest ../tests
   tags:
     - linux
+
+pypi_linux:
+  stage:
+    deploy
+  only:
+    - tags
+    - test_pypi
+  script:
+    - apt-get update
+    - pip install --upgrade pip
+    - pip install -e . --upgrade
+    - pip install --upgrade build
+    - pip install --upgrade twine packaging
+    - python3 -m build
+    - twine upload dist/* -u $TWINE_USERNAME -p $TWINE_PASSWORD
+  tags:
+  - ci-ubuntu
