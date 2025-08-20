@@ -64,12 +64,15 @@ def _annual_revenue(technologies, product_prices, ny):
             price = jnp.full_like(annual_revenue, price)
         t0 = t.t0
         lifetime = t.lifetime
-        penalty = jnp.zeros_like(t.production)  # TODO: or t.penalty
+        production = t.production
+        if production is None:
+            production = jnp.array([0.0] * lifetime)
+        penalty = jnp.zeros_like(production)  # TODO: or t.penalty
         annual_revenue = annual_revenue.at[t0 : lifetime + t0].add(
             jnp.sum(
                 jnp.asarray(
                     jnp.split(
-                        jnp.asarray(t.production) * jnp.asarray(price) - penalty,
+                        jnp.asarray(production) * jnp.asarray(price) - penalty,
                         lifetime,
                     )
                 ),
@@ -85,9 +88,12 @@ def _annual_production(technologies, ny):
         t0 = t.t0
         lifetime = t.lifetime
         non_rev = t.non_revenue_production
+        production = t.production
+        if production is None:
+            production = jnp.zeros_like(non_rev)
         annual_energy_production = annual_energy_production.at[t0 : lifetime + t0].add(
             jnp.sum(
-                jnp.asarray(jnp.split(jnp.asarray(t.production) + non_rev, lifetime)),
+                jnp.asarray(jnp.split(jnp.asarray(production) + non_rev, lifetime)),
                 axis=1,
             )
         )
