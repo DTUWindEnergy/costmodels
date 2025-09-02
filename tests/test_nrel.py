@@ -33,11 +33,12 @@ def test_nrel():
         blade_number=3,
         blade_has_carbon=False,
         max_tip_speed=80.0,
-        max_efficiency=90,
+        max_efficiency=0.9,
         main_bearing_number=2,
         crane=True,
         nwt=NWT,
         opex=20.0,
+        usd_per_eur=1.0,
     )
 
     res = nrel_cm.run(aep=10.0)

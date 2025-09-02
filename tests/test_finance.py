@@ -314,7 +314,10 @@ def test_finances_run_against_reference_from_hydesign_0():
         ),
         "NPV": 7.37912942e08,
         "IRR": 11.82257 / 100,
-        "CAPEX": np.float64(1186622556.690909),
+        "CAPEX_eq": np.float64(1186622556.690909),
+        "CAPEX": np.float64(
+            CAPEX_wind + CAPEX_solar + CAPEX_bess + CAPEX_p2x + CAPEX_shared
+        ),
         "OPEX": np.array(
             [
                 24201623.06895286,
@@ -356,6 +359,7 @@ def test_finances_run_against_reference_from_hydesign_0():
     np.testing.assert_allclose(res["NPV"], ref["NPV"])
     np.testing.assert_allclose(res["IRR"], ref["IRR"])
     np.testing.assert_allclose(res["CAPEX"], ref["CAPEX"])
+    np.testing.assert_allclose(res["CAPEX_eq"], ref["CAPEX_eq"])
     np.testing.assert_allclose(res["OPEX"], ref["OPEX"])
     np.testing.assert_allclose(res["LCOE"], ref["LCOE"])
     np.testing.assert_allclose(res["LCOH"], ref["LCOH"])
@@ -509,7 +513,8 @@ def test_finances_against_reference_from_hydesign_1():
         ),
         "NPV": 55399626.7,
         "IRR": 7.26525611 / 100,
-        "CAPEX": 371423011.2610241,
+        "CAPEX_eq": 371423011.2610241,
+        "CAPEX": np.float64(CAPEX_wind + CAPEX_solar + CAPEX_bess + CAPEX_shared),
         "OPEX": np.array(
             [
                 5593738.80495959,
@@ -547,6 +552,7 @@ def test_finances_against_reference_from_hydesign_1():
     np.testing.assert_allclose(res["NPV"], ref["NPV"])
     np.testing.assert_allclose(res["IRR"], ref["IRR"])
     np.testing.assert_allclose(res["CAPEX"], ref["CAPEX"])
+    np.testing.assert_allclose(res["CAPEX_eq"], ref["CAPEX_eq"])
     np.testing.assert_allclose(res["OPEX"], ref["OPEX"])
     np.testing.assert_allclose(res["LCOE"], ref["LCOE"])
 

@@ -65,9 +65,11 @@ def _annual_revenue(technologies, product_prices, ny):
         t0 = t.t0
         lifetime = t.lifetime
         production = t.production
-        if production is None:
-            production = jnp.array([0.0] * lifetime)
-        penalty = jnp.zeros_like(production)  # TODO: or t.penalty
+        # if production is None:
+        #     production = jnp.array([0.0] * lifetime)
+        penalty = t.penalty
+        if penalty is None:
+            penalty = jnp.zeros_like(production)
         annual_revenue = annual_revenue.at[t0 : lifetime + t0].add(
             jnp.sum(
                 jnp.asarray(
@@ -89,8 +91,10 @@ def _annual_production(technologies, ny):
         lifetime = t.lifetime
         non_rev = t.non_revenue_production
         production = t.production
-        if production is None:
-            production = jnp.zeros_like(non_rev)
+        if jnp.size(production) == 1:
+            production = jnp.atleast_1d(jnp.array([production] * lifetime).squeeze())
+        if jnp.size(non_rev) == 1:
+            non_rev = jnp.atleast_1d(jnp.array([non_rev] * lifetime).squeeze())
         annual_energy_production = annual_energy_production.at[t0 : lifetime + t0].add(
             jnp.sum(
                 jnp.asarray(jnp.split(jnp.asarray(production) + non_rev, lifetime)),
@@ -178,16 +182,14 @@ def _capex_phasing(
 
 def _break_even_price(
     product,
-    CAPEX,
-    OPEX,
+    CAPEX_eq,
+    annual_operational_cost,
     tax_rate,
-    discount_rate,
-    depreciation_yr,
+    hpp_discount_factor,
     depreciation,
-    DEVEX,
+    devex,
     inflation_index,
     technologies,
-    generations,
     product_prices,
     ny,
 ):
@@ -197,19 +199,17 @@ def _break_even_price(
         product_prices_temp[product] = (
             jnp.ones_like(product_prices_temp[product]) * price
         )
-        revenues = _annual_revenue(technologies, generations, product_prices_temp, ny)
+        revenues = _annual_revenue(technologies, product_prices_temp, ny)
         cashflow = _cashflow(
             net_revenue_t=revenues,
-            investment_cost=CAPEX,
-            maintenance_cost_per_year=OPEX,
+            investment_cost=CAPEX_eq,
+            maintenance_cost_per_year=annual_operational_cost,
             tax_rate=tax_rate,
-            discount_rate=discount_rate,
-            depreciation_yr=depreciation_yr,
             depreciation=depreciation,
-            development_cost=DEVEX,
+            development_cost=devex,
             inflation_index=inflation_index,
         )
-        NPV = _npv(discount_rate, cashflow)
+        NPV = _npv(hpp_discount_factor, cashflow)
         return NPV**2
 
     out = minimize(fun=fun, x0=jnp.asarray([50.0]), method="BFGS", tol=1e-10)
@@ -330,8 +330,10 @@ def _compute_lco(
     annual_consumption_cost,
     annual_energy_production,
     capex_eq,
+    capex,
     discount_rate,
     iy,
+    use_capex_eq_for_lco,
 ):
     """Calculate the levelized cost of output from yearly costs and production."""
 
@@ -340,14 +342,18 @@ def _compute_lco(
             (annual_operational_cost + annual_consumption_cost)
             / (1 + discount_rate) ** iy
         )
-        + capex_eq
+        # + capex_eq
     )
+    if use_capex_eq_for_lco:
+        level_costs += capex_eq
+    else:
+        level_costs += capex
     level_aep = jnp.sum(annual_energy_production / (1 + discount_rate) ** iy)
 
     lco = jax.lax.cond(
         level_aep > 0,
-        lambda _: level_costs / level_aep,
-        lambda _: 1e6,
+        lambda _: jnp.atleast_1d(level_costs / level_aep),
+        lambda _: jnp.asarray([1e6]),
         operand=None,
     )
     return lco
@@ -361,11 +367,13 @@ def _product_specific_finance(
     ny,
     iy,
     phasing_yr,
+    use_capex_eq_for_lco,
 ):
     """Calculate levelized costs for a subset of technologies."""
     capex_eq, hpp_discount_factor = _phased_capex(
         technologies, shared_capex, inflation, phasing_yr, global_t_neg
     )
+    capex = jnp.sum(jnp.asarray([t.capex for t in technologies])) + shared_capex
 
     annual_operational_cost, annual_consumption_cost, annual_energy_production = (
         _annual_costs(technologies, ny)
@@ -376,14 +384,19 @@ def _product_specific_finance(
         annual_consumption_cost,
         annual_energy_production,
         capex_eq,
+        capex,
         hpp_discount_factor,
         iy,
+        use_capex_eq_for_lco,
     )
     return {
         "LCO": LCO,
+        "CAPEX": capex,
         "CAPEX_eq": capex_eq,
         "annual_operational_cost": annual_operational_cost,
         "hpp_discount_factor": hpp_discount_factor,
+        "annual_consumption_cost": annual_consumption_cost,
+        "annual_energy_production": annual_energy_production,
     }
 
 
@@ -396,7 +409,7 @@ class Product(Enum):
 class Technology:
     name: str
     lifetime: int
-    production: list | None = None
+    production: list | None = 0
     cost_model: CostModel | None = None
     capex: float | None = None
     opex: float | None = None
@@ -405,15 +418,13 @@ class Technology:
     phasing_yr: tuple = (0,)
     phasing_capex: tuple = (1.0,)
     product: Product = Product.SPOT_ELECTRICITY
-    non_revenue_production: list | None = None
-    penalty: float = None
-    consumption: float = 0.0
+    non_revenue_production: list | None = 0
+    penalty: list | None = 0
+    consumption: list | None = 0
 
     def __post_init__(self):
         if self.cost_model is None and (self.capex is None or self.opex is None):
             raise ValueError("Either a cost model or CAPEX and OPEX must be provided.")
-        if self.non_revenue_production is None:
-            self.non_revenue_production = jnp.array([0.0] * self.lifetime)
 
 
 @dataclass
@@ -443,8 +454,9 @@ def finances(
     inflation: Inflation,
     tax_rate: float,
     depreciation: Depreciation,
-    devex: float,
+    devex: float = 0,
     lcos: tuple[LCO] = None,
+    use_capex_eq_for_lco: bool = True,
 ):
     """Compute overall project finances for a set of technologies.
 
@@ -484,7 +496,9 @@ def finances(
     iy = jnp.arange(ny) + 1
     phasing_yr = jnp.arange(global_t1 - global_t_neg) + global_t_neg
 
-    lcos_res = {}  # for each prpduct calculate the levelized costs
+    lcos_res = {
+        "product_specific": {}
+    }  # for each product calculate the levelized costs
     for _, lco in enumerate(lcos):
         technologies_i = [t for t in technologies if t.name in lco.costs]
         shared_capex_i = shared_capex if lco.accounts_for_shared else 0
@@ -496,8 +510,10 @@ def finances(
             ny,
             iy,
             phasing_yr,
+            use_capex_eq_for_lco,
         )
         lcos_res[lco.name] = res["LCO"]
+        lcos_res["product_specific"][lco.name] = res
     res = _product_specific_finance(
         technologies,
         shared_capex,
@@ -506,9 +522,12 @@ def finances(
         ny,
         iy,
         phasing_yr,
+        use_capex_eq_for_lco,
     )
 
     CAPEX_eq = res["CAPEX_eq"]
+    CAPEX = res["CAPEX"]
+
     annual_operational_cost = res["annual_operational_cost"]
     hpp_discount_factor = res["hpp_discount_factor"]
     cashflows = jnp.zeros(ny)
@@ -528,30 +547,31 @@ def finances(
     IRR = _irr(cashflow)
     NPV = _npv(hpp_discount_factor, cashflow)
 
-    # break_even_prices = {} TODO: !!!
-    # for product, _ in product_prices.items():
-    #     break_even_prices[product] = calculate_break_even_price(
-    #         product,
-    #         CAPEX_eq,
-    #         annual_operational_cost,
-    #         tax_rate,
-    #         hpp_discount_factor,
-    #         depreciation_yr,
-    #         depreciation,
-    #         devex,
-    #         inflation_index,
-    #         technologies,
-    #         generations,
-    #         product_prices,
-    #         ny,
-    #     )
+    break_even_prices = {}  # TODO: !!!
+    for product, _ in product_prices.items():
+        break_even_prices[product] = _break_even_price(
+            product,
+            CAPEX_eq,
+            annual_operational_cost,
+            tax_rate,
+            hpp_discount_factor,
+            depreciation,
+            devex,
+            inflation_index,
+            technologies,
+            # generations,
+            product_prices,
+            ny,
+        )
     out = {
         "NPV": NPV,
         "IRR": IRR,
-        "CAPEX": CAPEX_eq,
+        "CAPEX": CAPEX,
+        "CAPEX_eq": CAPEX_eq,
         "OPEX": annual_operational_cost,
         "cashflow": cashflow,
-        "break_even_prices": None,
+        "break_even_prices": break_even_prices,
+        "annual_revenue": annual_revenue,
     }
     out.update(lcos_res)
     return out
