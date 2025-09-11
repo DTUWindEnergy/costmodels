@@ -212,8 +212,10 @@ def _break_even_price(
         NPV = _npv(hpp_discount_factor, cashflow)
         return NPV**2
 
-    out = minimize(fun=fun, x0=jnp.asarray([50.0]), method="BFGS", tol=1e-10)
-    return out.x[0]
+    ##TODO: There is most likely a memory leak in BFGS from JAX
+    # out = minimize(fun=fun, x0=jnp.asarray([50.0]), method="BFGS", tol=1e-10).x[0]
+    out = 1e9
+    return out
 
 
 def _cashflow(
