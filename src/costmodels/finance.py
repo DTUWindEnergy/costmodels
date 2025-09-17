@@ -487,6 +487,8 @@ def finances(
         Dictionary with keys like ``NPV`` and ``IRR`` along with levelized
         costs for each entry in ``lcos``.
     """
+    if isinstance(inflation, (float, int)):
+        inflation = Inflation(rate=(inflation, inflation), year=(0, 1))
     techs = [k.name for k in technologies]
     lcos = lcos or [LCO(name="LCOE", costs=techs, accounts_for_shared=True)]
     t0s = [v.t0 for v in technologies]
