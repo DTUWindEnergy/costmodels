@@ -15,15 +15,10 @@ def cost_input_dataclass(cls):
         value = getattr(cls, name, dataclasses.MISSING)
 
         if value is not dataclasses.MISSING and isinstance(
-            value, (jnp.ndarray, np.ndarray)
+            value, (jnp.ndarray, np.ndarray, list)
         ):
-            new_fields.append(
-                (
-                    name,
-                    annot_type,
-                    dataclasses.field(default_factory=lambda v=value: jnp.array(v)),
-                )
-            )
+            field = dataclasses.field(default_factory=lambda v=value: jnp.array(v))
+            new_fields.append((name, annot_type, field))
             continue
 
         if value is not dataclasses.MISSING:

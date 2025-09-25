@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field, replace
 
 import jax
+import jax.numpy as jnp
 
 from .finance import (
     FINANCE_OUT_NPV_KEY,
@@ -35,6 +36,7 @@ class Project:
                 has_aux=True,
             )
         )
+        self.product_prices = _jaxify_potentially_nested_dict(self.product_prices)
 
     def _npv(
         self, productions: dict, cost_model_args: dict, finance_args: dict
@@ -53,18 +55,17 @@ class Project:
             techs.append(updated_t)
 
         finance_inputs = {**finance_args}
-        if "shared_capex" not in finance_inputs:
-            finance_inputs["shared_capex"] = self.shared_capex
-        if "inflation" not in finance_inputs:
-            finance_inputs["inflation"] = self.inflation
-        if "depreciation" not in finance_inputs:
-            finance_inputs["depreciation"] = self.depreciation
-        if "tax_rate" not in finance_inputs:
-            finance_inputs["tax_rate"] = self.tax_rate
-        if "devex" not in finance_inputs:
-            finance_inputs["devex"] = self.devex
-        if "lcos" not in finance_inputs:
-            finance_inputs["lcos"] = self.lcos
+        defaults = [
+            ("shared_capex", self.shared_capex),
+            ("inflation", self.inflation),
+            ("depreciation", self.depreciation),
+            ("tax_rate", self.tax_rate),
+            ("devex", self.devex),
+            ("lcos", self.lcos),
+        ]
+        for key, value in defaults:
+            if key not in finance_inputs:
+                finance_inputs[key] = value
 
         project_finance = finances(
             technologies=techs,
@@ -81,10 +82,12 @@ class Project:
         cost_model_args: dict = {},
         finance_args: dict = {},
         return_aux: bool = False,
-    ) -> float:  # TODO: return variable is wrong !!!
+    ) -> float | tuple[float, dict]:
         """Return project Net Present Value for the given parameters."""
 
-        # TODO: should make sure all inputss are jax arrays and float; no ints or lists
+        productions = _jaxify_potentially_nested_dict(productions)
+        cost_model_args = _jaxify_potentially_nested_dict(cost_model_args)
+        finance_args = _jaxify_potentially_nested_dict(finance_args)
 
         npv, aux = self._compiled_npv_value_and_gradients(
             productions, cost_model_args, finance_args
@@ -103,6 +106,11 @@ class Project:
     ) -> tuple:
         """Return NPV gradient with respect to
         cost model arguments, productions and finance arguments."""
+
+        productions = _jaxify_potentially_nested_dict(productions)
+        cost_model_args = _jaxify_potentially_nested_dict(cost_model_args)
+        finance_args = _jaxify_potentially_nested_dict(finance_args)
+
         grads = self._compiled_npv_value_and_gradients(
             productions, cost_model_args, finance_args
         )[1]
@@ -116,6 +124,20 @@ class Project:
     ) -> tuple:
         """Return NPV value and gradient with respect to
         cost model arguments,productions and finance arguments."""
+
+        productions = _jaxify_potentially_nested_dict(productions)
+        cost_model_args = _jaxify_potentially_nested_dict(cost_model_args)
+        finance_args = _jaxify_potentially_nested_dict(finance_args)
+
         return self._compiled_npv_value_and_gradients(
             productions, cost_model_args, finance_args
         )
+
+
+def _jaxify_potentially_nested_dict(d):
+    for k, v in d.items():
+        if isinstance(v, dict):
+            d[k] = _jaxify_potentially_nested_dict(v)
+        else:
+            d[k] = jnp.asarray(v, dtype=float)
+    return d
