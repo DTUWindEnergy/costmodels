@@ -9,7 +9,7 @@ from __future__ import annotations
 import jax
 import jax.numpy as jnp
 
-from costmodels._interface import CostModel, CostOutput, cost_input_dataclass
+from costmodels.cmodel import CostModel, CostOutput, cost_input_dataclass
 
 
 @cost_input_dataclass

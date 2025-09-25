@@ -1,4 +1,4 @@
-from costmodels._interface import CostModel, CostOutput, cost_input_dataclass
+from ..cmodel import CostModel, CostOutput, cost_input_dataclass
 
 
 @cost_input_dataclass

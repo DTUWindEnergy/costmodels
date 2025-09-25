@@ -1,7 +1,7 @@
 import jax
 import jax.numpy as jnp
 
-from costmodels._interface import CostOutput
+from costmodels.cmodel import CostOutput
 from costmodels.models import MinimalisticCostModel
 
 

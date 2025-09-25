@@ -13,7 +13,7 @@ import jax
 import jax.numpy as jnp
 from jax.scipy.optimize import minimize
 
-from costmodels._interface import CostModel
+from .cmodel import CostModel
 
 
 def _irr(cashflows):

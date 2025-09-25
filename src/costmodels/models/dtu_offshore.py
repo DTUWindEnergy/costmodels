@@ -6,7 +6,7 @@ import jax.numpy as jnp
 
 np = jnp
 
-from costmodels._interface import (
+from ..cmodel import (
     CostInput,
     CostModel,
     CostOutput,

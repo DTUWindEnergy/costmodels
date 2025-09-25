@@ -1,6 +1,6 @@
 from enum import Enum
 
-from costmodels._interface import CostModel, CostOutput, cost_input_dataclass
+from ..cmodel import CostModel, CostOutput, cost_input_dataclass
 
 
 class NRELTurbineClass(Enum):

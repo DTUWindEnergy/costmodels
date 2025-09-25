@@ -2,7 +2,7 @@ import jax.numpy as jnp
 from jax import lax
 from jax.scipy.special import gamma, gammainc
 
-from costmodels._interface import CostModel, CostOutput, cost_input_dataclass
+from ..cmodel import CostModel, CostOutput, cost_input_dataclass
 
 
 @cost_input_dataclass
