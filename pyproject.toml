@@ -10,7 +10,6 @@ dependencies = [
     "matplotlib>=3.7.5,<4",
     "jax>=0.5.3,<1.0",
 ]
-
 [project.optional-dependencies]
 test = [
     "pytest>=8.3.4,<9",
@@ -19,14 +18,12 @@ test = [
     "pre-commit>=4.1.0,<5",
     "pandas>=2.2.3,<3",
     "openmdao>=3.36.0,<4",
+    "psutil>=7.0.0,<8",
 ]
 
 [build-system]
 build-backend = "hatchling.build"
 requires = ["hatchling"]
-
-[tool.hatch.metadata]
-allow-direct-references = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

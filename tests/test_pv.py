@@ -14,5 +14,5 @@ def test_run_pv_model():
 
     # missing required input
     pv_cm = PVCostModel()
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         _ = pv_cm.run()

@@ -1,11 +1,9 @@
 import dataclasses
 from dataclasses import dataclass
-from enum import Enum
 from typing import Any, Dict
 
 import jax.numpy as jnp
 import numpy as np
-from jax.core import Tracer
 
 
 def cost_input_dataclass(cls):
@@ -15,6 +13,7 @@ def cost_input_dataclass(cls):
     for name, annot_type in annotations.items():
         # Check if the field already has a default value
         value = getattr(cls, name, dataclasses.MISSING)
+
         if value is not dataclasses.MISSING and isinstance(
             value, (jnp.ndarray, np.ndarray)
         ):
@@ -31,23 +30,9 @@ def cost_input_dataclass(cls):
             new_fields.append((name, annot_type, dataclasses.field(default=value)))
             continue
 
-        # If no default value, set based on type
-        if annot_type is float:
-            new_fields.append(
-                (
-                    name,
-                    annot_type,
-                    dataclasses.field(default_factory=lambda: jnp.nan),
-                )
-            )
-        elif annot_type in (jnp.ndarray, np.ndarray):
-            new_fields.append(
-                (
-                    name,
-                    annot_type,
-                    dataclasses.field(default_factory=lambda: jnp.array([jnp.nan])),
-                )
-            )
+        new_fields.append(
+            (name, annot_type, dataclasses.field(default=dataclasses.MISSING))
+        )
 
     # Create a new dataclass with updated defaults
     new_cls = dataclasses.make_dataclass(
@@ -61,14 +46,15 @@ def cost_input_dataclass(cls):
 
 @dataclass
 class CostOutput:
-    capex: float
-    opex: float
+    capex: float | jnp.floating
+    opex: float | jnp.floating
 
     def __post_init__(self):
         self.capex = jnp.asarray(self.capex).squeeze()
         self.opex = jnp.asarray(self.opex).squeeze()
 
 
+@cost_input_dataclass
 class CostInput:
     """Base class for cost model inputs."""
 
@@ -77,12 +63,6 @@ class CostInput:
             f"{self.__class__.__name__} is an abstract base class. "
             "Please implement a concrete subclass with specific fields."
         )
-
-    def __post_init__(self):
-        for field in dataclasses.fields(self):
-            value = getattr(self, field.name)
-            if isinstance(value, list):
-                setattr(self, field.name, jnp.array(value))
 
 
 class CostModel:
@@ -93,28 +73,17 @@ class CostModel:
     def __init__(self, **kwargs):
         if not hasattr(self._inputs_cls, "__dataclass_fields__"):
             raise TypeError(f"{self._inputs_cls} must be a dataclass")
-        self.base_inputs = self._inputs_cls(**kwargs)
-
-    def __validate_inputs_do_not_have_nan_values(self, inputs):
-        """Check if any input field has NaN values."""
-        for field_info in dataclasses.fields(inputs):
-            field_name = field_info.name
-            field_value = getattr(inputs, field_name)
-
-            if isinstance(field_value, Enum):
-                continue
-
-            if not isinstance(field_value, Tracer) and jnp.isnan(field_value).any():
-                raise ValueError(
-                    f"Input '{field_name}' contains NaN values: {field_value}."
-                    " I.e is a required input variable and is not set to anything."
-                )
+        self.base_inputs_dict = kwargs
 
     # Convenience: mutate only run time variables between calls
     def run(self, **runtime_overrides) -> Dict[str, Any]:
-        inputs = dataclasses.replace(self.base_inputs, **runtime_overrides)
-
-        self.__validate_inputs_do_not_have_nan_values(inputs)
+        try:
+            inputs = self._inputs_cls(**{**self.base_inputs_dict, **runtime_overrides})
+        except TypeError as e:
+            raise TypeError(
+                f"Error calling {self.__class__.__name__} with provided inputs. "
+                f"Please check that all required fields are provided. {e}."
+            ) from e
 
         output = self._run(inputs)
         if isinstance(output, dict):

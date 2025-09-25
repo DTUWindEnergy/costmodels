@@ -1,4 +1,5 @@
 import jax.numpy as jnp
+import numpy as np
 
 from costmodels._interface import CostModel, CostOutput, cost_input_dataclass
 from costmodels.finance import Product, Technology
@@ -7,34 +8,57 @@ from costmodels.project import Project
 
 @cost_input_dataclass
 class DummyInputs:
-    dv: float = jnp.nan
+    design_variable0: float
+    design_variable1: float = jnp.array([1.0])
 
 
 class DummyCM(CostModel):
     _inputs_cls = DummyInputs
 
     def _run(self, inputs: DummyInputs) -> CostOutput:
-        return CostOutput(capex=jnp.abs(inputs.dv) * 1e6, opex=1.0)
+        return CostOutput(
+            capex=jnp.abs(inputs.design_variable0) * 1e6,
+            opex=jnp.abs(jnp.sum(inputs.design_variable1)) * 1e2,
+        )
 
 
-cm = DummyCM()
-costs = cm.run(dv=100.0)
-
+LIFETIME = 5  # years
 tech = Technology(
     name="demo",
-    lifetime=20,
-    capex=costs.capex,
-    opex=costs.opex,
+    lifetime=LIFETIME,
     product=Product.SPOT_ELECTRICITY,
+    cost_model=DummyCM(),
 )
 
 proj = Project(
     technologies=[tech],
-    product_prices={Product.SPOT_ELECTRICITY: jnp.array([50.0])},
+    product_prices={Product.SPOT_ELECTRICITY: np.array([50.0])},
 )
 
-npv = proj.npv(productions={tech.name: jnp.array([1.0] * 20)})
-grad_prod, grad_cm = proj.npv_grad(productions={tech.name: jnp.array([1.0] * 20)})
-print(f"Net Present Value: {npv}")
-print(f"dNPV/dproduction: {grad_prod[tech.name]}")
-_ = grad_cm  # empty because didn't pass any cost model args
+npv_val, __aux = proj.npv(
+    productions={tech.name: np.array([np.random.randn()] * LIFETIME)},
+    cost_model_args={
+        tech.name: {
+            "design_variable0": 10.0,
+            "design_variable1": np.array([np.random.randn()] * 3),
+        }
+    },
+    finance_args={"shared_capex": 1e5},
+    return_aux=True,
+)
+
+npv_grad = proj.npv_grad(
+    productions={tech.name: np.array([np.random.randn()] * LIFETIME)},
+    cost_model_args={
+        tech.name: {
+            "design_variable0": 10.0,
+            "design_variable1": np.array([np.random.randn()] * 3),
+        }
+    },
+    finance_args={"shared_capex": 1e5},
+)
+
+print(f"NPV: {npv_val}")
+print(f"dNPV/dProduction: {npv_grad[0][tech.name]}")
+print(f"dNPV/dDesignVariable0: {npv_grad[1][tech.name]['design_variable0']}")
+print(f"dNPV/dDesignVariable1: {npv_grad[1][tech.name]['design_variable1']}")

@@ -1,10 +1,12 @@
 import os
+from dataclasses import replace
 from pathlib import Path
 
 import jax
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import psutil
 import pytest
 
 from costmodels.finance import (
@@ -364,9 +366,16 @@ def test_finances_run_against_reference_from_hydesign_0():
     np.testing.assert_allclose(res["LCOE"], ref["LCOE"])
     np.testing.assert_allclose(res["LCOH"], ref["LCOH"])
 
-    # TODO: test break even prices once it's implemented
-    # np.testing.assert_allclose(res["break_even_prices"]["spot_electricity"], ref["break_even_prices"]["spot_electricity"], rtol=1e-5)
-    # np.testing.assert_allclose(res["break_even_prices"]["hydrogen"], ref["break_even_prices"]["hydrogen"], rtol=1e-5)
+    np.testing.assert_allclose(
+        res["break_even_prices"][Product.SPOT_ELECTRICITY],
+        ref["break_even_prices"]["spot_electricity"],
+        rtol=1e-5,
+    )
+    np.testing.assert_allclose(
+        res["break_even_prices"][Product.HYDROGEN],
+        ref["break_even_prices"]["hydrogen"],
+        rtol=1e-5,
+    )
 
 
 def test_finances_against_reference_from_hydesign_1():
@@ -558,11 +567,9 @@ def test_finances_against_reference_from_hydesign_1():
 
     def grad_func(production):
         """Function to compute IRR gradient."""
-        technologies[0].production = production
-        technologies[1].production = production
-        technologies[2].production = production
+        new_technologies = [replace(t, production=production) for t in technologies]
         return finances(
-            technologies,
+            new_technologies,
             product_prices,
             shared_capex,
             inflation,
@@ -576,3 +583,132 @@ def test_finances_against_reference_from_hydesign_1():
 
     assert np.isfinite(val), "IRR value is not finite"
     assert np.all(np.isfinite(grad)), "IRR gradient contains non-finite values"
+
+
+def test_memory_leak():
+    """Test for memory leaks when calling grad repeatedly."""
+
+    # Re-use the setup from the previous test
+    CAPEX_wind = 2.41170504e08
+    CAPEX_solar = 66125000
+    CAPEX_bess = 9882866.10284274
+    CAPEX_shared = 61122845.07042254
+    OPEX_wind = 4262488.80495959
+    OPEX_solar = 1331250
+    OPEX_bess = 0
+    ts_inputs = pd.read_csv(
+        Path(os.path.dirname(__file__)) / Path("./data/finance_inputs.csv"),
+        index_col=0,
+        sep=";",
+    )
+    technologies = {
+        "wind": {
+            "CAPEX": CAPEX_wind,
+            "OPEX": OPEX_wind,
+            "lifetime": 25,
+            "t0": 0,
+            "WACC": 0.06,
+            "phasing_yr": [-1, 0],
+            "phasing_capex": [
+                1,
+                1,
+            ],
+        },
+        "solar": {
+            "CAPEX": CAPEX_solar,
+            "OPEX": OPEX_solar,
+            "lifetime": 25,
+            "t0": 0,
+            "WACC": 0.06,
+            "phasing_yr": [-1, 0],
+            "phasing_capex": [
+                1,
+                1,
+            ],
+        },
+        "batt": {
+            "CAPEX": CAPEX_bess,
+            "OPEX": OPEX_bess,
+            "lifetime": 25,
+            "t0": 0,
+            "WACC": 0.06,
+            "phasing_yr": [-1, 0],
+            "phasing_capex": [
+                1,
+                1,
+            ],
+        },
+    }
+    product_prices = {Product.SPOT_ELECTRICITY: np.asarray(ts_inputs["price_t"])}
+
+    production_sample = ts_inputs.get("p_wind", None)
+    zeros = np.zeros_like(production_sample)
+
+    technologies = [
+        Technology(
+            name=k,
+            capex=v["CAPEX"],
+            opex=v["OPEX"],
+            lifetime=v["lifetime"],
+            t0=v["t0"],
+            wacc=v["WACC"],
+            phasing_yr=v["phasing_yr"],
+            phasing_capex=v["phasing_capex"],
+            production=np.asarray(ts_inputs.get(f"p_{k}", zeros)),
+            non_revenue_production=np.zeros(len(ts_inputs.get(f"p_{k}", zeros))),
+            product=Product.SPOT_ELECTRICITY,
+        )
+        for k, v in technologies.items()
+    ]
+
+    inflation = Inflation(
+        year=[-3, 0, 1, 25],
+        rate=[0.10, 0.10, 0.06, 0.06],
+        year_ref=0,
+    )
+
+    depreciation = Depreciation(
+        year=[0, 25],
+        rate=[0, 1],
+    )
+
+    tax_rate = 0.22
+    DEVEX = 0
+    shared_capex = CAPEX_shared
+
+    def grad_func(production):
+        """Function to compute IRR gradient."""
+        new_technologies = [replace(t, production=production) for t in technologies]
+        irr = finances(
+            new_technologies,
+            product_prices,
+            shared_capex,
+            inflation,
+            tax_rate,
+            depreciation,
+            DEVEX,
+        )["IRR"]
+        return irr
+
+    production_sample = np.asarray(production_sample)
+    grad_func_to_test = jax.jit(jax.value_and_grad(grad_func))
+
+    def get_mem_usage():
+        process = psutil.Process(os.getpid())
+        return process.memory_info().rss / 1024**2
+
+    for _ in range(50):
+        val, grad = grad_func_to_test(production_sample)
+        jax.block_until_ready((val, grad))
+
+    mem_after_warmup = get_mem_usage()
+
+    # Now profile the memory usage over multiple calls
+    for _ in range(250):
+        val, grad = grad_func_to_test(production_sample)
+        jax.block_until_ready((val, grad))
+
+    mem_after_loop = get_mem_usage()
+
+    # The memory usage should not increase significantly
+    assert mem_after_loop < (mem_after_warmup + 20)  # Allow for some overhead

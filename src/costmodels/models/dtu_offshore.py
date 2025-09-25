@@ -38,6 +38,7 @@ class DTUOffshoreCostInput(CostInput):
     capacity_factor: float  # %
     nwt: float
     water_depth: float  # m
+    aep: jnp.ndarray  # MWh
     foundation_option: Foundation = Foundation.MONOPILE
     profit: float = 0.01  # %
     decline_factor: float = 0.01  # %
@@ -47,7 +48,6 @@ class DTUOffshoreCostInput(CostInput):
     electrical_cost: float = 0.0  # MEUR/MW
     currency: Currency = Currency.EURO_KW
     eur_to_dkk: float = 7.54
-    aep: jnp.ndarray  # MWh
     inflation: float = 0.02  # %
     opex: float = 0.02  # EUR/kW
     eprice: float = 0.1  # EUR/kWh

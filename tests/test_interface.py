@@ -3,7 +3,6 @@ from typing import Any, Dict
 
 import jax
 import jax.numpy as jnp
-import numpy as np
 import pytest
 
 from costmodels._interface import CostModel, CostOutput, cost_input_dataclass
@@ -11,27 +10,27 @@ from costmodels._interface import CostModel, CostOutput, cost_input_dataclass
 
 @cost_input_dataclass
 class ExampleCostModelInputs:
+    dv: float
     a: float = 2.1
     b: int = 2
     flag: bool = True
-    dv: float = jnp.nan
 
 
 class ExampleCostModel(CostModel):
     _inputs_cls = ExampleCostModelInputs
 
-    def _run(self, inputs: ExampleCostModelInputs) -> Dict[str, Any]:
+    def _run(self, inputs: ExampleCostModelInputs) -> CostOutput:
         capex = (
             jnp.abs(jnp.sin(inputs.dv**2 / inputs.b + inputs.a * jnp.cos(inputs.dv)))
             if inputs.flag
             else 0.0
         )
         opex = jnp.abs(jnp.cos(inputs.dv**2 / inputs.a + inputs.b * jnp.sin(inputs.dv)))
-        return {"capex": capex, "opex": opex}
+        return CostOutput(capex=capex, opex=opex)
 
 
 def test_example_cost_model():
-    cm = ExampleCostModel(a=2.1, b=3.3, flag=True, dv=0.0)
+    cm = ExampleCostModel(a=2.1, b=3.3, flag=True)
     out = cm.run(dv=1.0)
     assert isinstance(out, CostOutput)
     assert out.capex >= 0
@@ -45,30 +44,19 @@ def test_example_cost_model():
     assert jnp.isfinite(val)
     assert jnp.isfinite(grad)
 
-    # JIT support feature is prosponed until need arises !!!
     # check that jit works on value_and_grad
-    # jit_fn = jax.jit(lambda x: cm.run(dv=x).capex + cm.run(dv=x).opex)
-    # jit_val, jit_grad = jax.value_and_grad(jit_fn)(3.0)
-    # assert jnp.isfinite(jit_val)
-    # assert jnp.isfinite(jit_grad)
+    fn = jax.value_and_grad(lambda x: (cm.run(dv=x).capex + cm.run(dv=x).opex))
+    jit_fn = jax.jit(fn)
+    jit_val, jit_grad = jit_fn(3.0)
+    assert jnp.isfinite(jit_val)
+    assert jnp.isfinite(jit_grad)
 
 
-def test_model_does_not_run_with_nan_values_in_inputs():
-    cm = ExampleCostModel(a=2.1, b=3.3, flag=True, dv=jnp.nan)
-    with pytest.raises(ValueError):
+def test_model_does_not_run_with_required_value_missing():
+    cm = ExampleCostModel(a=2.1, b=3.3, flag=True)
+    # missing required input 'dv'
+    with pytest.raises(TypeError):
         cm.run()
-    with pytest.raises(ValueError):
-        cm.run(dv=jnp.nan)
-    with pytest.raises(ValueError):
-        cm.run(dv=np.nan)
-
-    val_grad_func = jax.value_and_grad(lambda x: cm.run(dv=x).capex)
-    val_grad_func(jnp.nan)  # jax traced values will not be checked for NaN
-    val_grad_func = jax.value_and_grad(lambda x: cm.run(dv=x, a=np.nan).capex)
-    with pytest.raises(ValueError):
-        val_grad_func(1.0)  # should raise ValueError due to NaN in inputs in a
-
-    cm.run(dv=1.0)
 
 
 def test_array_input_with_shape_one():
@@ -96,13 +84,14 @@ class ArrayModel(CostModel):
 
 
 def test_default_array_is_unique_per_instance():
+    inp_a = ArrayInputs()
+    inp_b = ArrayInputs()
+    assert inp_a.arr is not inp_b.arr
+    assert id(inp_a.arr) != id(inp_b.arr)
+
     model_a = ArrayModel()
     model_b = ArrayModel()
-
-    model_a.base_inputs.arr += 1
-
-    assert jnp.array_equal(model_a.base_inputs.arr, jnp.array([2.0, 3.0]))
-    assert jnp.array_equal(model_b.base_inputs.arr, jnp.array([1.0, 2.0]))
+    assert model_a.run() != model_b.run(arr=jnp.array([2.0, 3.0]))
 
 
 class DummyEnum(Enum):

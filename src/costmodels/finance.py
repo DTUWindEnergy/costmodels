@@ -212,9 +212,7 @@ def _break_even_price(
         NPV = _npv(hpp_discount_factor, cashflow)
         return NPV**2
 
-    ##TODO: There is most likely a memory leak in BFGS from JAX
-    # out = minimize(fun=fun, x0=jnp.asarray([50.0]), method="BFGS", tol=1e-10).x[0]
-    out = 1e9
+    out = minimize(fun=fun, x0=jnp.asarray([50.0]), method="BFGS", tol=1e-6).x[0]
     return out
 
 
@@ -420,9 +418,9 @@ class Technology:
     phasing_yr: tuple = (0,)
     phasing_capex: tuple = (1.0,)
     product: Product = Product.SPOT_ELECTRICITY
-    non_revenue_production: list | None = 0
-    penalty: list | None = 0
-    consumption: list | None = 0
+    non_revenue_production: list | float = 0
+    penalty: list | float = 0
+    consumption: list | float = 0
 
     def __post_init__(self):
         if self.cost_model is None and (self.capex is None or self.opex is None):
@@ -449,6 +447,9 @@ class LCO:
     accounts_for_shared: bool = True
 
 
+FINANCE_OUT_NPV_KEY = "NPV"
+
+
 def finances(
     technologies: list[Technology],
     product_prices: dict,
@@ -457,7 +458,7 @@ def finances(
     tax_rate: float,
     depreciation: Depreciation,
     devex: float = 0,
-    lcos: tuple[LCO] = None,
+    lcos: tuple[LCO] | None = None,
     use_capex_eq_for_lco: bool = True,
 ):
     """Compute overall project finances for a set of technologies.
@@ -551,7 +552,7 @@ def finances(
     IRR = _irr(cashflow)
     NPV = _npv(hpp_discount_factor, cashflow)
 
-    break_even_prices = {}  # TODO: !!!
+    break_even_prices = {}
     for product, _ in product_prices.items():
         break_even_prices[product] = _break_even_price(
             product,
@@ -563,12 +564,11 @@ def finances(
             devex,
             inflation_index,
             technologies,
-            # generations,
             product_prices,
             ny,
         )
     out = {
-        "NPV": NPV,
+        FINANCE_OUT_NPV_KEY: NPV,
         "IRR": IRR,
         "CAPEX": CAPEX,
         "CAPEX_eq": CAPEX_eq,

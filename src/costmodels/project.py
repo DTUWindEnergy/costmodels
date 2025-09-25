@@ -2,7 +2,14 @@ from dataclasses import dataclass, field, replace
 
 import jax
 
-from .finance import LCO, Depreciation, Inflation, Technology, finances
+from .finance import (
+    FINANCE_OUT_NPV_KEY,
+    LCO,
+    Depreciation,
+    Inflation,
+    Technology,
+    finances,
+)
 
 
 @dataclass
@@ -18,7 +25,20 @@ class Project:
     devex: float = 0.0
     lcos: tuple[LCO] | None = None
 
-    def _npv(self, productions: dict, cost_model_args: dict) -> float:
+    def __post_init__(self):
+        self._compiled_npv_value_and_gradients = jax.jit(
+            jax.value_and_grad(
+                lambda a, b, c: self._npv(
+                    productions=a, cost_model_args=b, finance_args=c
+                ),
+                argnums=(0, 1, 2),
+                has_aux=True,
+            )
+        )
+
+    def _npv(
+        self, productions: dict, cost_model_args: dict, finance_args: dict
+    ) -> float:
         techs = []
         for t in self.technologies:
             updated_t = t
@@ -33,23 +53,67 @@ class Project:
                 updated_t = replace(updated_t, production=productions[t.name])
             techs.append(updated_t)
 
-        return finances(
+        finance_inputs = {**finance_args}
+        if "shared_capex" not in finance_inputs:
+            finance_inputs["shared_capex"] = self.shared_capex
+        if "inflation" not in finance_inputs:
+            finance_inputs["inflation"] = self.inflation
+        if "depreciation" not in finance_inputs:
+            finance_inputs["depreciation"] = self.depreciation
+        if "tax_rate" not in finance_inputs:
+            finance_inputs["tax_rate"] = self.tax_rate
+        if "devex" not in finance_inputs:
+            finance_inputs["devex"] = self.devex
+        if "lcos" not in finance_inputs:
+            finance_inputs["lcos"] = self.lcos
+
+        project_finance = finances(
             technologies=techs,
             product_prices=self.product_prices,
-            shared_capex=self.shared_capex,
-            inflation=self.inflation,
-            tax_rate=self.tax_rate,
-            depreciation=self.depreciation,
-            devex=self.devex,
-            lcos=self.lcos,
-        )["NPV"]
+            **finance_inputs,
+        )
 
-    def npv(self, productions: dict = {}, cost_model_args: dict = {}) -> float:
+        npv = project_finance.pop(FINANCE_OUT_NPV_KEY)
+        return npv, project_finance
+
+    def npv(
+        self,
+        productions: dict = {},
+        cost_model_args: dict = {},
+        finance_args: dict = {},
+        return_aux: bool = False,
+    ) -> float:
         """Return project Net Present Value for the given parameters."""
-        return self._npv(productions, cost_model_args)
+        npv, aux = self._compiled_npv_value_and_gradients(
+            productions, cost_model_args, finance_args
+        )[0]
 
-    def npv_grad(self, productions: dict = {}, cost_model_args: dict = {}) -> tuple:
-        """Return NPV gradient with respect to cost model arguments and productions."""
-        if not hasattr(self, "grad_fn"):
-            self.grad_fn = jax.grad(self._npv, argnums=(0, 1))
-        return self.grad_fn(productions, cost_model_args)
+        if return_aux:
+            return npv, aux
+
+        return npv
+
+    def npv_grad(
+        self,
+        productions: dict = {},
+        cost_model_args: dict = {},
+        finance_args: dict = {},
+    ) -> tuple:
+        """Return NPV gradient with respect to
+        cost model arguments, productions and finance arguments."""
+        grads = self._compiled_npv_value_and_gradients(
+            productions, cost_model_args, finance_args
+        )[1]
+        return tuple([g for g in grads if g])  # drop empty grads
+
+    def npv_value_and_grad(
+        self,
+        productions: dict = {},
+        cost_model_args: dict = {},
+        finance_args: dict = {},
+    ) -> tuple:
+        """Return NPV value and gradient with respect to
+        cost model arguments,productions and finance arguments."""
+        return self._compiled_npv_value_and_gradients(
+            productions, cost_model_args, finance_args
+        )
