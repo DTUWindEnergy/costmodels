@@ -45,9 +45,9 @@ class Project:
             if t.cost_model and t.name in cost_model_args:
                 cost_output = t.cost_model.run(**cost_model_args[t.name])
                 if t.capex is None:
-                    updated_t = replace(updated_t, capex=cost_output.capex)
+                    updated_t = replace(updated_t, capex=cost_output.capex * 1e6)
                 if t.opex is None:
-                    updated_t = replace(updated_t, opex=cost_output.opex)
+                    updated_t = replace(updated_t, opex=cost_output.opex * 1e6)
             if t.name in productions:
                 updated_t = replace(updated_t, production=productions[t.name])
             techs.append(updated_t)
