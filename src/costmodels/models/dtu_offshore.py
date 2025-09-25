@@ -1,6 +1,7 @@
 import dataclasses
 from enum import Enum
 
+import jax
 import jax.numpy as jnp
 
 np = jnp
@@ -35,10 +36,10 @@ class DTUOffshoreCostInput(CostInput):
     rotor_speed: float  # rpm
     rotor_diameter: float  # m
     hub_height: float  # m
-    capacity_factor: float  # %
     nwt: float
     water_depth: float  # m
-    aep: jnp.ndarray  # MWh
+    capacity_factor: float = None  # %
+    aep: jnp.ndarray = None  # MWh
     foundation_option: Foundation = Foundation.MONOPILE
     profit: float = 0.01  # %
     decline_factor: float = 0.01  # %
@@ -51,6 +52,10 @@ class DTUOffshoreCostInput(CostInput):
     inflation: float = 0.02  # %
     opex: float = 0.02  # EUR/kW
     eprice: float = 0.1  # EUR/kWh
+
+    def __post_init__(self):
+        if self.capacity_factor is None and self.aep is None:
+            raise TypeError("Either capacity_factor or aep must be provided")
 
 
 class DTUOffshoreCostModel(CostModel):
@@ -680,25 +685,61 @@ class DTUOffshoreCostModel(CostModel):
         )  # Total annual OPEX for farm
         # abex_total = np.sum(self.abex * self.rated_power * 1000) # Not used in LCOE as abexDiscount is 0
 
-        # AEP Calculation
-        if np.isnan(self.aep).any() and np.isnan(self.capacity_factor).any():
-            raise ValueError(
-                "Either Capacity Factor (capacity_factor) or AEP must be provided."
+        def _compute_aep(aep, capacity_factor, rated_power, nwt):
+            """
+            Compute annual energy production (AEP) for a wind farm.
+
+            Args:
+                aep: array (nwt,) or None-like (NaN) if not provided
+                capacity_factor: array (nwt,) or scalar
+                rated_power: scalar (MW)
+                nwt: number of wind turbines
+            """
+            # Boolean flags
+            has_aep = ~jnp.isnan(aep).any()
+            has_cf = ~jnp.isnan(capacity_factor).any()
+
+            # If neither provided → return NaN (instead of raising error)
+            def invalid_case(_):
+                return jnp.nan
+
+            # Case: use AEP directly
+            def use_aep(_):
+                return jnp.sum(aep)
+
+            # Case: compute from capacity factor
+            def use_cf(_):
+                cf = jnp.where(
+                    jnp.size(capacity_factor) == nwt,
+                    capacity_factor,
+                    jnp.tile(capacity_factor, nwt),
+                )
+                return jnp.sum(cf * rated_power * (365 * 24))
+
+            # Select between branches
+            return jax.lax.cond(
+                has_aep,
+                use_aep,
+                lambda _: jax.lax.cond(
+                    has_cf,
+                    use_cf,
+                    invalid_case,
+                    operand=None,
+                ),
+                operand=None,
             )
-        if not np.isnan(self.aep).any():
-            aep_wind_farm_annual = np.sum(
-                self.aep
-            )  # Assumes self.aep is total annual AEP per turbine
-        else:  # Use capacity factor
-            # Ensure capacity_factor is broadcast correctly if single value provided
-            cf = (
-                self.capacity_factor
-                if np.size(self.capacity_factor) == self.nwt
-                else np.tile(self.capacity_factor, self.nwt)
-            )
-            aep_wind_farm_annual = np.sum(
-                cf * self.rated_power * (365 * 24)
-            )  # AEP in MWh
+
+        if self.aep is None:
+            self.aep = np.full(self.nwt, np.nan)
+        if self.capacity_factor is None:
+            self.capacity_factor = np.nan
+
+        aep_wind_farm_annual = _compute_aep(
+            jnp.array(self.aep),
+            jnp.array(self.capacity_factor),
+            self.rated_power,
+            self.nwt,
+        )
 
         # Discount Factors
         discount_factor_wacc_r = [
@@ -760,15 +801,15 @@ class DTUOffshoreCostModel(CostModel):
         # LCOE Calculation
         lcoe_numerator = devex_discount + capex_discount + opex_discount + abex_discount
         lcoe_denominator = aep_discount_total  # Use total discounted AEP
-        if lcoe_denominator == 0:
-            # Handle division by zero if discounted AEP is zero
-            lcoe = np.inf
-        else:
-            # LCOE is Discounted Costs / Discounted AEP
-            lcoe = lcoe_numerator / lcoe_denominator
+
+        lcoe = jax.lax.cond(
+            lcoe_denominator == 0,
+            lambda _: np.inf,
+            lambda _: lcoe_numerator / lcoe_denominator,
+            operand=None,
+        )
 
         # --- Final Output ---
-
         all_outputs = {
             "production_net": aep_net_total,
             "production_discount": aep_discount_total,

@@ -55,7 +55,9 @@ def test_npv_with_cost_model():
 
     def mock_run(**kwargs):
         param1 = kwargs.get("param1", 0)
-        return Mock(capex=10.0 + param1 * 0.05, opex=2.0 + param1 * 0.01)
+        return Mock(
+            capex=(10.0 + param1 * 0.05) / 1e6, opex=(2.0 + param1 * 0.01) / 1e6
+        )
 
     mock_cost_model.run.side_effect = mock_run
 
@@ -154,6 +156,6 @@ def test_npv_grad_with_cost_model():
     assert np.allclose(prod_grad["wind"], jnp.array([50.0]))
     assert np.allclose(prod_grad["solar"], jnp.array([50.0]))
     # due to mocking, the cost model gradient should be zero
-    assert np.allclose(cm_grad["wind"]["param1"], jnp.array([-0.06]))
+    assert np.allclose(cm_grad["wind"]["param1"], jnp.array([-0.06 * 1e6]))
     # Verify the cost model was called with the correct arguments
     mock_cost_model.run.assert_called_once()

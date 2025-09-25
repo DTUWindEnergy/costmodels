@@ -81,8 +81,11 @@ class Project:
         cost_model_args: dict = {},
         finance_args: dict = {},
         return_aux: bool = False,
-    ) -> float:
+    ) -> float:  # TODO: return variable is wrong !!!
         """Return project Net Present Value for the given parameters."""
+
+        # TODO: should make sure all inputss are jax arrays and float; no ints or lists
+
         npv, aux = self._compiled_npv_value_and_gradients(
             productions, cost_model_args, finance_args
         )[0]
