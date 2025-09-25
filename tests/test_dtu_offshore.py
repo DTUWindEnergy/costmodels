@@ -137,6 +137,110 @@ def test_dtu_offshore_gradients():
     assert grad != 0, "Gradient should not be zero for non-trivial input."
 
 
+import numpy as np
+
+from costmodels.finance import Product, Technology
+from costmodels.models import DTUOffshoreCostModel
+from costmodels.project import Project
+
+
+def test_integration_of_project_with_dtu_offshore_cost_model():
+    n_wt = 30
+    LIFETIME = 25  # years
+    el_price = 50  # fixed ppa price Euro per MWh
+    aep_ref = 1e3  # GWh
+    RP_MW = 2.0  # MW
+    CF_ref = aep_ref * 1e3 / (RP_MW * 24 * 365 * n_wt)
+
+    # test with capacity factor not available!
+    cost_model = DTUOffshoreCostModel(
+        rated_power=RP_MW,
+        rotor_speed=10.0,
+        rotor_diameter=120.0,
+        hub_height=120.0,
+        lifetime=LIFETIME,
+        # capacity_factor=CF_ref,
+        nwt=n_wt,
+        profit=0,
+    )
+
+    wind_plant = Technology(
+        name="wind",
+        lifetime=LIFETIME,
+        product=Product.SPOT_ELECTRICITY,
+        opex=12600 * n_wt * RP_MW + 1.35 * aep_ref * 1000,  # Euro
+        wacc=0.06,
+        cost_model=cost_model,
+    )
+
+    project = Project(
+        technologies=[wind_plant],
+        product_prices={Product.SPOT_ELECTRICITY: el_price},
+    )
+
+    def economic_func(aep, water_depth, cabling_cost, **kwargs):
+        aep_over_lifetime = aep * np.ones(LIFETIME) * 10**3
+        npv, aux = project.npv(
+            productions={wind_plant.name: aep_over_lifetime},
+            cost_model_args={
+                wind_plant.name: {"water_depth": water_depth, "aep": aep_over_lifetime}
+            },
+            finance_args={"shared_capex": cabling_cost},
+            return_aux=True,
+        )
+        return npv, {
+            "LCOE": aux["LCOE"][0],
+            "IRR": aux["IRR"],
+            "CAPEX": aux["CAPEX"],
+            "OPEX": np.mean(aux["OPEX"]),
+        }
+
+    economic_func(1e3, 10.0, 10.0)
+
+    # test with capacity factor and no AEP passed to the cost model
+    cost_model = DTUOffshoreCostModel(
+        rated_power=RP_MW,
+        rotor_speed=10.0,
+        rotor_diameter=120.0,
+        hub_height=120.0,
+        lifetime=LIFETIME,
+        capacity_factor=CF_ref,
+        nwt=n_wt,
+        profit=0,
+    )
+
+    wind_plant = Technology(
+        name="wind",
+        lifetime=LIFETIME,
+        product=Product.SPOT_ELECTRICITY,
+        opex=12600 * n_wt * RP_MW + 1.35 * aep_ref * 1000,  # Euro
+        wacc=0.06,
+        cost_model=cost_model,
+    )
+
+    project = Project(
+        technologies=[wind_plant],
+        product_prices={Product.SPOT_ELECTRICITY: el_price},
+    )
+
+    def economic_func(aep, water_depth, cabling_cost, **kwargs):
+        aep_over_lifetime = aep * np.ones(LIFETIME) * 10**3
+        npv, aux = project.npv(
+            productions={wind_plant.name: aep_over_lifetime},
+            cost_model_args={wind_plant.name: {"water_depth": water_depth}},
+            finance_args={"shared_capex": cabling_cost},
+            return_aux=True,
+        )
+        return npv, {
+            "LCOE": aux["LCOE"][0],
+            "IRR": aux["IRR"],
+            "CAPEX": aux["CAPEX"],
+            "OPEX": np.mean(aux["OPEX"]),
+        }
+
+    economic_func(1e3, 10.0, 10.0)
+
+
 # THE TESTS BELOW ARE FOR THE EXCEL IMPLEMENTATION
 # BUT THE WINDOWS DOCKER IMAGE DOES NOT SUPPORT OPENNING
 # EXCEL SHEET IN THERE !!! UNCOMMENT FOR LOCAL TESTING
