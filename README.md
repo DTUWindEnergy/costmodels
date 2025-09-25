@@ -2,7 +2,7 @@
 
 CostModels provides a small collection of cost models built using JAX and can provide gradients of finantial metrics with respect to arbitrary design variables. The package is under active development and the API may change without notice.
 
-Available models can be found in `src/costmodels/models` directory. And `examples` folder contains some commong use cases of the package.
+Available models can be found in `src/costmodels/models` directory. And `examples` folder contains some common use cases of the package.
 
 ## Install
 

@@ -44,8 +44,10 @@ class Project:
         techs = []
         for t in self.technologies:
             updated_t = t
-            if t.cost_model and t.name in cost_model_args:
-                cost_output = t.cost_model.run(**cost_model_args[t.name])
+            if t.cost_model and (
+                t.name in cost_model_args or t.capex is None or t.opex is None
+            ):
+                cost_output = t.cost_model.run(**cost_model_args.get(t.name, {}))
                 if t.capex is None:
                     updated_t = replace(updated_t, capex=cost_output.capex * 1e6)
                 if t.opex is None:

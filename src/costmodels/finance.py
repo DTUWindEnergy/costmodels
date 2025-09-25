@@ -409,7 +409,7 @@ class Product(Enum):
 class Technology:
     name: str
     lifetime: int
-    production: list | None = None
+    production: list | float = 0.0
     cost_model: CostModel | None = None
     capex: float | None = None
     opex: float | None = None
