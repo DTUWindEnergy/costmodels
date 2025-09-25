@@ -61,8 +61,6 @@ def test_npv_with_cost_model():
 
     tech1 = Technology(
         name="wind",
-        capex=10.0,
-        opex=1.0,
         lifetime=1,
         t0=0,
         wacc=0.0,
@@ -118,8 +116,6 @@ def test_npv_grad_with_cost_model():
 
     tech1 = Technology(
         name="wind",
-        capex=10.0,
-        opex=1.0,
         lifetime=1,
         t0=0,
         wacc=0.0,

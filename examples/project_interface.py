@@ -5,6 +5,8 @@ from costmodels._interface import CostModel, CostOutput, cost_input_dataclass
 from costmodels.finance import Product, Technology
 from costmodels.project import Project
 
+np.random.seed(0)
+
 
 @cost_input_dataclass
 class DummyInputs:
@@ -28,6 +30,8 @@ tech = Technology(
     lifetime=LIFETIME,
     product=Product.SPOT_ELECTRICITY,
     cost_model=DummyCM(),
+    opex=1.0,  # note here if opex is set, it won't be overridden by the cost model call
+    capex=None,  # same with capex, if None, it will be set by the cost model
 )
 
 proj = Project(

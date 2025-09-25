@@ -46,8 +46,8 @@ def cost_input_dataclass(cls):
 
 @dataclass
 class CostOutput:
-    capex: float | jnp.floating
-    opex: float | jnp.floating
+    capex: float | jnp.floating  # MEUR
+    opex: float | jnp.floating  # MEUR/year
 
     def __post_init__(self):
         self.capex = jnp.asarray(self.capex).squeeze()
