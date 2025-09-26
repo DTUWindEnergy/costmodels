@@ -3,7 +3,7 @@ authors = [{ name = "ernie", email = "ernim@dtu.dk" }]
 description = "Add a short description here"
 name = "costmodels"
 requires-python = ">=3.9,<3.13"
-version = "0.1.0"
+dynamic = ["version"]
 dependencies = [
     "numpy",
     "scipy>=1.10.1,<2",
@@ -23,7 +23,16 @@ test = [
 
 [build-system]
 build-backend = "hatchling.build"
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/costmodels/_version.py"
+
+[tool.hatch.version.raw-options]
+version_scheme = "no-guess-dev"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -44,16 +53,20 @@ python = ">=3.9,<3.13"
 pip = ">=25.0.1,<26"
 
 [tool.pixi.feature.test.tasks]
-pytest = "pytest --cov-report=term-missing:skip-covered --cov-report=html --cov=src/costmodels"
+pytest-cov = "pytest --cov-report=term-missing:skip-covered --cov-report=html --cov=src/costmodels"
 
 [tool.pixi.feature.examples.dependencies]
 py-wake = ">=2.6.10,<3"
 topfarm = ">=2.5.1,<3"
 
+[tool.pixi.feature.build.dependencies]
+hatch = "*"
+
 [tool.pixi.environments]
 test = { features = ["test"] }
 examples = { features = ["examples"] }
 default = { features = ["test", "examples"] }
+build = { features = ["build"], no-default-feature = true }
 
 [tool.mypy]
 files = "src/costmodels"

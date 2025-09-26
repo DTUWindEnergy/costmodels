@@ -30,7 +30,7 @@ class Currency(Enum):
 
 
 @cost_input_dataclass
-class DTUOffshoreCostInput(CostInput):
+class DTUOffshoreCostInput:
     lifetime: float  # years
     rated_power: float  # MW
     rotor_speed: float  # rpm
