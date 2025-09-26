@@ -1,3 +1,9 @@
+.dev_ci_rules: &dev_ci_rules
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - when: never
+
 formatting:
   image: ghcr.io/prefix-dev/pixi:latest
   stage: test
@@ -6,6 +12,7 @@ formatting:
     - pixi run -e test pre-commit run --all-files
   tags:
     - linux
+  <<: *dev_ci_rules
 
 test_linux:
   image: ghcr.io/prefix-dev/pixi:latest
@@ -22,6 +29,7 @@ test_linux:
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
   tags:
     - linux
+  <<: *dev_ci_rules
 
 test_windows:
   image: registry.windenergy.dtu.dk/dockerimages/windows-pixi:ltsc2019
@@ -33,6 +41,7 @@ test_windows:
     - pixi run -e test pytest
   tags:
     - docker-windows
+  <<: *dev_ci_rules
 
 test_pip_install:
   image: ghcr.io/prefix-dev/pixi:latest
@@ -47,6 +56,7 @@ test_pip_install:
     - pixi run python -c "import costmodels"
   tags:
     - linux
+  <<: *dev_ci_rules
 
 pypi_linux:
   image: ghcr.io/prefix-dev/pixi:latest
