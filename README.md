@@ -6,6 +6,17 @@ Available models can be found in `src/costmodels/models` directory. And `example
 
 ## Install
 
+- Stable PyPi
+```bash
+pip install costmodels
+```
+
+- Source
+```bash
+pip install -e .
+```
+
+- Development
 ```bash
 pip install -e .[test]
 ```
