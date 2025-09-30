@@ -125,7 +125,6 @@ class MinimalisticCostModel(CostModel):
         rho = inputs.rho
         Uin = inputs.Uin
         Uout = inputs.Uout
-        YO = inputs.lifetime
         z0 = inputs.z0
         kappa = inputs.kappa
         f = inputs.f
@@ -221,7 +220,7 @@ class MinimalisticCostModel(CostModel):
         Cfm = Nturb * Pg * (depth**2 + 100 * depth + 1500) / 7500  # In €
         Cfj = Nturb * Pg * (4.5 * depth**2 - 35 * depth + 2500) / 7500  # In €
         Css = jnp.where(depth > 35, Cfj, Cfm)
-        CAPEX = (Cturbines + Css + Ccables) / (0.81 - 0.06 * L / Lref)  # In €
+        capex = (Cturbines + Css + Ccables) / (0.81 - 0.06 * L / Lref)  # In €
         Pg_ref = 10**7
         F_om = jnp.select(
             [
@@ -238,7 +237,7 @@ class MinimalisticCostModel(CostModel):
             ],
         )
 
-        OPEX = (
+        opex = (
             Nturb
             * Pg
             * (
@@ -247,8 +246,7 @@ class MinimalisticCostModel(CostModel):
             )
         )  # OPEX €/year
 
-        OPEXtot = OPEX * YO
         aep_Wh = Pg * (365 * 24) * ((Nturb - Nrow) * eta + Nrow * eta0)
         _ = aep_Wh
 
-        return CostOutput(capex=CAPEX / 10**6, opex=OPEXtot / 10**6)
+        return CostOutput(capex=capex / 10**6, opex=opex / 10**6)

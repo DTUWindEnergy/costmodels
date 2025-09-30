@@ -1,5 +1,6 @@
 import dataclasses
 from dataclasses import dataclass
+from typing import Generic, Type, TypeVar
 
 import jax.numpy as jnp
 import numpy as np
@@ -36,15 +37,20 @@ class CostInput:
         dataclasses.dataclass(cls)
 
 
-class CostModel:
-    # subclass must set this to a concrete input class extending CostInput
-    _inputs_cls = CostInput
+CostInputType = TypeVar("CostInputType", bound=CostInput)
+
+
+class CostModel(Generic[CostInputType]):
+    # subclass must set this to a concrete dataclass
+    _inputs_cls: Type[CostInputType]
 
     # Initialize base (static) inputs with a dataclass of inputs
     def __init__(self, **kwargs):
-        if self._inputs_cls is CostInput:
+        if not hasattr(self, "_inputs_cls") or not issubclass(
+            self._inputs_cls, CostInput
+        ):
             raise TypeError(
-                "Cannot instantiate CostModel with abstract CostInput. "
+                "Cannot instantiate CostModel without CostInput. "
                 "Please implement a subclass for cost inputs and assign "
                 "it to _inputs_cls in the CostModel subclass. Example:\n"
                 "class MyCostInput(CostInput):\n"
@@ -56,10 +62,7 @@ class CostModel:
         self.base_inputs_dict = kwargs
 
     # Convenience: mutate only run time variables between calls
-    def run(self, **runtime_overrides) -> "CostOutput":
-        if self._inputs_cls is CostInput:
-            raise TypeError("Cannot run a CostModel with an abstract CostInput.")
-
+    def run(self, **runtime_overrides) -> CostOutput:
         try:
             inputs = self._inputs_cls(**{**self.base_inputs_dict, **runtime_overrides})
         except TypeError as e:
@@ -75,6 +78,6 @@ class CostModel:
         return output
 
     # Subclasses implement their internals here
-    def _run(self, inputs: CostInput) -> "CostOutput":  # pragma: no cover
+    def _run(self, inputs: CostInputType) -> CostOutput:  # pragma: no cover
         _ = inputs
         raise NotImplementedError

@@ -27,7 +27,7 @@ class BatteryCostModel(CostModel):
 
     _inputs_cls = BatteryCostInput
 
-    def _run(self, inputs: BatteryCostInput) -> dict[str, float]:
+    def _run(self, inputs: BatteryCostInput) -> CostOutput:
         # total number of dispatch intervals over the plant lifetime
         lifetime_dispatch_intervals = (
             inputs.plant_lifetime * 365 * 24 * inputs.dispatch_intervals_per_hour

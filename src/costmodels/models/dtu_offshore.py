@@ -4,9 +4,9 @@ from enum import Enum
 import jax
 import jax.numpy as jnp
 
-np = jnp
-
 from ..cmodel import CostInput, CostModel, CostOutput
+
+np = jnp
 
 
 class Foundation(Enum):
@@ -32,8 +32,8 @@ class DTUOffshoreCostInput(CostInput):
     hub_height: float  # m
     nwt: float
     water_depth: float  # m
-    capacity_factor: float = None  # %
-    aep: jnp.ndarray = None  # MWh
+    capacity_factor: float | None = None  # %
+    aep: jnp.ndarray | None = None  # MWh
     foundation_option: Foundation = Foundation.MONOPILE
     profit: float = 0.01  # %
     decline_factor: float = 0.01  # %
@@ -81,20 +81,24 @@ class DTUOffshoreCostModel(CostModel):
 
     # --- Helper Methods (Not Cached) ---
 
-    def convert_currency(self, foundation_cost):
+    def convert_currency(self, foundation_cost, inputs: DTUOffshoreCostInput):
         """
         Convert the foundation cost to the specified currency.
         """
         rates = {
             "DKK": 1,
-            "EURO": 1 / self.eur_to_dkk,
+            "EURO": 1 / inputs.eur_to_dkk,
             "DKK/KW": 1 / 1000,
-            "EURO/KW": 1 / (self.eur_to_dkk * 1000),
+            "EURO/KW": 1 / (inputs.eur_to_dkk * 1000),
         }
-        key = self.currency.value if isinstance(self.currency, Enum) else self.currency
+        key = (
+            inputs.currency.value
+            if isinstance(inputs.currency, Enum)
+            else inputs.currency
+        )
         return foundation_cost * rates.get(key, 1)
 
-    def CalculateFoundationCost(self):
+    def CalculateFoundationCost(self, inputs: DTUOffshoreCostInput):
         """
         Calculate the foundation cost based on the water depth and foundation option,
         and convert it to the specified currency.
@@ -114,33 +118,46 @@ class DTUOffshoreCostModel(CostModel):
         # Calculate the foundation cost based on foundation option and water depth
         costs = {
             Foundation.NONE.value: 0.0,
-            Foundation.MONOPILE.value: monopile_coeff_sq * (self.water_depth**2)
-            + monopile_coeff_lin * self.water_depth
+            Foundation.MONOPILE.value: monopile_coeff_sq * (inputs.water_depth**2)
+            + monopile_coeff_lin * inputs.water_depth
             + monopile_intercept,
-            Foundation.GRAVITY.value: gravity_coeff_sq * (self.water_depth**2)
-            + gravity_coeff_lin * self.water_depth
+            Foundation.GRAVITY.value: gravity_coeff_sq * (inputs.water_depth**2)
+            + gravity_coeff_lin * inputs.water_depth
             + gravity_intercept,
-            Foundation.JACKET.value: jacket_coeff_sq * (self.water_depth**2)
-            + jacket_coeff_lin * self.water_depth
+            Foundation.JACKET.value: jacket_coeff_sq * (inputs.water_depth**2)
+            + jacket_coeff_lin * inputs.water_depth
             + jacket_intercept,
             Foundation.FLOATING_MOCKUP.value: floating_mockup_cost_per_kw_eur
-            * self.eur_to_dkk
+            * inputs.eur_to_dkk
             * 1000,
         }
         # Default to monopile if option not found
         foundation_cost_dkk = costs.get(
-            self.foundation_option.value,
-            monopile_coeff_sq * (self.water_depth**2)
-            + monopile_coeff_lin * self.water_depth
+            inputs.foundation_option.value,
+            monopile_coeff_sq * (inputs.water_depth**2)
+            + monopile_coeff_lin * inputs.water_depth
             + monopile_intercept,
         )
-        return self.convert_currency(foundation_cost_dkk)
+        return self.convert_currency(foundation_cost_dkk, inputs)
 
-    def reformat_input(self, **kwargs):
-        nwt = kwargs["nwt"]
+    # --- Main Calculation Method ---
 
-        for k, v in kwargs.items():
-            vmag = v
+    def _run(self, inputs: DTUOffshoreCostInput) -> CostOutput:
+        # Convert foundation_option to Enum if it's not already
+        if not isinstance(inputs.foundation_option, Foundation):
+            inputs = dataclasses.replace(
+                inputs, foundation_option=Foundation(inputs.foundation_option)
+            )
+
+        # --- Reformat inputs ---
+        nwt = int(inputs.nwt)
+        if nwt == 0:
+            raise ValueError(
+                "Number of turbines (nwt) must be provided for this calculation."
+            )
+
+        input_dict = dataclasses.asdict(inputs)  # type: ignore[call-overload]
+        for k, v in input_dict.items():
             if (
                 k
                 in (
@@ -152,34 +169,21 @@ class DTUOffshoreCostModel(CostModel):
                 )
                 and np.size(v) == 1
             ):
-                setattr(self, k, np.tile(vmag, nwt))
-                continue
-            if k in ("nwt", "lifetime"):
-                setattr(self, k, int(vmag))
-                continue
-            setattr(self, k, vmag)
+                input_dict[k] = np.tile(v, nwt)
 
-    # --- Main Calculation Method ---
-
-    def _run(self, inputs: DTUOffshoreCostInput) -> CostOutput:
-        # Convert foundation_option to Enum if it's not already
-        if not isinstance(inputs.foundation_option, Foundation):
-            inputs = dataclasses.replace(
-                inputs, foundation_option=Foundation(inputs.foundation_option)
-            )
-
-        self.reformat_input(**dataclasses.asdict(inputs))
-        if self.nwt == 0:
-            raise ValueError(
-                "Number of turbines (nwt) must be provided for this calculation."
-            )
+        input_dict["nwt"] = nwt
+        input_dict["lifetime"] = int(inputs.lifetime)
+        inputs = self._inputs_cls(**input_dict)
 
         # --- Base Calculations ---
         rotor_torque_factor = 1.1
         rotor_torque = (
-            rotor_torque_factor * 60 * self.rated_power / (2 * np.pi * self.rotor_speed)
+            rotor_torque_factor
+            * 60
+            * inputs.rated_power
+            / (2 * np.pi * inputs.rotor_speed)
         )
-        rotor_area = np.pi * (self.rotor_diameter / 2) ** 2
+        rotor_area = np.pi * (inputs.rotor_diameter / 2) ** 2
 
         # --- Mass Calculation Parameters ---
         # Coefficients
@@ -262,7 +266,7 @@ class DTUOffshoreCostModel(CostModel):
         tower_secondary_mass_exp = 1.0
 
         # --- Mass Calculations ---
-        rotor_radius = self.rotor_diameter / 2
+        rotor_radius = inputs.rotor_diameter / 2
         total_blade_mass = (
             blade_mass_coeff * (rotor_radius**blade_mass_exp) + blade_mass_intercept
         )
@@ -271,7 +275,7 @@ class DTUOffshoreCostModel(CostModel):
             + hub_structure_mass_intercept
         )
         hub_computer_mass = (
-            hub_computer_mass_coeff * (self.rotor_diameter**hub_computer_mass_exp)
+            hub_computer_mass_coeff * (inputs.rotor_diameter**hub_computer_mass_exp)
             + hub_computer_mass_intercept
         )
         pitch_bearings_mass = (
@@ -283,24 +287,24 @@ class DTUOffshoreCostModel(CostModel):
             + pitch_actuator_mass_intercept
         )
         hub_secondary_equipment_mass = (
-            hub_secondary_mass_coeff * (self.rotor_diameter**hub_secondary_mass_exp)
+            hub_secondary_mass_coeff * (inputs.rotor_diameter**hub_secondary_mass_exp)
             + hub_secondary_mass_intercept
         )
         spinner_mass = (
-            spinner_mass_coeff * (self.rotor_diameter**spinner_mass_exp)
+            spinner_mass_coeff * (inputs.rotor_diameter**spinner_mass_exp)
             + spinner_mass_intercept
         )
         main_shaft_mass = (
-            main_shaft_mass_coeff * (self.rotor_diameter**main_shaft_mass_exp)
+            main_shaft_mass_coeff * (inputs.rotor_diameter**main_shaft_mass_exp)
             + main_shaft_mass_intercept
         )
         main_bearings_mass = (
-            main_bearings_mass_coeff * (self.rotor_diameter**main_bearings_mass_exp)
+            main_bearings_mass_coeff * (inputs.rotor_diameter**main_bearings_mass_exp)
             + main_bearings_mass_intercept
         )
         main_bearing_housing_mass = (
             main_bearing_housing_mass_coeff
-            * (self.rotor_diameter**main_bearing_housing_mass_exp)
+            * (inputs.rotor_diameter**main_bearing_housing_mass_exp)
             + main_bearing_housing_mass_intercept
         )
         gearbox_mass = (
@@ -308,62 +312,63 @@ class DTUOffshoreCostModel(CostModel):
             + gearbox_mass_intercept
         )
         coupling_plus_brake_system_mass = (
-            coupling_brake_mass_coeff * (self.rated_power**coupling_brake_mass_exp)
+            coupling_brake_mass_coeff * (inputs.rated_power**coupling_brake_mass_exp)
             + coupling_brake_mass_intercept
         )
         generator_mass = (
-            generator_mass_coeff * (self.rated_power**generator_mass_exp)
+            generator_mass_coeff * (inputs.rated_power**generator_mass_exp)
             + generator_mass_intercept
         )
         cooling_mass = (
-            cooling_mass_coeff * (self.rated_power**cooling_mass_exp)
+            cooling_mass_coeff * (inputs.rated_power**cooling_mass_exp)
             + cooling_mass_intercept
         )
         power_converter_mass = (
-            power_converter_mass_coeff * (self.rated_power**power_converter_mass_exp)
+            power_converter_mass_coeff * (inputs.rated_power**power_converter_mass_exp)
             + power_converter_mass_intercept
         )
         controller_mass = (
-            controller_mass_coeff * (self.rated_power**controller_mass_exp)
+            controller_mass_coeff * (inputs.rated_power**controller_mass_exp)
             + controller_mass_intercept
         )
         bedplate_mass = (
-            bedplate_mass_coeff * (self.rotor_diameter**bedplate_mass_exp)
+            bedplate_mass_coeff * (inputs.rotor_diameter**bedplate_mass_exp)
             + bedplate_mass_intercept
         )
         yaw_system_mass = (
-            yaw_system_mass_coeff * (self.rotor_diameter**yaw_system_mass_exp)
+            yaw_system_mass_coeff * (inputs.rotor_diameter**yaw_system_mass_exp)
             + yaw_system_mass_intercept
         )
         canopy_mass = (
-            canopy_mass_coeff * (self.rated_power**canopy_mass_exp)
+            canopy_mass_coeff * (inputs.rated_power**canopy_mass_exp)
             + canopy_mass_intercept
         )
         nacell_secondary_equipment_mass = (
             nacelle_secondary_mass_coeff
-            * (self.rated_power**nacelle_secondary_mass_exp)
+            * (inputs.rated_power**nacelle_secondary_mass_exp)
             + nacelle_secondary_mass_intercept
         )
         tower_structure_mass = (
             tower_structure_mass_coeff
-            * (self.hub_height * rotor_area) ** tower_structure_mass_exp
+            * (inputs.hub_height * rotor_area) ** tower_structure_mass_exp
             + tower_structure_mass_intercept
         )
         tower_internals_mass = (
-            tower_internals_mass_coeff * (self.hub_height**tower_internals_mass_exp)
+            tower_internals_mass_coeff * (inputs.hub_height**tower_internals_mass_exp)
             + tower_internals_mass_intercept
         )
         power_cables_mass = (
             power_cables_mass_coeff
-            * ((self.rated_power * self.hub_height) ** power_cables_mass_exp)
+            * ((inputs.rated_power * inputs.hub_height) ** power_cables_mass_exp)
             + power_cables_mass_intercept
         )
         main_transformer_mass = (
-            main_transformer_mass_coeff * (self.rated_power**main_transformer_mass_exp)
+            main_transformer_mass_coeff
+            * (inputs.rated_power**main_transformer_mass_exp)
             + main_transformer_mass_intercept
         )
         tower_secondary_equipment_mass = (
-            tower_secondary_mass_coeff * (self.rated_power**tower_secondary_mass_exp)
+            tower_secondary_mass_coeff * (inputs.rated_power**tower_secondary_mass_exp)
             + tower_secondary_mass_intercept
         )
 
@@ -539,12 +544,12 @@ class DTUOffshoreCostModel(CostModel):
         )
         harbor_storage_assy_cost = (
             harbor_storage_assy_cost_coeff
-            * (self.rated_power**harbor_storage_assy_cost_exp)
+            * (inputs.rated_power**harbor_storage_assy_cost_exp)
             + harbor_storage_assy_cost_intercept
         )
         installation_commiss_cost = (
             installation_commiss_cost_coeff
-            * (self.rated_power**installation_commiss_cost_exp)
+            * (inputs.rated_power**installation_commiss_cost_exp)
             + installation_commiss_cost_intercept
         )
         total_additional_cost = (
@@ -555,7 +560,7 @@ class DTUOffshoreCostModel(CostModel):
             + installation_commiss_cost
         )
         total_cost_calculation = total_additional_cost + total_production_cost
-        profit_calculation = -(1 - 1 / (1 - self.profit)) * total_cost_calculation
+        profit_calculation = -(1 - 1 / (1 - inputs.profit)) * total_cost_calculation
         sales_price_calculation = total_cost_calculation + profit_calculation
 
         # --- CO2 Emission Calculation Parameters ---
@@ -656,26 +661,28 @@ class DTUOffshoreCostModel(CostModel):
         )
 
         # --- Foundation/BOP Cost ---
-        foundation_cost = (
-            self.CalculateFoundationCost()
+        foundation_cost = self.CalculateFoundationCost(
+            inputs
         )  # Per kW based on currency conversion
         # Assuming electrical_cost is MEUR/MW -> EUR/kW
-        electrical_cost_per_kw = self.electrical_cost * 1_000_000 / 1_000
+        electrical_cost_per_kw = inputs.electrical_cost * 1_000_000 / 1_000
         bop_cost = foundation_cost + electrical_cost_per_kw  # Cost per kW
 
         # --- LCOE Calculations ---
-        real_wacc = (1 + self.wacc) / (1 + self.inflation) - 1
-        devex_total = np.sum(self.devex * self.rated_power * 1000)  # Total farm DEVEX
+        real_wacc = (1 + inputs.wacc) / (1 + inputs.inflation) - 1
+        devex_total = np.sum(
+            inputs.devex * inputs.rated_power * 1000
+        )  # Total farm DEVEX
         capex_turbine_tower_per_kw = sales_price_calculation / (
-            self.rated_power * 1000
+            inputs.rated_power * 1000
         )  # Cost per kW
         capex_bop_per_kw = bop_cost  # Already per kW
         capex_wt_total = (
-            (capex_bop_per_kw + capex_turbine_tower_per_kw) * self.rated_power * 1000
+            (capex_bop_per_kw + capex_turbine_tower_per_kw) * inputs.rated_power * 1000
         )  # Total cost per WT
         capex_total_net = np.sum(capex_wt_total)  # Total farm CAPEX (Net)
         opex_total_annual = np.sum(
-            self.opex * self.rated_power * 1000
+            inputs.opex * inputs.rated_power * 1000
         )  # Total annual OPEX for farm
         # abex_total = np.sum(self.abex * self.rated_power * 1000) # Not used in LCOE as abexDiscount is 0
 
@@ -689,20 +696,21 @@ class DTUOffshoreCostModel(CostModel):
                 rated_power: scalar (MW)
                 nwt: number of wind turbines
             """
-            # Boolean flags
-            has_aep = ~jnp.isnan(aep).any()
-            has_cf = ~jnp.isnan(capacity_factor).any()
+            has_aep = aep is not None
 
-            # If neither provided → return NaN (instead of raising error)
-            def invalid_case(_):
-                return jnp.nan
+            # This is the operand for the main cond.
+            # If aep is None, we provide a dummy value for the true_fn to be traceable.
+            aep_for_cond = aep if has_aep else jnp.array(0.0, dtype=jnp.float64)
 
-            # Case: use AEP directly
-            def use_aep(_):
-                return jnp.sum(aep)
+            def use_aep_f(op_aep):
+                return jnp.sum(op_aep)
 
-            # Case: compute from capacity factor
-            def use_cf(_):
+            def use_cf_f(op_aep):
+                if capacity_factor is None:
+                    # This should be unreachable in the taken branch,
+                    # but needs to be traceable.
+                    return jnp.nan
+
                 cf = jnp.where(
                     jnp.size(capacity_factor) == nwt,
                     capacity_factor,
@@ -710,51 +718,32 @@ class DTUOffshoreCostModel(CostModel):
                 )
                 return jnp.sum(cf * rated_power * (365 * 24))
 
-            # Select between branches
-            return jax.lax.cond(
-                has_aep,
-                use_aep,
-                lambda _: jax.lax.cond(
-                    has_cf,
-                    use_cf,
-                    invalid_case,
-                    operand=None,
-                ),
-                operand=None,
-            )
-
-        if self.aep is None:
-            self.aep = np.full(self.nwt, np.nan)
-        if self.capacity_factor is None:
-            self.capacity_factor = np.nan
+            return jax.lax.cond(has_aep, use_aep_f, use_cf_f, aep_for_cond)
 
         aep_wind_farm_annual = _compute_aep(
-            jnp.array(self.aep),
-            jnp.array(self.capacity_factor),
-            self.rated_power,
-            self.nwt,
+            inputs.aep,
+            inputs.capacity_factor,
+            inputs.rated_power,
+            nwt,
         )
 
         # Discount Factors
-        discount_factor_wacc_r = [
-            1 / (1 + real_wacc) ** year for year in range(-2, self.lifetime)
-        ]
         discount_factor_wacc_n = [
-            1 / (1 + self.wacc) ** year for year in range(-2, self.lifetime)
+            1 / (1 + inputs.wacc) ** year for year in range(-2, int(inputs.lifetime))
         ]
 
         # Net and Discounted AEP
         aep_net_list = jnp.array(
             [
-                aep_wind_farm_annual * ((1 + self.decline_factor) ** year)
-                for year in range(self.lifetime)
+                aep_wind_farm_annual * ((1 + inputs.decline_factor) ** year)
+                for year in range(int(inputs.lifetime))
             ]
         )
         aep_net_total = np.sum(aep_net_list)  # Total net AEP over lifetime
         # Discount AEP relative to year 0 (start of operation)
         aep_discount_list = [
             aep_net_list[year] * (1 / (1 + real_wacc) ** year)
-            for year in range(self.lifetime)
+            for year in range(int(inputs.lifetime))
         ]
         aep_discount_total = np.sum(
             jnp.array(aep_discount_list)
@@ -776,9 +765,9 @@ class DTUOffshoreCostModel(CostModel):
         capex_discount = capex_net * discount_factor_wacc_n[capex_base_year_index]
 
         # Net and Discounted OPEX
-        opex_years = range(self.lifetime)  # Years 0 to lifetime-1
+        opex_years = range(int(inputs.lifetime))  # Years 0 to lifetime-1
         opex_net_list = [
-            opex_total_annual * ((1 + self.inflation) ** year) for year in opex_years
+            opex_total_annual * ((1 + inputs.inflation) ** year) for year in opex_years
         ]
         opex_net = np.sum(jnp.array(opex_net_list))
         opex_base_year_index = 2  # Year 0 index in discount_factor_wacc_n
@@ -788,11 +777,8 @@ class DTUOffshoreCostModel(CostModel):
         ]
         opex_discount = np.sum(jnp.array(opex_discount_list))
 
-        # Net and Discounted ABEX (currently zero based on original logic)
-        abex_net = 0.0
-        abex_discount = 0.0
-
         # LCOE Calculation
+        abex_discount = 0.0
         lcoe_numerator = devex_discount + capex_discount + opex_discount + abex_discount
         lcoe_denominator = aep_discount_total  # Use total discounted AEP
 
@@ -807,8 +793,8 @@ class DTUOffshoreCostModel(CostModel):
         all_outputs = {
             "production_net": aep_net_total,
             "production_discount": aep_discount_total,
-            "aep_net": aep_net_total / self.lifetime,
-            "aep_discount": aep_discount_total / self.lifetime,
+            "aep_net": aep_net_total / inputs.lifetime,
+            "aep_discount": aep_discount_total / inputs.lifetime,
             "devex_net": devex_net / 1e6,
             "devex_discount": devex_discount / 1e6,
             "capex_discount": capex_discount / 1e6,
@@ -817,7 +803,7 @@ class DTUOffshoreCostModel(CostModel):
             "cost_per_wt": total_cost_calculation / 1e6,
             "lcoe": lcoe,
             "capex": capex_net / 1e6,
-            "opex": opex_net / 1e6 / self.lifetime,
+            "opex": opex_net / 1e6 / inputs.lifetime,
         }
 
         capex_value = all_outputs.pop("capex")

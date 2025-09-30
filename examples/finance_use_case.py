@@ -79,6 +79,7 @@ if __name__ == "__main__":
     tax_rate = 0.22
     DEVEX = 0
 
+    @jax.jit
     def objective(x0, x1):
         wind_cmo = cm_wind.run(**x0)
         solar_cmo = cm_solar.run(**x1)

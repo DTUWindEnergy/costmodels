@@ -6,8 +6,10 @@ energy (LCO).  Most of the computations rely on JAX in order to allow
 differentiable and vectorized execution where possible.
 """
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 import jax
 import jax.numpy as jnp
@@ -313,7 +315,7 @@ def _annual_costs(technologies, ny):
 
         consumption = t.consumption
         if jnp.size(consumption) > lifetime:
-            c = jnp.sum(jnp.split(consumption, lifetime), axis=1)
+            c = jnp.sum(jnp.asarray(jnp.split(consumption, lifetime)), axis=1)
         elif jnp.size(consumption) == lifetime:
             c = consumption
         else:
@@ -409,16 +411,16 @@ class Product(Enum):
 class Technology:
     name: str
     lifetime: int
-    production: list | float = 0.0
+    production: jnp.ndarray | list | float = 0.0
     cost_model: CostModel | None = None
-    capex: float | None = None
-    opex: float | None = None
+    capex: jnp.ndarray | None = None
+    opex: jnp.ndarray | None = None
     t0: int = 0
     wacc: float = 0.0
-    phasing_yr: tuple = (0,)
-    phasing_capex: tuple = (1.0,)
+    phasing_yr: Iterable = (0,)
+    phasing_capex: Iterable = (1.0,)
     product: Product = Product.SPOT_ELECTRICITY
-    non_revenue_production: list | float = 0
+    non_revenue_production: jnp.ndarray | list | float = 0
     penalty: list | float = 0
     consumption: list | float = 0
 
@@ -434,21 +436,21 @@ class Technology:
 
 @dataclass
 class Inflation:
-    rate: tuple | float = 0.0
-    year: tuple | None = None
+    rate: Iterable | float = 0.0
+    year: Iterable | None = None
     year_ref: int = 0
 
 
 @dataclass
 class Depreciation:
-    year: tuple = (0,)
-    rate: tuple = (0.0,)
+    year: Iterable = (0,)
+    rate: Iterable = (0.0,)
 
 
 @dataclass
 class LCO:
     name: str
-    costs: tuple[str]
+    costs: tuple[str, ...]
     accounts_for_shared: bool = True
 
 
@@ -495,8 +497,11 @@ def finances(
     """
     if isinstance(inflation, (float, int)):
         inflation = Inflation(rate=(inflation, inflation), year=(0, 1))
-    techs = [k.name for k in technologies]
-    lcos = lcos or [LCO(name="LCOE", costs=techs, accounts_for_shared=True)]
+
+    if lcos is None:
+        tech_names = tuple(k.name for k in technologies)
+        lcos = (LCO(name="LCOE", costs=tech_names, accounts_for_shared=True),)
+
     t0s = [v.t0 for v in technologies]
     lifetimes = [v.lifetime for v in technologies]
     global_t0 = min(t0s)
@@ -506,10 +511,10 @@ def finances(
     iy = jnp.arange(ny) + 1
     phasing_yr = jnp.arange(global_t1 - global_t_neg) + global_t_neg
 
-    lcos_res = {
+    lcos_res: dict[str, Any] = {
         "product_specific": {}
     }  # for each product calculate the levelized costs
-    for _, lco in enumerate(lcos):
+    for lco in lcos:
         technologies_i = [t for t in technologies if t.name in lco.costs]
         shared_capex_i = shared_capex if lco.accounts_for_shared else 0
         res = _product_specific_finance(

@@ -13,9 +13,9 @@ from costmodels.cmodel import CostInput, CostModel, CostOutput
 
 
 class CustomCostInput(CostInput):
+    design_variable: float
     a: float = 2.0
     b: float = 2.0
-    design_variable: float = jnp.nan
 
 
 class CustomCostModel(CostModel):
@@ -42,7 +42,8 @@ class CustomCostModel(CostModel):
 if __name__ == "__main__":
     cm = CustomCostModel(a=3.0)
 
-    def objective(dv: float) -> float:
+    @jax.jit
+    def objective(dv: float) -> jnp.ndarray:
         out = cm.run(design_variable=dv)
         return (out.opex + out.capex) ** 2
 

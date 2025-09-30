@@ -19,6 +19,7 @@ test = [
     "pandas>=2.2.3,<3",
     "openmdao>=3.36.0,<4",
     "psutil>=7.0.0,<8",
+    "mypy>=1.18.2,<2",
 ]
 
 [build-system]

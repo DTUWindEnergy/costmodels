@@ -61,8 +61,9 @@ def test_model_does_not_run_with_required_value_missing():
 def test_array_input_with_shape_one():
     cm = ExampleCostModel(a=2.1, b=3.3, flag=True, dv=jnp.array([1.0]))
     out = cm.run()
+
     # should always be scalar values
-    assert jnp.isscalar(out.capex) and jnp.isscalar(out.opex)
+    assert out.capex.size == 1 and out.opex.size == 1
 
     # value and grad should work with array inputs
     val, grad = jax.value_and_grad(lambda x: cm.run(dv=x).capex)(jnp.array([1.0]))
@@ -130,3 +131,28 @@ def test_enum_field_default_used_without_overrides():
     )(1.0)
     assert jnp.allclose(val_blue, 2.0)
     assert jnp.allclose(grad_blue, 2.0)
+
+
+def test_costmodel_requires_cost_inputs_cls():
+    with pytest.raises(TypeError):
+
+        class BrokenCostModel(CostModel):
+            pass
+
+        BrokenCostModel()
+
+    with pytest.raises(TypeError):
+
+        class NotCostInput:
+            pass
+
+        class AnotherBrokenCostModel(CostModel):
+            _inputs_cls = NotCostInput
+
+        AnotherBrokenCostModel()
+
+    # should work if _inputs_cls is a subclass of CostInput
+    class WorkingCostModel(CostModel):
+        _inputs_cls = ExampleCostModelInputs
+
+    WorkingCostModel()

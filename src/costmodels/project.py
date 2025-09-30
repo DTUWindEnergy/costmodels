@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field, replace
+from typing import Any, Tuple
 
 import jax
 import jax.numpy as jnp
@@ -40,7 +41,7 @@ class Project:
 
     def _npv(
         self, productions: dict, cost_model_args: dict, finance_args: dict
-    ) -> float:
+    ) -> Tuple[jnp.ndarray, dict[str, Any]]:
         techs = []
         for t in self.technologies:
             updated_t = t
@@ -49,9 +50,13 @@ class Project:
             ):
                 cost_output = t.cost_model.run(**cost_model_args.get(t.name, {}))
                 if t.capex is None:
-                    updated_t = replace(updated_t, capex=cost_output.capex * 1e6)
+                    updated_t = replace(
+                        updated_t, capex=jnp.array(cost_output.capex * 1e6)
+                    )
                 if t.opex is None:
-                    updated_t = replace(updated_t, opex=cost_output.opex * 1e6)
+                    updated_t = replace(
+                        updated_t, opex=jnp.array(cost_output.opex * 1e6)
+                    )
             if t.name in productions:
                 updated_t = replace(updated_t, production=productions[t.name])
             techs.append(updated_t)
@@ -75,8 +80,7 @@ class Project:
             **finance_inputs,
         )
 
-        npv = project_finance.pop(FINANCE_OUT_NPV_KEY)
-        return npv, project_finance
+        return project_finance.pop(FINANCE_OUT_NPV_KEY), project_finance
 
     def npv(
         self,
