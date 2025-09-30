@@ -9,11 +9,10 @@ from __future__ import annotations
 import jax
 import jax.numpy as jnp
 
-from costmodels.cmodel import CostModel, CostOutput, cost_input_dataclass
+from costmodels.cmodel import CostInput, CostModel, CostOutput
 
 
-@cost_input_dataclass
-class CustomCostInput:
+class CustomCostInput(CostInput):
     a: float = 2.0
     b: float = 2.0
     design_variable: float = jnp.nan

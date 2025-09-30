@@ -1,6 +1,6 @@
 from enum import Enum
 
-from ..cmodel import CostModel, CostOutput, cost_input_dataclass
+from ..cmodel import CostInput, CostModel, CostOutput
 
 
 class NRELTurbineClass(Enum):
@@ -9,8 +9,7 @@ class NRELTurbineClass(Enum):
     CLASS_II = 2
 
 
-@cost_input_dataclass
-class NRELCostInput:
+class NRELCostInput(CostInput):
     nwt: float
     machine_rating: float
     rotor_diameter: float

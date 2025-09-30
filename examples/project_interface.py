@@ -1,15 +1,14 @@
 import jax.numpy as jnp
 import numpy as np
 
-from costmodels.cmodel import CostModel, CostOutput, cost_input_dataclass
+from costmodels.cmodel import CostInput, CostModel, CostOutput
 from costmodels.finance import Product, Technology
 from costmodels.project import Project
 
 np.random.seed(0)
 
 
-@cost_input_dataclass
-class DummyInputs:
+class DummyInputs(CostInput):
     design_variable0: float
     design_variable1: float = jnp.array([1.0])
 

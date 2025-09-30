@@ -2,7 +2,7 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from costmodels.cmodel import CostModel, CostOutput, cost_input_dataclass
+from costmodels.cmodel import CostInput, CostModel, CostOutput
 from costmodels.finance import (
     Depreciation,
     Inflation,
@@ -12,8 +12,7 @@ from costmodels.finance import (
 )
 
 
-@cost_input_dataclass
-class DummyInputs:
+class DummyInputs(CostInput):
     a: float = 2.0
     b: float = 3.0
     dv: float = jnp.nan

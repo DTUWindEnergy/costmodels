@@ -1,8 +1,7 @@
-from ..cmodel import CostModel, CostOutput, cost_input_dataclass
+from ..cmodel import CostInput, CostModel, CostOutput
 
 
-@cost_input_dataclass
-class SharedCostInput:
+class SharedCostInput(CostInput):
     area: float  # km*km
     grid_capacity: float  # MW
     hpp_BOS_soft_cost: float = 119_940.0  # EUR/MW

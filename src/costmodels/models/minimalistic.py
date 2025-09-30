@@ -2,11 +2,10 @@ import jax.numpy as jnp
 from jax import lax
 from jax.scipy.special import gamma, gammainc
 
-from ..cmodel import CostModel, CostOutput, cost_input_dataclass
+from ..cmodel import CostInput, CostModel, CostOutput
 
 
-@cost_input_dataclass
-class MinimalisticCostInput:
+class MinimalisticCostInput(CostInput):
     Pg: float = 7.0 * 10**6
     Nturb: float = 37.0
     Area: float = 65 * 10**6

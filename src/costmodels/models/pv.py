@@ -1,8 +1,7 @@
-from ..cmodel import CostModel, CostOutput, cost_input_dataclass
+from ..cmodel import CostInput, CostModel, CostOutput
 
 
-@cost_input_dataclass
-class PVCostInput:
+class PVCostInput(CostInput):
     """Input parameters for :class:`PVCostModel`."""
 
     solar_capacity: float  # MW

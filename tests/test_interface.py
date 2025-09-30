@@ -5,11 +5,10 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from costmodels.cmodel import CostModel, CostOutput, cost_input_dataclass
+from costmodels.cmodel import CostInput, CostModel, CostOutput
 
 
-@cost_input_dataclass
-class ExampleCostModelInputs:
+class ExampleCostModelInputs(CostInput):
     dv: float
     a: float = 2.1
     b: int = 2
@@ -71,8 +70,7 @@ def test_array_input_with_shape_one():
     assert jnp.isfinite(grad)
 
 
-@cost_input_dataclass
-class ArrayInputs:
+class ArrayInputs(CostInput):
     arr: jnp.ndarray = jnp.array([1.0, 2.0])
 
 
@@ -99,8 +97,7 @@ class DummyEnum(Enum):
     BLUE = 2
 
 
-@cost_input_dataclass
-class EnumModelInputs:
+class EnumModelInputs(CostInput):
     value: float = 1.0
     color: DummyEnum = DummyEnum.RED
 

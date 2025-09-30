@@ -1,8 +1,7 @@
-from ..cmodel import CostModel, CostOutput, cost_input_dataclass
+from ..cmodel import CostInput, CostModel, CostOutput
 
 
-@cost_input_dataclass
-class PowerToHydrogenCostInput:
+class PowerToHydrogenCostInput(CostInput):
     """Input parameters for :class:`PowerToHydrogenCostModel`.
 
     All values are numeric and unitless. Costs are expressed in EUR.

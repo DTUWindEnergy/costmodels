@@ -1,77 +1,65 @@
 import dataclasses
 from dataclasses import dataclass
-from typing import Any, Dict
 
 import jax.numpy as jnp
 import numpy as np
 
 
-def cost_input_dataclass(cls):
-    # Collect fields and their types
-    annotations = getattr(cls, "__annotations__", {})
-    new_fields = []
-    for name, annot_type in annotations.items():
-        # Check if the field already has a default value
-        value = getattr(cls, name, dataclasses.MISSING)
-
-        if value is not dataclasses.MISSING and isinstance(
-            value, (jnp.ndarray, np.ndarray, list)
-        ):
-            field = dataclasses.field(default_factory=lambda v=value: jnp.array(v))
-            new_fields.append((name, annot_type, field))
-            continue
-
-        if value is not dataclasses.MISSING:
-            new_fields.append((name, annot_type, dataclasses.field(default=value)))
-            continue
-
-        new_fields.append(
-            (name, annot_type, dataclasses.field(default=dataclasses.MISSING))
-        )
-
-    # Create a new dataclass with updated defaults
-    new_cls = dataclasses.make_dataclass(
-        cls.__name__,
-        new_fields,
-        bases=cls.__bases__,
-        namespace=dict(cls.__dict__),
-    )
-    return new_cls
-
-
 @dataclass
 class CostOutput:
-    capex: float | jnp.floating  # MEUR
-    opex: float | jnp.floating  # MEUR/year
+    """Standard output from a cost model. Usually the values should be floats
+    converting them to jnp.arrays size 1 array, for consistency for autograd engine."""
+
+    capex: float | jnp.floating | jnp.ndarray  # MEUR
+    opex: float | jnp.floating | jnp.ndarray  # MEUR/year
 
     def __post_init__(self):
-        self.capex = jnp.asarray(self.capex).squeeze()
-        self.opex = jnp.asarray(self.opex).squeeze()
+        self.capex = jnp.asarray([self.capex]).squeeze()
+        self.opex = jnp.asarray([self.opex]).squeeze()
 
 
-@cost_input_dataclass
 class CostInput:
     """Base class for cost model inputs."""
 
-    def __init__(self, **_):  # pragma: no cover
-        raise NotImplementedError(
-            f"{self.__class__.__name__} is an abstract base class. "
-            "Please implement a concrete subclass with specific fields."
-        )
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        annotations = getattr(cls, "__annotations__", {})
+        for name in annotations:
+            if hasattr(cls, name):
+                value = getattr(cls, name)
+                if isinstance(value, (np.ndarray, jnp.ndarray, list)):
+                    setattr(
+                        cls,
+                        name,
+                        dataclasses.field(default_factory=lambda v=value: jnp.array(v)),
+                    )
+        dataclasses.dataclass(cls)
 
 
 class CostModel:
-    # subclass must set this to a concrete dataclass
+    # subclass must set this to a concrete input class extending CostInput
     _inputs_cls = CostInput
 
     # Initialize base (static) inputs with a dataclass of inputs
     def __init__(self, **kwargs):
-        if not hasattr(self._inputs_cls, "__dataclass_fields__"):
-            raise TypeError(f"{self._inputs_cls} must be a dataclass")
+        if self._inputs_cls is CostInput:
+            raise TypeError(
+                "Cannot instantiate CostModel with abstract CostInput. "
+                "Please implement a subclass for cost inputs and assign "
+                "it to _inputs_cls in the CostModel subclass. Example:\n"
+                "class MyCostInput(CostInput):\n"
+                "    param1: float\n"
+                "    param2: float = 10.0\n\n"
+                "class MyCostModel(CostModel):\n"
+                "    _inputs_cls = MyCostInput\n"
+            )
         self.base_inputs_dict = kwargs
 
     # Convenience: mutate only run time variables between calls
-    def run(self, **runtime_overrides) -> Dict[str, Any]:
+    def run(self, **runtime_overrides) -> "CostOutput":
+        if self._inputs_cls is CostInput:
+            raise TypeError("Cannot run a CostModel with an abstract CostInput.")
+
         try:
             inputs = self._inputs_cls(**{**self.base_inputs_dict, **runtime_overrides})
         except TypeError as e:
@@ -81,12 +69,12 @@ class CostModel:
             ) from e
 
         output = self._run(inputs)
-        if isinstance(output, dict):
-            output = CostOutput(output["capex"], output["opex"])
+        if not isinstance(output, CostOutput):
+            output = CostOutput(capex=output["capex"], opex=output["opex"])
 
         return output
 
     # Subclasses implement their internals here
-    def _run(self, inputs: CostInput) -> Dict[str, Any]:  # pragma: no cover
+    def _run(self, inputs: CostInput) -> "CostOutput":  # pragma: no cover
         _ = inputs
         raise NotImplementedError

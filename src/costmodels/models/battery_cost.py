@@ -1,11 +1,10 @@
 import jax.numpy as jnp
 import numpy as np
 
-from ..cmodel import CostModel, CostOutput, cost_input_dataclass
+from ..cmodel import CostInput, CostModel, CostOutput
 
 
-@cost_input_dataclass
-class BatteryCostInput:
+class BatteryCostInput(CostInput):
     """Input parameters for :class:`BatteryCostModel`. All values are numeric and
     unitless. Costs are expressed in EUR.
     """
