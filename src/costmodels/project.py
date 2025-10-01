@@ -127,6 +127,7 @@ class Project:
         productions: dict = {},
         cost_model_args: dict = {},
         finance_args: dict = {},
+        return_aux: bool = False,
     ) -> tuple:
         """Return NPV value and gradient with respect to
         cost model arguments,productions and finance arguments."""
@@ -135,9 +136,14 @@ class Project:
         cost_model_args = _jaxify_potentially_nested_dict(cost_model_args)
         finance_args = _jaxify_potentially_nested_dict(finance_args)
 
-        return self._compiled_npv_value_and_gradients(
+        (npv, aux), grads = self._compiled_npv_value_and_gradients(
             productions, cost_model_args, finance_args
         )
+
+        if return_aux:
+            return npv, tuple([g for g in grads if g]), aux
+
+        return npv, tuple([g for g in grads if g])
 
 
 def _jaxify_potentially_nested_dict(d):

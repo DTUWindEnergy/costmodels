@@ -154,6 +154,31 @@ def test_npv_grad_with_cost_model(mock_project_and_cm):
     mock_cost_model.run.assert_called_once()
 
 
+def test_npv_grad_and_value_with_cost_model(mock_project_and_cm):
+    proj, mock_cost_model = mock_project_and_cm
+
+    cost_model_args = {"wind": {"param1": 100.0}}
+    productions = {"wind": jnp.array([1.0]), "solar": jnp.array([2.0])}
+
+    npv, (prod_grad, cm_grad) = proj.npv_value_and_grad(productions, cost_model_args)
+
+    # Expected NPV calculation
+    expected_npv = 50.0 * (1.0 + 2.0) - (15.0 + 20.0) - (3.0 + 2.0)
+    assert np.isclose(npv, expected_npv)
+    # Verify gradients
+    assert np.allclose(prod_grad["wind"], jnp.array([50.0]))
+    assert np.allclose(prod_grad["solar"], jnp.array([50.0]))
+    # due to mocking, the cost model gradient should be zero
+    assert np.allclose(cm_grad["wind"]["param1"], jnp.array([-0.06]))
+    # Verify the cost model was called with the correct arguments
+    mock_cost_model.run.assert_called_once()
+
+    npv, (prod_grad, cm_grad), __aux = proj.npv_value_and_grad(
+        productions, cost_model_args, return_aux=True
+    )
+    assert "IRR" in __aux
+
+
 @pytest.mark.parametrize(
     "cost_model_class, runtime_args",
     [

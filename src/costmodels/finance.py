@@ -351,12 +351,8 @@ def _compute_lco(
 ):
     """Calculate the levelized cost of output from yearly costs and production."""
 
-    level_costs = (
-        jnp.sum(
-            (annual_operational_cost + annual_consumption_cost)
-            / (1 + discount_rate) ** iy
-        )
-        # + capex_eq
+    level_costs = jnp.sum(
+        (annual_operational_cost + annual_consumption_cost) / (1 + discount_rate) ** iy
     )
     if use_capex_eq_for_lco:
         level_costs += capex_eq
