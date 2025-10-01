@@ -1,10 +1,10 @@
+import abc
 import dataclasses
 from dataclasses import dataclass
 from typing import Generic, Type, TypeVar
 
 import jax.numpy as jnp
 import numpy as np
-from jax.tree_util import register_pytree_node_class
 
 
 @dataclass
@@ -20,9 +20,9 @@ class CostOutput:
         self.opex = jnp.asarray([self.opex]).squeeze()
 
 
-@register_pytree_node_class
-class CostInput:
-    """Base class for cost model inputs."""
+@dataclass
+class CostInput(abc.ABC):
+    """Abstract base class for cost model inputs."""
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
@@ -37,28 +37,6 @@ class CostInput:
                         dataclasses.field(default_factory=lambda v=value: jnp.array(v)),
                     )
         dataclasses.dataclass(cls)
-
-    def tree_flatten(self):
-        d = self.__dict__
-        static_keys = []
-        dynamic_keys = []
-        for f in dataclasses.fields(self):
-            if f.metadata.get("static", False):
-                static_keys.append(f.name)
-            else:
-                dynamic_keys.append(f.name)
-        return ([d[k] for k in dynamic_keys], {k: d[k] for k in static_keys})
-
-    @classmethod
-    def tree_unflatten(cls, static_data, dynamic_data):
-        d = {**static_data}
-        dynamic_keys = []
-        for f in dataclasses.fields(cls):
-            if not f.metadata.get("static", False):
-                dynamic_keys.append(f.name)
-        for k, v in zip(dynamic_keys, dynamic_data):
-            d[k] = v
-        return cls(**d)
 
 
 def static_field(default):
@@ -92,6 +70,14 @@ class CostModel(Generic[CostInputType]):
 
     # Convenience: mutate only run time variables between calls
     def run(self, **runtime_overrides) -> CostOutput:
+        for key in runtime_overrides:
+            field_info = self._inputs_cls.__dataclass_fields__.get(key)
+            if field_info and field_info.metadata.get("static"):
+                raise ValueError(
+                    f"Cannot override static field '{key}' in {self._inputs_cls.__name__}. "
+                    "Static fields must be set at initialization of the CostModel."
+                )
+
         try:
             inputs = self._inputs_cls(**{**self.base_inputs_dict, **runtime_overrides})
         except TypeError as e:
@@ -100,8 +86,7 @@ class CostModel(Generic[CostInputType]):
                 f"Please check that all required fields are provided. {e}."
             ) from e
 
-        output = self._run(inputs)
-        if not isinstance(output, CostOutput):
+        if not isinstance(output := self._run(inputs), CostOutput):
             output = CostOutput(capex=output["capex"], opex=output["opex"])
 
         return output

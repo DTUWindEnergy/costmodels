@@ -154,18 +154,18 @@ def test_npv_grad_with_cost_model(mock_project_and_cm):
     mock_cost_model.run.assert_called_once()
 
 
-ALL_COST_MODELS = [
-    (BatteryCostModel, {}),
-    (NRELCostModel, {}),
-    (DTUOffshoreCostModel, {"aep": 1.0, "water_depth": 0.5}),
-    (MinimalisticCostModel, {}),
-    (PVCostModel, {}),
-    (PowerToHydrogenCostModel, {}),
-    (SharedCostModel, {}),
-]
-
-
-@pytest.mark.parametrize("cost_model_class, runtime_args", ALL_COST_MODELS)
+@pytest.mark.parametrize(
+    "cost_model_class, runtime_args",
+    [
+        (BatteryCostModel, {}),
+        (NRELCostModel, {}),
+        (DTUOffshoreCostModel, {"aep": 1.0, "water_depth": 0.5}),
+        (MinimalisticCostModel, {}),
+        (PVCostModel, {}),
+        (PowerToHydrogenCostModel, {}),
+        (SharedCostModel, {}),
+    ],
+)
 def test_integration_of_project_with_cost_models(cost_model_class, runtime_args):
     def auto_create_cost_input(input_class, **kwargs):
         type_hints = get_type_hints(input_class)

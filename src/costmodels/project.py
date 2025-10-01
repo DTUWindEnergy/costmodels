@@ -42,24 +42,24 @@ class Project:
     def _npv(
         self, productions: dict, cost_model_args: dict, finance_args: dict
     ) -> Tuple[jnp.ndarray, dict[str, Any]]:
-        techs = []
+        mod_technologies = []
+
         for t in self.technologies:
-            updated_t = t
+            mod_tech = t
+
             if t.cost_model and (
                 t.name in cost_model_args or t.capex is None or t.opex is None
             ):
-                cost_output = t.cost_model.run(**cost_model_args.get(t.name, {}))
+                co = t.cost_model.run(**cost_model_args.get(t.name, {}))
                 if t.capex is None:
-                    updated_t = replace(
-                        updated_t, capex=jnp.array(cost_output.capex * 1e6)
-                    )
+                    mod_tech = replace(mod_tech, capex=jnp.array(co.capex * 1e6))
                 if t.opex is None:
-                    updated_t = replace(
-                        updated_t, opex=jnp.array(cost_output.opex * 1e6)
-                    )
+                    mod_tech = replace(mod_tech, opex=jnp.array(co.opex * 1e6))
+
             if t.name in productions:
-                updated_t = replace(updated_t, production=productions[t.name])
-            techs.append(updated_t)
+                mod_tech = replace(mod_tech, production=productions[t.name])
+
+            mod_technologies.append(mod_tech)
 
         finance_inputs = {**finance_args}
         defaults = [
@@ -75,7 +75,7 @@ class Project:
                 finance_inputs[key] = value
 
         project_finance = finances(
-            technologies=techs,
+            technologies=mod_technologies,
             product_prices=self.product_prices,
             **finance_inputs,
         )

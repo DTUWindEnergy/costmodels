@@ -19,6 +19,18 @@ from .cmodel import CostModel
 
 
 def _irr(cashflows):
+    """
+    Calculate the Internal Rate of Return (IRR) of a series of cashflows using JAX.
+
+    The IRR is the discount rate that makes the Net Present Value (NPV) of the cashflows equal to zero.
+    This function finds the roots of the polynomial formed by the cashflows.
+
+    Args:
+        cashflows: A JAX array or array-like structure of cash flow values.
+                     The first value (cashflows[0]) is assumed to be at time t=0.
+    Returns:
+        The IRR as a JAX scalar. If no valid IRR is found, returns jnp.nan.
+    """
     res = jnp.roots(cashflows[::-1], strip_zeros=False)
     mask = (res.imag == 0) & (res.real > 0)
 
