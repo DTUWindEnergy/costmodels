@@ -2,7 +2,7 @@
 authors = [{ name = "ernie", email = "ernim@dtu.dk" }]
 description = "Add a short description here"
 name = "costmodels"
-requires-python = ">=3.9,<3.13"
+requires-python = ">=3.10,<3.13"
 dynamic = ["version"]
 dependencies = [
     "numpy",
@@ -38,7 +38,7 @@ version_scheme = "no-guess-dev"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 norecursedirs = ["tests/assets"]
-addopts = "--dist=worksteal --cov-config=.coveragerc --cov-report=term-missing:skip-covered --cov-report=html"
+addopts = "--dist=worksteal --cov-report=term-missing:skip-covered --cov-report=html"
 
 [tool.pixi.project]
 channels = ["conda-forge"]
@@ -48,7 +48,7 @@ platforms = ["linux-64", "win-64"]
 costmodels = { path = ".", editable = true }
 
 [tool.pixi.dependencies]
-python = ">=3.9,<3.13"
+python = ">=3.10,<3.13"
 
 [tool.pixi.feature.test.dependencies]
 pip = ">=25.0.1,<26"

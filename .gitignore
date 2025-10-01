@@ -16,3 +16,4 @@ test_pip_install/
 *.out
 src/costmodels/_version.py
 dist/
+.coverage.*
