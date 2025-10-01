@@ -434,7 +434,9 @@ class Technology:
 
     def __post_init__(self):
         if self.cost_model is None and (self.capex is None or self.opex is None):
-            raise ValueError("Either a cost model or CAPEX and OPEX must be provided.")
+            raise ValueError(
+                "Either a cost model or static CAPEX and OPEX must be provided."
+            )
         # TODO: should come up with more general solution
         if self.production is not None:
             self.production = jnp.asarray(self.production)

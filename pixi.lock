@@ -1988,8 +1988,8 @@ packages:
   timestamp: 1756544999757
 - pypi: ./
   name: costmodels
-  version: 0.2.0.post1.dev5+g0d85ba132.d20251001
-  sha256: 1c139fd0183b7727704307361bcecd0978d501196f6ef787e5cb7752d2f18b72
+  version: 0.2.0.post1.dev7+g583c166dd.d20251001
+  sha256: 69982e5d0ad5536958cd5d5be64df40675de2e224f91c15c8ed2d9ca27b66bac
   requires_dist:
   - jax>=0.5.3,<1.0
   - matplotlib>=3.7.5,<4

@@ -712,3 +712,95 @@ def test_memory_leak():
 
     # The memory usage should not increase significantly
     assert mem_after_loop < (mem_after_warmup + 20)  # Allow for some overhead
+
+
+def test_finances_corner_cases():
+    """
+    This test is designed to cover specific lines in finance.py that are
+    missed by other tests.
+    """
+    tech = Technology(
+        name="test_tech",
+        lifetime=10,
+        capex=1000,
+        opex=100,
+        wacc=0.05,
+        production=1000,
+        penalty=None,  # Covers line 86
+        consumption=50,  # Covers line 330 (scalar broadcast)
+    )
+
+    product_prices = {Product.SPOT_ELECTRICITY: 50}
+    shared_capex = 100
+    inflation = 0.02  # Covers line 437
+    tax_rate = 0.25
+    depreciation = Depreciation(year=[0, 10], rate=[0, 1])
+
+    res = finances(
+        technologies=[tech],
+        product_prices=product_prices,
+        shared_capex=shared_capex,
+        inflation=inflation,
+        tax_rate=tax_rate,
+        depreciation=depreciation,
+        devex=10,
+        lcos=None,  # Covers line 507
+        use_capex_eq_for_lco=False,  # Covers line 360
+    )
+
+    assert "NPV" in res
+    assert "IRR" in res
+    assert "LCOE" in res
+    assert np.isfinite(res["NPV"])
+    assert np.isfinite(res["IRR"])
+    assert np.isfinite(res["LCOE"][0])
+
+    tech = Technology(
+        name="test_tech",
+        lifetime=10,
+        capex=1000,
+        opex=100,
+        wacc=0.05,
+        production=1000,
+        penalty=None,  # Covers line 86
+        consumption=np.ones(20),  # Covers line 330 (scalar broadcast)
+    )
+
+    product_prices = {Product.SPOT_ELECTRICITY: 50}
+    shared_capex = 100
+    inflation = 0.02  # Covers line 437
+    tax_rate = 0.25
+    depreciation = Depreciation(year=[0, 10], rate=[0, 1])
+
+    res = finances(
+        technologies=[tech],
+        product_prices=product_prices,
+        shared_capex=shared_capex,
+        inflation=inflation,
+        tax_rate=tax_rate,
+        depreciation=depreciation,
+        devex=10,
+        lcos=None,  # Covers line 507
+        use_capex_eq_for_lco=False,  # Covers line 360
+    )
+
+    assert "NPV" in res
+    assert "IRR" in res
+    assert "LCOE" in res
+    assert np.isfinite(res["NPV"])
+    assert np.isfinite(res["IRR"])
+    assert np.isfinite(res["LCOE"][0])
+
+
+def test_tech_object_complains_if_no_cost_model_or_static_capex_opex_provided():
+    """Test that Technology raises an error if neither cost_model nor static CAPEX/OPEX is provided."""
+    with pytest.raises(
+        ValueError,
+        match="Either a cost model or static CAPEX and OPEX must be provided.",
+    ):
+        Technology(
+            name="invalid_tech",
+            lifetime=10,
+            wacc=0.05,
+            production=1000,
+        )

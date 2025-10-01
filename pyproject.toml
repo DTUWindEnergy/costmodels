@@ -73,3 +73,10 @@ build = { features = ["build"], no-default-feature = true }
 files = "src/costmodels"
 exclude = "src/costmodels/external"
 ignore_missing_imports = true
+
+[tool.coverage.run]
+omit = ["src/costmodels/_version.py"]
+
+[tool.coverage.report]
+fail_under = 90
+precision = 2
