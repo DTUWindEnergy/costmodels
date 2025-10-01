@@ -1,3 +1,5 @@
+from enum import Enum
+from typing import get_type_hints
 from unittest.mock import Mock
 
 import jax.numpy as jnp
@@ -5,6 +7,15 @@ import numpy as np
 import pytest
 
 from costmodels.finance import Depreciation, Inflation, Product, Technology
+from costmodels.models import (
+    BatteryCostModel,
+    DTUOffshoreCostModel,
+    MinimalisticCostModel,
+    NRELCostModel,
+    PowerToHydrogenCostModel,
+    PVCostModel,
+    SharedCostModel,
+)
 from costmodels.project import Project
 
 
@@ -141,3 +152,81 @@ def test_npv_grad_with_cost_model(mock_project_and_cm):
     assert np.allclose(cm_grad["wind"]["param1"], jnp.array([-0.06]))
     # Verify the cost model was called with the correct arguments
     mock_cost_model.run.assert_called_once()
+
+
+ALL_COST_MODELS = [
+    (BatteryCostModel, {}),
+    (NRELCostModel, {}),
+    (DTUOffshoreCostModel, {"aep": 1.0, "water_depth": 0.5}),
+    (MinimalisticCostModel, {}),
+    (PVCostModel, {}),
+    (PowerToHydrogenCostModel, {}),
+    (SharedCostModel, {}),
+]
+
+
+@pytest.mark.parametrize("cost_model_class, runtime_args", ALL_COST_MODELS)
+def test_integration_of_project_with_cost_models(cost_model_class, runtime_args):
+    def auto_create_cost_input(input_class, **kwargs):
+        type_hints = get_type_hints(input_class)
+        params = {}
+
+        for attr_name in type_hints:
+            if hasattr(input_class, attr_name):
+                params[attr_name] = getattr(input_class, attr_name)
+
+        for attr_name, attr_type in type_hints.items():
+            if attr_name in params or attr_name in kwargs:
+                continue
+
+            if attr_type is float:
+                value = 1.0
+            elif attr_type is int:
+                value = 1
+            elif attr_type is bool:
+                value = True
+            elif attr_type is np.ndarray or attr_type is jnp.ndarray:
+                value = jnp.array([1.0, 2.0])
+            elif attr_type is Enum:
+                value = list(attr_type)[0].value
+            else:
+                raise ValueError(
+                    f"Unsupported attribute type: {attr_type} for {attr_name}"
+                )
+
+            params[attr_name] = value
+
+        params.update(kwargs)
+        return params
+
+    params = auto_create_cost_input(cost_model_class._inputs_cls)
+    cost_model = cost_model_class(**params)
+
+    tech_name = cost_model_class.__name__.lower()
+    tech = Technology(
+        name=tech_name,
+        lifetime=25,
+        t0=0,
+        wacc=0.075,
+        phasing_yr=[0],
+        phasing_capex=[1],
+        production=[1.0],
+        product=Product.SPOT_ELECTRICITY,
+        cost_model=cost_model,
+    )
+
+    proj = Project(
+        technologies=[tech],
+        product_prices={Product.SPOT_ELECTRICITY: [50.0] * 25},
+        inflation=Inflation(rate=[0.02] * 26, year=list(range(26)), year_ref=0),
+        depreciation=Depreciation(year=list(range(26)), rate=[1 / 25] * 26),
+    )
+
+    cost_model_args = {tech_name: runtime_args}
+    productions = {tech_name: jnp.ones(25)}
+
+    # Test that NPV calculation runs without errors
+    proj.npv(productions, cost_model_args)
+
+    # Test that NPV gradient calculation runs without errors
+    proj.npv_grad(productions, cost_model_args)

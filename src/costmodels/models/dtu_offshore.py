@@ -30,7 +30,7 @@ class DTUOffshoreCostInput(CostInput):
     rotor_speed: float  # rpm
     rotor_diameter: float  # m
     hub_height: float  # m
-    nwt: float
+    nwt: int
     water_depth: float  # m
     capacity_factor: float | None = None  # %
     aep: jnp.ndarray | None = None  # MWh

@@ -413,8 +413,8 @@ class Technology:
     lifetime: int
     production: jnp.ndarray | list | float = 0.0
     cost_model: CostModel | None = None
-    capex: jnp.ndarray | None = None
-    opex: jnp.ndarray | None = None
+    capex: jnp.ndarray | float | None = None
+    opex: jnp.ndarray | float | None = None
     t0: int = 0
     wacc: float = 0.0
     phasing_yr: Iterable = (0,)

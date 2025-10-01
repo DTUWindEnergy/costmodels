@@ -38,7 +38,7 @@ version_scheme = "no-guess-dev"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 norecursedirs = ["tests/assets"]
-addopts = "--dist=worksteal"
+addopts = "--dist=worksteal --cov-config=.coveragerc --cov-report=term-missing:skip-covered --cov-report=html"
 
 [tool.pixi.project]
 channels = ["conda-forge"]
@@ -54,7 +54,7 @@ python = ">=3.9,<3.13"
 pip = ">=25.0.1,<26"
 
 [tool.pixi.feature.test.tasks]
-pytest-cov = "pytest --cov-report=term-missing:skip-covered --cov-report=html --cov=src/costmodels"
+pytest-cov = "pytest --cov=src/costmodels"
 
 [tool.pixi.feature.examples.dependencies]
 py-wake = ">=2.6.10,<3"

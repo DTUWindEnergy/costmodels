@@ -4,6 +4,7 @@ from typing import Generic, Type, TypeVar
 
 import jax.numpy as jnp
 import numpy as np
+from jax.tree_util import register_pytree_node_class
 
 
 @dataclass
@@ -19,6 +20,7 @@ class CostOutput:
         self.opex = jnp.asarray([self.opex]).squeeze()
 
 
+@register_pytree_node_class
 class CostInput:
     """Base class for cost model inputs."""
 
@@ -35,6 +37,33 @@ class CostInput:
                         dataclasses.field(default_factory=lambda v=value: jnp.array(v)),
                     )
         dataclasses.dataclass(cls)
+
+    def tree_flatten(self):
+        d = self.__dict__
+        static_keys = []
+        dynamic_keys = []
+        for f in dataclasses.fields(self):
+            if f.metadata.get("static", False):
+                static_keys.append(f.name)
+            else:
+                dynamic_keys.append(f.name)
+        return ([d[k] for k in dynamic_keys], {k: d[k] for k in static_keys})
+
+    @classmethod
+    def tree_unflatten(cls, static_data, dynamic_data):
+        d = {**static_data}
+        dynamic_keys = []
+        for f in dataclasses.fields(cls):
+            if not f.metadata.get("static", False):
+                dynamic_keys.append(f.name)
+        for k, v in zip(dynamic_keys, dynamic_data):
+            d[k] = v
+        return cls(**d)
+
+
+def static_field(default):
+    """Helper to create a static dataclass field."""
+    return dataclasses.field(default=default, metadata={"static": True})
 
 
 CostInputType = TypeVar("CostInputType", bound=CostInput)

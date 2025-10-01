@@ -1,12 +1,17 @@
+stages:
+  - format
+  - test
+  - deploy
+
 .dev_ci_rules: &dev_ci_rules
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     - when: never
 
-formatting:
+format:
   image: ghcr.io/prefix-dev/pixi:latest
-  stage: test
+  stage: format
   script:
     - pixi global install git
     - pixi run -e test pre-commit run --all-files
@@ -42,10 +47,10 @@ test_linux:
 
 test_windows:
   image: registry.windenergy.dtu.dk/dockerimages/windows-pixi:ltsc2019
+  stage: test
   variables:
     GIT_SUBMODULE_STRATEGY: normal
     GIT_CLEAN_FLAGS: -ffdx -e .pixi/
-  stage: test
   script:
     - pixi run -e test pytest
   tags:
@@ -67,7 +72,7 @@ test_pip_install:
     - linux
   <<: *dev_ci_rules
 
-pypi_linux:
+pypi_deploy:
   image: ghcr.io/prefix-dev/pixi:latest
   stage: deploy
   only:
