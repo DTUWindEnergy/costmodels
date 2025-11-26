@@ -1,6 +1,6 @@
 import abc
 import dataclasses
-from dataclasses import dataclass
+from dataclasses import MISSING, dataclass
 from typing import Generic, Type, TypeVar
 
 import jax.numpy as jnp
@@ -39,9 +39,11 @@ class CostInput(abc.ABC):
         dataclasses.dataclass(cls)
 
 
-def static_field(default):
-    """Helper to create a static dataclass field."""
-    return dataclasses.field(default=default, metadata={"static": True})
+def static_field(default=None):
+    """Helper to create a static dataclass field with optional default."""
+    return dataclasses.field(
+        default=default if default else MISSING, metadata={"static": True}
+    )
 
 
 CostInputType = TypeVar("CostInputType", bound=CostInput)
