@@ -110,7 +110,7 @@ def test_variable_opex_model():
         },
     ]
 
-    results_df, Total_ONM_cost_ref, Total_ONM_cost_control = lifetime_aware_model(
+    results_df, Total_ONM_cost_ref, Total_ONM_cost_control, _, _ = lifetime_aware_model(
         _gamma_refs, _gamma_controls, components, _LIFETIME, _OPEX, _CAPEX
     )
 
@@ -131,7 +131,7 @@ def test_variable_opex_model():
     out = cm.run(gamma_controls=_gamma_controls)
     assert jnp.isclose(
         out.opex * 100, Total_ONM_cost_control * 100, rtol=1e-5, atol=1e-5
-    )
+    ).all()
 
     @jax.jit
     def objective(gamma_controls) -> jnp.ndarray:
@@ -139,5 +139,7 @@ def test_variable_opex_model():
 
     value, grad = jax.value_and_grad(objective)(jnp.array(_gamma_controls))
 
-    assert jnp.isclose(value * 100, Total_ONM_cost_control * 100, rtol=1e-5, atol=1e-5)
+    assert jnp.isclose(
+        value * 100, Total_ONM_cost_control * 100, rtol=1e-5, atol=1e-5
+    ).all()
     assert jnp.isfinite(grad).all()

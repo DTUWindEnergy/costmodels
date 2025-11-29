@@ -5,6 +5,8 @@ from costmodels.cmodel import CostInput, CostModel, CostOutput, static_field
 
 
 def _lifetime_aware_model(gammas, components, LIFETIME, capex):
+    gammas = jnp.atleast_2d(gammas)
+    n_realizations = gammas.shape[1]
     years = jnp.arange(1, LIFETIME + 1)
     n_components = len(components)
 
@@ -31,29 +33,33 @@ def _lifetime_aware_model(gammas, components, LIFETIME, capex):
     b10s = etas * (-1 * jnp.log(1 - 0.1)) ** (1 / betas)
     mttfs = etas * gamma_function(1 + 1 / betas)
 
-    # Vectorized Weibull calculation for all components and years at once
-    # Shape: (n_components, n_years)
-    Di = (gammas[:, None] * years[None, :]) / etas[:, None]
-    Fi = 1 - jnp.exp(-(Di ** betas[:, None]))
+    # Vectorized Weibull calculation for all components and years and realizations at once
+    # Shape: (n_components, n_years, n_realizations)
+    Di = (gammas[:, None, :] * years[None, :, None]) / etas[:, None, None]
+    Fi = 1 - jnp.exp(-(Di ** betas[:, None, None]))
 
     # Calculate incremental failure rates
-    Fi_with_zero = jnp.concatenate([jnp.zeros((n_components, 1)), Fi[:, :-1]], axis=1)
+    Fi_with_zero = jnp.concatenate(
+        [jnp.zeros((n_components, 1, n_realizations)), Fi[:, :-1, :]], axis=1
+    )
     lambda_series_specific = Fi - Fi_with_zero
 
     # Vectorized cost and downtime calculations
-    replace_time = lambda_series_specific * downtime[:, None] * number[:, None]
+    replace_time = (
+        lambda_series_specific * downtime[:, None, None] * number[:, None, None]
+    )
     replace_cost = (
         lambda_series_specific
         * capex
-        * cost_fraction_of_capex[:, None]
-        * number[:, None]
+        * cost_fraction_of_capex[:, None, None]
+        * number[:, None, None]
     )
 
     # Aggregate across components
     lambda_series = jnp.sum(lambda_series_specific, axis=0)
-    opex_series = jnp.sum(lambda_series_specific * C_replace[:, None], axis=0)
+    opex_series = jnp.sum(lambda_series_specific * C_replace[:, None, None], axis=0)
     downtime_series = jnp.sum(
-        lambda_series_specific * T_replace_days[:, None] * 24, axis=0
+        lambda_series_specific * T_replace_days[:, None, None] * 24, axis=0
     )
 
     # Build result dictionaries (keep for compatibility, but minimize Python ops)
@@ -63,12 +69,14 @@ def _lifetime_aware_model(gammas, components, LIFETIME, capex):
             "lambda": lambda_series_specific[i],
             "Replace Time": replace_time[i],
             "Replace Cost": replace_cost[i],
-            "Total downtime [days]": jnp.sum(replace_time[i]),
-            "Total downtime [life-time fraction]": jnp.sum(replace_time[i])
+            "Total downtime [days]": jnp.sum(replace_time[i], axis=0),
+            "Total downtime [life-time fraction]": jnp.sum(replace_time[i], axis=0)
             / 365
             / LIFETIME,
-            "Total cost [MEUR]": jnp.sum(replace_cost[i]),
-            "Total cost [CAPEX/year]": jnp.sum(replace_cost[i]) / capex / LIFETIME,
+            "Total cost [MEUR]": jnp.sum(replace_cost[i], axis=0),
+            "Total cost [CAPEX/year]": jnp.sum(replace_cost[i], axis=0)
+            / capex
+            / LIFETIME,
         }
         res_dicts.append(res_dict)
         # Update component dict with computed values (if needed externally)
@@ -126,28 +134,34 @@ def lifetime_aware_model(
         "MTTF design": [c["mttf"] for c in components],
         "Cost [% of CAPEX]": [c["cost_fraction_of_capex"] * 100 for c in components],
         "Down-time [days]": [c["downtime"] for c in components],
-        "Ref maintenance": ref_maintenance,
-        "New maintenance": control_maintenance,
+        "Ref maintenance": jnp.mean(ref_maintenance, axis=1),
+        "New maintenance": jnp.mean(control_maintenance, axis=1),
         "Cost reduction": jnp.nan_to_num(
             1 - jnp.divide(control_maintenance, ref_maintenance)
         ),
-        "Ref Down-time": ref_downtime,
-        "New Down-time": control_downtime,
+        "Ref Down-time": jnp.mean(ref_downtime, axis=1),
+        "New Down-time": jnp.mean(control_downtime, axis=1),
         "Downtime reduction": jnp.nan_to_num(
             1 - jnp.divide(control_downtime, ref_downtime)
         ),
     }
-    Total_maintenance_cost_ref = jnp.sum(ref_maintenance)
+    Total_maintenance_cost_ref = jnp.sum(ref_maintenance, axis=0)
 
     scaler = (scale_to - opex / 100) / Total_maintenance_cost_ref
 
     Total_maintenance_cost_ref *= scaler
 
     Total_ONM_cost_ref = Total_maintenance_cost_ref + opex / 100
-    Total_maintenance_cost_control = jnp.sum(control_maintenance) * scaler
+    Total_maintenance_cost_control = jnp.sum(control_maintenance, axis=0) * scaler
     Total_ONM_cost_control = Total_maintenance_cost_control + opex / 100
 
-    return results_df, Total_ONM_cost_ref, Total_ONM_cost_control
+    return (
+        results_df,
+        jnp.mean(Total_ONM_cost_ref),
+        jnp.mean(Total_ONM_cost_control),
+        Total_ONM_cost_ref,
+        Total_ONM_cost_control,
+    )
 
 
 class VariableOPEXInput(CostInput):
@@ -165,7 +179,7 @@ class VariableOPEXModel(CostModel):
     _inputs_cls = VariableOPEXInput
 
     def _run(self, inputs: VariableOPEXInput) -> CostOutput:
-        _, _, Total_ONM_cost_control = lifetime_aware_model(
+        _, _, Total_ONM_cost_control, _, _ = lifetime_aware_model(
             inputs.gamma_refs,
             inputs.gamma_controls,
             inputs.components,
