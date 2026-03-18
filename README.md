@@ -1,3 +1,7 @@
+[![pipeline status](https://gitlab.windenergy.dtu.dk/TOPFARM/costmodels/badges/main/pipeline.svg)](https://gitlab.windenergy.dtu.dk/TOPFARM/costmodels/-/commits/main)
+[![coverage report](https://gitlab.windenergy.dtu.dk/TOPFARM/costmodels/badges/main/coverage.svg)](https://gitlab.windenergy.dtu.dk/TOPFARM/costmodels/commits/main)
+[![PyPi](https://img.shields.io/pypi/v/costmodels)](https://pypi.org/project/costmodels/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.17789182.svg)](https://doi.org/10.5281/zenodo.17789182)
 # CostModels
 
 CostModels provides a small collection of cost models built using JAX and can provide gradients of finantial metrics with respect to arbitrary design variables. The package is under active development and the API may change without notice.
