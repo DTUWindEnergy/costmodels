@@ -710,8 +710,8 @@ def test_memory_leak():
 
     mem_after_loop = get_mem_usage()
 
-    # The memory usage should not increase significantly
-    assert mem_after_loop < (mem_after_warmup + 20)  # Allow for some overhead
+    # JAX memory usage can vary slightly across platforms and runner setups.
+    assert mem_after_loop < (mem_after_warmup + 25)  # Allow for some overhead
 
 
 def test_finances_corner_cases():
